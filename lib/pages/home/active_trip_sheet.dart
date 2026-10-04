@@ -41,19 +41,16 @@ class ActiveTripSheet extends StatelessWidget {
     return number.toStringAsFixed(decimals);
   }
 
-  String _getActionButtonTitle(String status) {
-    if (status == TripStatus.accepted) {
+  String _getActionButtonTitle(String currentStatus) {
+    if (currentStatus == TripStatus.accepted) {
       return 'btn_arrived_pickup'.tr();
     }
-
-    if (status == TripStatus.arrived) {
+    if (currentStatus == TripStatus.arrived) {
       return 'btn_start_trip'.tr();
     }
-
-    if (status == TripStatus.onTrip) {
+    if (currentStatus == TripStatus.onTrip) {
       return 'btn_end_trip'.tr();
     }
-
     return 'btn_arrived_pickup'.tr();
   }
 
@@ -189,6 +186,8 @@ class ActiveTripSheet extends StatelessWidget {
                 const SizedBox(height: 12),
                 _buildNavigationNotice(),
                 const SizedBox(height: 16),
+                
+                // دکمه تغییر وضعیت اصلی سفر
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -218,7 +217,7 @@ class ActiveTripSheet extends StatelessWidget {
                             height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              color: Colors.white,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
                         : Text(
@@ -232,6 +231,8 @@ class ActiveTripSheet extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
+                
+                // دکمه‌های چت و لغو سفر
                 Row(
                   children: [
                     Expanded(
@@ -310,6 +311,8 @@ class ActiveTripSheet extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
+                
+                // دکمه مسیریاب خارجی
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -321,6 +324,7 @@ class ActiveTripSheet extends StatelessWidget {
                                 getNavigationTarget();
 
                             if (targetPosition == null) {
+                              if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
@@ -448,7 +452,9 @@ class ActiveTripSheet extends StatelessWidget {
             color: const Color(0xFFE8F5E9),
             shape: const CircleBorder(),
             child: IconButton(
-              onPressed: () => onMakePhoneCall(passengerPhone),
+              onPressed: passengerPhone.isEmpty
+                  ? null
+                  : () => onMakePhoneCall(passengerPhone),
               icon: const Icon(
                 Icons.phone_in_talk_rounded,
                 color: Color(0xFF2E7D32),
