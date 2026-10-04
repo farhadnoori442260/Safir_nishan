@@ -16,10 +16,11 @@ class _EarningsPageState extends State<EarningsPage> {
   @override
   void initState() {
     super.initState();
-    // فراخوانی متد دریافت میزان درآمد راننده پس از مقداردهی اولیه صفحه
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<RegistrationProvider>(context, listen: false)
-          .fetchDriverEarnings();
+      if (mounted) {
+        Provider.of<RegistrationProvider>(context, listen: false)
+            .fetchDriverEarnings();
+      }
     });
   }
 
@@ -39,6 +40,7 @@ class _EarningsPageState extends State<EarningsPage> {
         centerTitle: true,
         backgroundColor: AppColors.cardBackground,
         elevation: 0,
+        automaticallyImplyLeading: false,
       ),
       body: Center(
         child: Padding(
@@ -62,7 +64,6 @@ class _EarningsPageState extends State<EarningsPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // تصویر پیش‌فرض درآمد
                 Image.asset(
                   "assets/images/totalearnings.png",
                   width: 120,
@@ -92,8 +93,7 @@ class _EarningsPageState extends State<EarningsPage> {
                 const SizedBox(height: 12),
                 Consumer<RegistrationProvider>(
                   builder: (context, provider, child) {
-                    // بررسی در حال بارگذاری بودن اطلاعات از دیتابیس
-                    if (provider.driverEarnings == null) {
+                    if (provider.isEarningsLoading) {
                       return const Padding(
                         padding: EdgeInsets.all(8.0),
                         child: CircularProgressIndicator(
@@ -101,13 +101,16 @@ class _EarningsPageState extends State<EarningsPage> {
                         ),
                       );
                     } else {
+                      final double earnings = provider.driverEarnings ?? 0.0;
                       return Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           Text(
-                            "${provider.driverEarnings}",
+                            earnings % 1 == 0
+                                ? earnings.toInt().toString()
+                                : earnings.toStringAsFixed(1),
                             style: const TextStyle(
                               color: AppColors.primaryBrand,
                               fontSize: 34,
