@@ -21,6 +21,9 @@ class _SplashScreenState extends State<SplashScreen> {
   bool _hasError = false;
   Widget? _targetScreen;
 
+  // رنگ سبز سفارشی
+  static const Color _brandGreen = Color(0xFF1B7A57);
+
   @override
   void initState() {
     super.initState();
@@ -34,7 +37,6 @@ class _SplashScreenState extends State<SplashScreen> {
     });
 
     try {
-      // ۱. انتظار برای بازیابی وضعیت لاگین از فایربیس
       final User? user = await FirebaseAuth.instance
           .authStateChanges()
           .first
@@ -45,7 +47,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
       if (!mounted) return;
 
-      // اگر هیچ کاربری لاگین نبود -> صفحه ثبت‌نام/ورود
       if (user == null) {
         setState(() {
           _isLoading = false;
@@ -54,14 +55,12 @@ class _SplashScreenState extends State<SplashScreen> {
         return;
       }
 
-      // کاربر لاگین است؛ بارگذاری و بررسی اطلاعات از Cloud Firestore
       final authProvider = Provider.of<AuthenticationProvider>(context, listen: false);
 
-      // اجرای هم‌زمان متدهای دریافت اطلاعات، بررسی بلاک و بررسی فیلدها از Firestore
       final results = await Future.wait([
         authProvider.getUserDataFromFirebaseDatabase().then((_) => true).catchError((_) => false),
         authProvider.checkIfDriverIsBlocked().catchError((_) => false),
-        authProvider.checkDriverFieldsFilled().catchError((_) => true), // در خطای شبکه فرض بر تکمیل بودن است
+        authProvider.checkDriverFieldsFilled().catchError((_) => true),
       ]).timeout(
         const Duration(seconds: 5),
         onTimeout: () => [false, false, true],
@@ -72,7 +71,6 @@ class _SplashScreenState extends State<SplashScreen> {
       final bool isBlocked = results[1];
       final bool isProfileComplete = results[2];
 
-      // ۲. بررسی مسدود نبودن راننده
       if (isBlocked) {
         setState(() {
           _isLoading = false;
@@ -81,7 +79,6 @@ class _SplashScreenState extends State<SplashScreen> {
         return;
       }
 
-      // ۳. هدایت بر اساس تکمیل بودن مشخصات
       if (isProfileComplete) {
         setState(() {
           _isLoading = false;
@@ -98,7 +95,6 @@ class _SplashScreenState extends State<SplashScreen> {
       debugPrint("SplashScreen Auth Exception: $e");
       if (!mounted) return;
 
-      // در صورت بروز خطای غیرمنتظره، اگر کاربر لاگین است او را وارد برنامه می‌کنیم
       final User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         setState(() {
@@ -118,7 +114,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     if (_hasError) {
       return Scaffold(
-        backgroundColor: AppColors.primaryBrand,
+        backgroundColor: _brandGreen,
         body: SafeArea(
           child: Stack(
             children: [
@@ -128,10 +124,10 @@ class _SplashScreenState extends State<SplashScreen> {
                   children: [
                     Image.asset(
                       'assets/images/splash.png',
-                      width: 140,
+                      width: 160,
                       fit: BoxFit.contain,
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 40.0),
                       child: Text(
@@ -139,7 +135,7 @@ class _SplashScreenState extends State<SplashScreen> {
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 16,
-                          color: AppColors.buttonText,
+                          color: Colors.white,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -157,7 +153,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     child: ElevatedButton(
                       onPressed: _checkAuthAndNavigation,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.cardBackground,
+                        backgroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -168,7 +164,7 @@ class _SplashScreenState extends State<SplashScreen> {
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primaryBrand,
+                          color: _brandGreen,
                         ),
                       ),
                     ),
@@ -183,21 +179,20 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (_isLoading || _targetScreen == null) {
       return Scaffold(
-        backgroundColor: AppColors.primaryBrand,
+        backgroundColor: _brandGreen,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // لوگوی اصلی
               Image.asset(
                 'assets/images/splash.png',
-                width: 140,
+                width: 160,
                 fit: BoxFit.contain,
               ),
-              const SizedBox(height: 32),
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.buttonText),
-                strokeWidth: 3,
-              ),
+              const SizedBox(height: 20),
+              // انیمیشن ۳ نقطه مشابه تصویر نمونه
+              const _ThreeDotsLoading(),
             ],
           ),
         ),
@@ -205,5 +200,58 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     return _targetScreen!;
+  }
+}
+
+// ویجت لودینگ ۳ نقطه متحرک
+class _ThreeDotsLoading extends StatefulWidget {
+  const _ThreeDotsLoading();
+
+  @override
+  State<_ThreeDotsLoading> createState() => _ThreeDotsLoadingState();
+}
+
+class _ThreeDotsLoadingState extends State<_ThreeDotsLoading>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(3, (index) {
+            final double opacity =
+                ((_controller.value - (index * 0.25)) % 1.0).clamp(0.2, 1.0);
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(opacity),
+                shape: BoxShape.circle,
+              ),
+            );
+          }),
+        );
+      },
+    );
   }
 }
