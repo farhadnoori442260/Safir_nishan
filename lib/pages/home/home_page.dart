@@ -57,9 +57,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   double _arrowDisplayBearing = 0.0;
   DateTime? _lastArrowUpdateAt;
 
-  // 🔧 FIX: قبلاً ۵۰ متر بود؛ این هم‌ارز همان باگی بود که در فایل مسافر
-  // اصلاح شد — یک کوچهٔ نزدیک همچنان «روی مسیر» حساب می‌شد و فلش به نقطهٔ
-  // (تقریباً ثابتِ) روی خط قدیمی می‌چسبید به‌جای موقعیت واقعی راننده.
   static const double _offRouteThresholdMeters = 25.0;
 
   // نوشتن لوکیشن در Firestore حداکثر هر ۲ ثانیه (با ارسال آخرین مقدار)
@@ -204,8 +201,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return null;
   }
 
+  /// 🔧 اصلاح‌شده: آماده‌سازی تصویر با قابلیت مدیریت خطای انباشت تصویر
   Future<void> _prepareDriverNavigationArrow() async {
-    if (mapController == null || _isDriverArrowImageAdded) return;
+    if (mapController == null) return;
 
     try {
       final ByteData imageData = await rootBundle.load(
@@ -219,18 +217,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       _isDriverArrowImageAdded = true;
     } catch (e) {
-      debugPrint('Error preparing driver navigation arrow: $e');
+      // اگر تصویر از قبل بارگذاری شده باشد، پرچم را true نگه می‌داریم
+      if (e.toString().contains('already exists') ||
+          e.toString().contains('mIsSubscribed')) {
+        _isDriverArrowImageAdded = true;
+      } else {
+        debugPrint('Error preparing driver navigation arrow: $e');
+      }
     }
   }
 
   // ════════════════════════════════════════════════════════════
-  //  🧭 حرکت آیکن راننده روی مسیر (منطق MapScreenRoute تست‌شده)
-  //   • چسباندن به مسیر (≤ ۵۰ متر) و پیشروی فقط «به جلو»
-  //   • حرکت خطی با مدتی برابر فاصلهٔ واقعی بین دو GPS
-  //   • انیمیشن از موقعیت لحظه‌ایِ آیکن شروع می‌شود
-  //   • زاویه از جهت حرکت (بیش از ۳ متر جابه‌جایی)
-  //   • مسیر به طی‌شده (خاکستری) و باقی‌مانده (سبز) تقسیم می‌شود
-  //   • مسیریابی مجدد را خودِ NavigationController انجام می‌دهد و خط با آن هماهنگ می‌شود
+  //  🧭 حرکت آیکن راننده روی مسیر
   // ════════════════════════════════════════════════════════════
 
   Future<void> _animateNavArrow() async {
@@ -242,7 +240,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       return;
     }
 
-    // حرکت خطی، بدون easing
     final double t = _arrowAnimationController.value;
 
     final double latitude = _arrowAnimStart!.latitude +
@@ -268,10 +265,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     } catch (e) {
       debugPrint('Nav arrow animation error: $e');
+      // اگر Symbol روی نقشه از دست رفته باشد، مجدداً null می‌کنیم تا مجدداً ساخته شود
+      _driverNavigationSymbol = null;
     }
   }
 
-  /// فقط «آخرین» موقعیت پردازش می‌شود و پردازش‌ها پشت‌سرهم اجرا می‌شوند
   Future<void> _processPendingNavPosition() async {
     if (_isProcessingNavUpdate) return;
     _isProcessingNavUpdate = true;
@@ -288,14 +286,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
+  /// 🔧 اصلاح‌شده: مدیریت خودکار بازیابی تصویر و ساخت امن Symbol
   Future<void> _updateNavArrow(LatLng rawPosition, double rawHeading) async {
-    if (mapController == null || !_isMapStyleReady) return;
+    if (mapController == null || !_isMapStyleReady || !mounted) return;
 
-    if (!mounted) return;
-
-    // 🔧 مسیر فقط یک مالک دارد: NavigationController. هر بار که مسیر عوض شد
-    // (شروع سفر یا مسیریابی مجدد خودکار) نسخهٔ جدید را می‌گیریم و خط را
-    // دوباره می‌کشیم. به این ترتیب خط روی نقشه همیشه با دستورهای پیچ یکی است.
     final NavigationController navController =
         context.read<NavigationController>();
 
@@ -332,7 +326,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     }
 
-    await _prepareDriverNavigationArrow();
+    // 🔧 اطمینان از آماده بودن تصویر قبل از افزودن/آپدیت آیکن
+    if (!_isDriverArrowImageAdded) {
+      await _prepareDriverNavigationArrow();
+    }
 
     if (mapController != null && _isDriverArrowImageAdded) {
       try {
@@ -342,7 +339,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         double bearing = _arrowAnimEndBearing;
 
         if (_driverNavigationSymbol == null) {
-          if (onRouteSnap != null) {
+          if (onRouteSnap != null && route.length > onRouteSnap.segmentIndex + 1) {
             bearing = _calculateBearing(
               route[onRouteSnap.segmentIndex],
               route[onRouteSnap.segmentIndex + 1],
@@ -361,7 +358,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           bearing = _calculateBearing(previousTarget, target);
         }
 
-        // ───── مدت انیمیشن = فاصلهٔ واقعی بین دو آپدیت ─────
         final DateTime now = DateTime.now();
         final int dtMs = _lastArrowUpdateAt == null
             ? 1000
@@ -385,7 +381,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           _arrowAnimStartBearing = bearing;
           _arrowAnimEndBearing = bearing;
 
-          // نقطهٔ آبی GPS خام دیگر لازم نیست؛ فقط فلش روی مسیر دیده شود
           if (mounted && !_isNavArrowVisible) {
             setState(() {
               _isNavArrowVisible = true;
@@ -407,9 +402,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }
       } catch (e) {
         debugPrint('Error updating driver navigation arrow: $e');
+        // در صورت بروز خطا Symbol را null می‌کنیم تا فریم بعدی مجدداً از نو ساخته شود
+        _driverNavigationSymbol = null;
       }
-    } else if (!_isDriverArrowImageAdded) {
-      debugPrint('Driver navigation arrow image is not loaded.');
     }
 
     if (onRouteSnap != null) {
@@ -417,7 +412,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
-  /// مسیر را به دو بخش تقسیم می‌کند: طی‌شده (خاکستری) و باقی‌مانده (سبز)
   Future<void> _renderNavProgress(_NavSnap snap, List<LatLng> route) async {
     if (mapController == null) return;
     if (!identical(route, _navRoutePoints)) return;
@@ -457,7 +451,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }) async {
     if (mapController == null || remaining.isEmpty) return;
 
-    // یک خط با دو نقطهٔ یکسان روی نقشه دیده نمی‌شود
     final List<LatLng> grey = traveled.length >= 2
         ? traveled
         : <LatLng>[remaining.first, remaining.first];
@@ -475,7 +468,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         return;
       }
     } catch (_) {
-      // خط‌ها پاک شده‌اند؛ پایین‌تر دوباره اضافه می‌شوند
       _navRemainingLine = null;
       _navTraveledLine = null;
     }
@@ -506,15 +498,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
-  /// نزدیک‌ترین نقطه روی مسیر؛ فقط «به جلو» از نقطهٔ پیشرفت جست‌وجو می‌کند
-  /// (جلوی پرش به سمت برگشتِ مسیر در دور برگردان‌ها را می‌گیرد).
   _NavSnap? _snapToNavRoute(
     LatLng gpsPoint,
     List<LatLng> polyline, {
     int startIndex = 0,
-    // 🔧 FIX: قبلاً ۶۰۰ متر بود — همان باگ فایل مسافر. اگر مسیر قدیمی خیلی
-    // جلوتر دوباره از نزدیکی راننده رد می‌شد، اشتباهاً «روی مسیر» حساب
-    // می‌شد و off-route هرگز تشخیص داده نمی‌شد.
     double maxAheadMeters = 150,
   }) {
     if (polyline.length < 2) return null;
@@ -588,7 +575,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return (atan2(y, x) * 180 / pi + 360) % 360;
   }
 
-  /// نوشتن لوکیشن راننده در Firestore: حداکثر هر ۲ ثانیه، و همیشه آخرین مقدار
   void _queueDriverLocationWrite(Position position) {
     final DateTime now = DateTime.now();
     final DateTime? last = _lastLocationWriteAt;
@@ -619,8 +605,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   bool _hasWarnedBackgroundLocation = false;
 
-  /// 🔧 راهنمای فعال‌سازی «همیشه اجازه بده» — بدون این، ردیابی به‌محض
-  /// قفل شدن صفحه یا رفتن اپ به پس‌زمینه متوقف می‌شود.
   Future<void> _promptEnableBackgroundLocation() async {
     if (!mounted) return;
 
@@ -672,10 +656,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         return null;
       }
 
-      // 🔧 FIX: مجوز عادی («فقط حین استفاده») برای وقتی که اپ باز است کافی‌ست،
-      // ولی اگر راننده صفحه را قفل کند یا اپ پس‌زمینه برود، اندروید ۱۰ به بعد
-      // بدون مجوز «همیشه اجازه بده» ارسال موقعیت را قطع می‌کند. این مجوز را
-      // نمی‌شود با یک دیالوگ عادی گرفت؛ کاربر باید از تنظیمات سیستم فعالش کند.
       if (permission == LocationPermission.whileInUse && !_hasWarnedBackgroundLocation) {
         _hasWarnedBackgroundLocation = true;
         unawaited(_promptEnableBackgroundLocation());
@@ -706,9 +686,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       if (!mounted) return;
 
-      // 🔧 FIX: flip the flag BEFORE calling goOnlineNow(), since
-      // goOnlineNow() -> _updateDriverLiveLocation() checks isDriverAvailable
-      // and silently skips the Firestore write if it's still false.
       setState(() {
         isDriverAvailable = savedStatus;
       });
@@ -827,11 +804,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 1,
         intervalDuration: const Duration(seconds: 1),
-        // 🔧 FIX: بدون این، اندروید به‌محض اینکه اپ پس‌زمینه بره یا صفحه
-        // قفل بشه، این استریم رو متوقف می‌کنه — دقیقاً همون رفتاری که
-        // باعث «یک آپدیت میاد، بعد هیچی» می‌شد. با این نوتیفیکیشن،
-        // اندروید یک Foreground Service می‌سازه و ادامه می‌ده به فرستادن
-        // موقعیت حتی وقتی اپ پس‌زمینه‌ست.
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'سفیر — سفر فعال',
           notificationText: 'در حال ارسال موقعیت مکانی شما به مسافر است.',
@@ -850,7 +822,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
         if (!mounted) return;
 
-        // نوشتن در Firestore منتظر نمی‌ماند تا حرکت آیکن کند نشود
         _queueDriverLocationWrite(position);
 
         final NavigationController navController =
@@ -977,8 +948,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       if (mapController != null) {
         await mapController!.clearLines();
-        if (mapController != null && _driverNavigationSymbol != null) {
-          await mapController!.removeSymbol(_driverNavigationSymbol!);
+        if (_driverNavigationSymbol != null) {
+          try {
+            await mapController!.removeSymbol(_driverNavigationSymbol!);
+          } catch (_) {}
           _driverNavigationSymbol = null;
         }
       }
@@ -1029,10 +1002,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           plateCategory = vehicle['plateCategory']?.toString() ?? '';
           plateType = vehicle['plateType']?.toString() ?? '';
         }
-      } else {
-        debugPrint(
-          '⚠️ Driver document not found in Firestore for uid: ${currentUser.uid}',
-        );
       }
 
       final String fullCarPlate = (plateProvince.isNotEmpty && rawPlateNumber.isNotEmpty)
@@ -1210,7 +1179,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     }
 
-    // آیکن را همان لحظه روی مسیر بگذار (بدون انتظار برای GPS بعدی)
     if (currentPositionOfDriver != null) {
       _pendingNavPosition = currentPositionOfDriver;
       await _processPendingNavPosition();
@@ -1525,13 +1493,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                                   try {
                                     if (!isDriverAvailable) {
-                                      // 🔧 FIX: flip the flag to true FIRST
-                                      // (before goOnlineNow), otherwise
-                                      // _updateDriverLiveLocation() silently
-                                      // skips writing the driver's real
-                                      // coordinates to Firestore, leaving
-                                      // driver_locations pointing at stale
-                                      // data until the next GPS move.
                                       if (mounted) {
                                         setState(() {
                                           isDriverAvailable = true;
@@ -1803,7 +1764,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 }
 
-/// نتیجهٔ چسباندن یک نقطهٔ GPS به مسیر
 class _NavSnap {
   final LatLng point;
   final double distance;
