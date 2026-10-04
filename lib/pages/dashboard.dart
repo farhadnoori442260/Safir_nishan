@@ -26,12 +26,16 @@ class _DashboardState extends State<Dashboard>
     super.initState();
     controller = TabController(length: 4, vsync: this);
 
-    // 📌 فراخوانی و به‌روزرسانی اطلاعات راننده به محض ورود به داشبورد
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final regProvider = Provider.of<RegistrationProvider>(context, listen: false);
-      regProvider.retrieveCurrentDriverInfo();
-      regProvider.fetchDriverEarnings();
+      _refreshData();
     });
+  }
+
+  void _refreshData() {
+    if (!mounted) return;
+    final regProvider = Provider.of<RegistrationProvider>(context, listen: false);
+    regProvider.retrieveCurrentDriverInfo();
+    regProvider.fetchDriverEarnings(); // فراخوانی متد دریافت درآمد و تعداد سفرها
   }
 
   @override
@@ -44,7 +48,6 @@ class _DashboardState extends State<Dashboard>
   Widget build(BuildContext context) {
     final dashboardProvider = Provider.of<DashboardProvider>(context);
 
-    // همگام‌سازی ایندکس کنترلر با پرووایدر در صورت تغییر از پرووایدر
     if (controller != null && controller!.index != dashboardProvider.selectedIndex) {
       controller!.index = dashboardProvider.selectedIndex;
     }
@@ -141,6 +144,8 @@ class _DashboardState extends State<Dashboard>
               onTap: (index) {
                 dashboardProvider.setIndex(index);
                 controller?.index = index;
+                // 📌 به‌روزرسانی مجدد داده‌ها هنگام کلیک روی هر تب
+                _refreshData();
               },
             ),
           ),
