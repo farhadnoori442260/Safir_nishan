@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'trips_history_page.dart';
-
 import 'package:safir_drivers/providers/trip_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
 
@@ -18,9 +17,12 @@ class _TripsPageState extends State<TripsPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() =>
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
         Provider.of<TripProvider>(context, listen: false)
-            .getCurrentDriverTotalNumberOfTripsCompleted());
+            .getCurrentDriverTotalNumberOfTripsCompleted();
+      }
+    });
   }
 
   @override
@@ -106,7 +108,7 @@ class _TripsPageState extends State<TripsPage> {
 
                     const SizedBox(height: 20),
 
-                    // دکمه/کارت هدایت به تاریخچه سفرها
+                    // دکمه هدایت به تاریخچه سفرها
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
