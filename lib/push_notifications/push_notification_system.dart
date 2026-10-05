@@ -68,7 +68,6 @@ class PushNotificationSystem {
     });
 
     await firebaseCloudMessaging.subscribeToTopic('drivers');
-    await firebaseCloudMessaging.subscribeToTopic('users');
 
     log('Driver FCM token: $deviceRecognitionToken');
 
