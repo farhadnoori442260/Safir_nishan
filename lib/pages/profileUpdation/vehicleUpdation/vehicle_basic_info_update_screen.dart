@@ -30,6 +30,63 @@ class _VehicleBasicInfoUpdateScreenState
   // نوع پلاک
   final List<String> plateTypes = ['شخصی', 'موقتی', 'تاکسی', 'دولتی'];
 
+  // 🔧 نوع وسیله — این سه مقدار باید دقیقاً با همان رشته‌ای باشد که سمت
+  // مسافر در فیلد 'vehicle_type' سند rides نوشته می‌شود ("Car"/"Bike"/"cargo")
+  // تا فیلتر درخواست‌های سفر در home_page.dart درست کار کند.
+  static const List<Map<String, String>> _vehicleOptions = [
+    {
+      'value': 'Car',
+      'label': 'vehicle_car',
+      'icon': 'assets/vehicles/home_car.png',
+    },
+    {
+      'value': 'Bike',
+      'label': 'vehicle_bike',
+      'icon': 'assets/vehicles/bike.png',
+    },
+    {
+      'value': 'cargo',
+      'label': 'vehicle_cargo',
+      // 🔧 اگر اسم فایل آیکن باربری فرق دارد، فقط همین مسیر را عوض کن.
+      // اگر فایل پیدا نشود، به‌صورت خودکار یک آیکن کامیون جایگزین می‌شود.
+      'icon': 'assets/vehicles/cargo.png',
+    },
+  ];
+
+  Widget _vehicleOptionIcon(String assetPath, String value) {
+    IconData fallbackIcon;
+    switch (value) {
+      case 'Bike':
+        fallbackIcon = Icons.two_wheeler_rounded;
+        break;
+      case 'cargo':
+        fallbackIcon = Icons.local_shipping_rounded;
+        break;
+      case 'Car':
+      default:
+        fallbackIcon = Icons.directions_car_rounded;
+    }
+
+    return Image.asset(
+      assetPath,
+      height: 32,
+      width: 56,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) => Icon(
+        fallbackIcon,
+        size: 28,
+        color: AppColors.primaryBrand,
+      ),
+    );
+  }
+
+  String _vehicleLabel(String translationKey, String fallback) {
+    final String translated = translationKey.tr();
+    return translated.isNotEmpty && translated != translationKey
+        ? translated
+        : fallback;
+  }
+
   @override
   Widget build(BuildContext context) {
     final CommonMethods commonMethods = CommonMethods();
@@ -72,9 +129,10 @@ class _VehicleBasicInfoUpdateScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ۱. کارت انتخاب نوع وسیله نقلیه
+                  // ۱. کارت انتخاب نوع وسیله نقلیه (تاکسی / موترسایکل / باربری)
                   Container(
                     margin: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       color: AppColors.cardBackground,
@@ -86,62 +144,52 @@ class _VehicleBasicInfoUpdateScreenState
                         ),
                       ],
                     ),
-                    child: Column(
-                      children: [
-                        CheckboxListTile(
-                          activeColor: AppColors.primaryBrand,
-                          title: Row(
+                    child: DropdownButtonFormField<String>(
+                      value: _vehicleOptions.any(
+                        (o) => o['value'] == registrationProvider.selectedVehicle,
+                      )
+                          ? registrationProvider.selectedVehicle
+                          : null,
+                      decoration: InputDecoration(
+                        labelText: 'vehicle_type_label'.tr().isNotEmpty &&
+                                'vehicle_type_label'.tr() != 'vehicle_type_label'
+                            ? 'vehicle_type_label'.tr()
+                            : 'نوع وسیله',
+                        labelStyle: const TextStyle(fontSize: 13),
+                        border: InputBorder.none,
+                      ),
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      isExpanded: true,
+                      items: _vehicleOptions.map((option) {
+                        final String value = option['value']!;
+                        final String fallbackLabel = value == 'Car'
+                            ? 'تاکسی (سواری)'
+                            : value == 'Bike'
+                                ? 'موترسایکل'
+                                : 'باربری';
+
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Row(
                             children: [
-                              Image.asset("assets/vehicles/home_car.png", height: 40, width: 80),
-                              const SizedBox(width: 10),
-                              Text('vehicle_car'.tr(), style: const TextStyle(fontSize: 14)),
+                              _vehicleOptionIcon(option['icon']!, value),
+                              const SizedBox(width: 12),
+                              Text(
+                                _vehicleLabel(option['label']!, fallbackLabel),
+                                style: const TextStyle(fontSize: 14),
+                              ),
                             ],
                           ),
-                          value: registrationProvider.selectedVehicle == "Car",
-                          onChanged: (bool? value) {
-                            if (value == true) {
-                              registrationProvider.setSelectedVehicle("Car");
-                              registrationProvider.checkVehicleBasicFormValidity();
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 5),
-                        CheckboxListTile(
-                          activeColor: AppColors.primaryBrand,
-                          title: Row(
-                            children: [
-                              Image.asset("assets/vehicles/bike.png", height: 40, width: 80),
-                              const SizedBox(width: 10),
-                              Text('vehicle_bike'.tr(), style: const TextStyle(fontSize: 14)),
-                            ],
-                          ),
-                          value: registrationProvider.selectedVehicle == "Bike",
-                          onChanged: (bool? value) {
-                            if (value == true) {
-                              registrationProvider.setSelectedVehicle("Bike");
-                              registrationProvider.checkVehicleBasicFormValidity();
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 5),
-                        CheckboxListTile(
-                          activeColor: AppColors.primaryBrand,
-                          title: Row(
-                            children: [
-                              Image.asset("assets/vehicles/auto.png", height: 40, width: 80),
-                              const SizedBox(width: 10),
-                              Text('vehicle_auto'.tr(), style: const TextStyle(fontSize: 14)),
-                            ],
-                          ),
-                          value: registrationProvider.selectedVehicle == "Auto",
-                          onChanged: (bool? value) {
-                            if (value == true) {
-                              registrationProvider.setSelectedVehicle("Auto");
-                              registrationProvider.checkVehicleBasicFormValidity();
-                            }
-                          },
-                        ),
-                      ],
+                        );
+                      }).toList(),
+                      validator: (val) =>
+                          (val == null || val.isEmpty) ? 'vehicle_type_error'.tr() : null,
+                      onChanged: (val) {
+                        if (val != null) {
+                          registrationProvider.setSelectedVehicle(val);
+                          registrationProvider.checkVehicleBasicFormValidity();
+                        }
+                      },
                     ),
                   ),
                   
