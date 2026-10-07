@@ -93,8 +93,8 @@ class _EarningsPageState extends State<EarningsPage> {
                 const SizedBox(height: 12),
                 Consumer<RegistrationProvider>(
                   builder: (context, provider, child) {
-                    if (provider.isEarningsLoading) {
-                      return const Padding(
+                    if (provider.isLoading) {
+                     return const Padding(
                         padding: EdgeInsets.all(8.0),
                         child: CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryBrand),
