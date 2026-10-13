@@ -747,83 +747,128 @@ class RegistrationProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateVehicleBasicInfo(BuildContext context) async {
+    Future<void> updateVehicleBasicInfo(BuildContext context) async {
     try {
       _isLoading = true;
       notifyListeners();
-      final vehicleData = {
-        'type': selectedVehicle,
-        'brand': brandController.text,
-        'color': colorController.text,
-        'productionYear': productionYearController.text,
-        'registrationPlateNumber': numberPlateController.text,
-        'plateProvince': _plateProvince,
-        'plateCategory': _plateCategory,
-        'plateType': _plateType,
-      };
 
-      await _firestore
-          .collection("drivers")
-          .doc(_auth.currentUser!.uid)
-          .set({'vehicleInfo': vehicleData}, SetOptions(merge: true));
-      
+      final String uid = _auth.currentUser?.uid ?? '';
+      if (uid.isEmpty) {
+        throw Exception('Driver is not signed in.');
+      }
+
+      await _firestore.collection("drivers").doc(uid).set(
+        {
+          'vehicleInfo.type': selectedVehicle ?? '',
+          'vehicleInfo.brand': brandController.text.trim(),
+          'vehicleInfo.color': colorController.text.trim(),
+          'vehicleInfo.productionYear': productionYearController.text.trim(),
+          'vehicleInfo.registrationPlateNumber':
+              numberPlateController.text.trim(),
+          'vehicleInfo.plateProvince': _plateProvince,
+          'vehicleInfo.plateCategory': _plateCategory,
+          'vehicleInfo.plateType': _plateType,
+        },
+        SetOptions(merge: true),
+      );
+
       await retrieveCurrentDriverInfo();
-      _isLoading = false;
-      notifyListeners();
     } catch (e) {
+      debugPrint("Error updating vehicle basic info: $e");
+      commonMethods.displaySnackBar(
+        'خطا در ذخیره اطلاعات وسیله',
+        context,
+      );
+    } finally {
       _isLoading = false;
       notifyListeners();
     }
-  }
+    }
 
-  Future<void> updateVehicleImage(BuildContext context) async {
+    Future<void> updateVehicleImage(BuildContext context) async {
     try {
       _isLoading = true;
       notifyListeners();
-      final vehicleImageUrl =
-          await uploadImageToFirebaseStorage(_vehicleImage, "VehicleImage", context);
-      final vehicleData = {
-        'vehiclePicture': vehicleImageUrl,
-      };
 
-      await _firestore
-          .collection("drivers")
-          .doc(_auth.currentUser!.uid)
-          .set({'vehicleInfo': vehicleData}, SetOptions(merge: true));
+      final String uid = _auth.currentUser?.uid ?? '';
+      if (uid.isEmpty) {
+        throw Exception('Driver is not signed in.');
+      }
 
-      _isLoading = false;
-      notifyListeners();
+      if (_vehicleImage == null) {
+        throw Exception('Vehicle image is not selected.');
+      }
+
+      final String vehicleImageUrl = await uploadImageToFirebaseStorage(
+        _vehicleImage,
+        "VehicleImage",
+        context,
+      );
+
+      await _firestore.collection("drivers").doc(uid).set(
+        {
+          'vehicleInfo.vehiclePicture': vehicleImageUrl,
+        },
+        SetOptions(merge: true),
+      );
+
+      await retrieveCurrentDriverInfo();
     } catch (e) {
+      debugPrint("Error updating vehicle image: $e");
+      commonMethods.displaySnackBar(
+        'خطا در آپلود عکس وسیله',
+        context,
+      );
+    } finally {
       _isLoading = false;
       notifyListeners();
     }
-  }
+    }
 
-  Future<void> updateVehicleRegistraionImages(BuildContext context) async {
+    Future<void> updateVehicleRegistraionImages(BuildContext context) async {
     try {
       _isLoading = true;
       notifyListeners();
-      final vehicleRegistrationFrontImageUrl =
-          await uploadImageToFirebaseStorage(
-              _vehicleRegistrationFrontImage, "VehicleRegistrationImages", context);
-      final vehicleRegistrationBackImageUrl =
-          await uploadImageToFirebaseStorage(
-              _vehicleRegistrationBackImage, "VehicleRegistrationImages", context);
-      final vehicleData = {
-        'registrationCertificateFrontImage': vehicleRegistrationFrontImageUrl,
-        'registrationCertificateBackImage': vehicleRegistrationBackImageUrl,
-      };
 
-      await _firestore
-          .collection("drivers")
-          .doc(_auth.currentUser!.uid)
-          .set({'vehicleInfo': vehicleData}, SetOptions(merge: true));
+      final String uid = _auth.currentUser?.uid ?? '';
+      if (uid.isEmpty) {
+        throw Exception('Driver is not signed in.');
+      }
 
-      _isLoading = false;
-      notifyListeners();
+      if (_vehicleRegistrationFrontImage == null ||
+          _vehicleRegistrationBackImage == null) {
+        throw Exception('Vehicle registration images are not selected.');
+      }
+
+      final String frontImageUrl = await uploadImageToFirebaseStorage(
+        _vehicleRegistrationFrontImage,
+        "VehicleRegistrationImages",
+        context,
+      );
+
+      final String backImageUrl = await uploadImageToFirebaseStorage(
+        _vehicleRegistrationBackImage,
+        "VehicleRegistrationImages",
+        context,
+      );
+
+      await _firestore.collection("drivers").doc(uid).set(
+        {
+          'vehicleInfo.registrationCertificateFrontImage': frontImageUrl,
+          'vehicleInfo.registrationCertificateBackImage': backImageUrl,
+        },
+        SetOptions(merge: true),
+      );
+
+      await retrieveCurrentDriverInfo();
     } catch (e) {
+      debugPrint("Error updating vehicle registration images: $e");
+      commonMethods.displaySnackBar(
+        'خطا در آپلود عکس‌های سند وسیله',
+        context,
+      );
+    } finally {
       _isLoading = false;
       notifyListeners();
     }
-  }
-}
+    }
