@@ -93,7 +93,7 @@ class _EarningsPageState extends State<EarningsPage> {
                 const SizedBox(height: 12),
                 Consumer<RegistrationProvider>(
                   builder: (context, provider, child) {
-                    if (provider.isLoading) {
+                    if (provider.isFetchLoading) {
                      return const Padding(
                         padding: EdgeInsets.all(8.0),
                         child: CircularProgressIndicator(
@@ -101,7 +101,7 @@ class _EarningsPageState extends State<EarningsPage> {
                         ),
                       );
                     } else {
-                      final double earnings = provider.driverEarnings ?? 0.0;
+                      final double earnings = provider.driverEarnings;
                       return Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.baseline,
