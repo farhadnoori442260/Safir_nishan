@@ -1,63 +1,76 @@
-import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 
-class TripProvider with ChangeNotifier {
-  String currentDriverTotalTripsCompleted = "0";
+class TripProvider extends ChangeNotifier {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  String currentDriverTotalTripsCompleted = '0';
   bool isLoading = false;
+
   List<Map<String, dynamic>> completedTrips = [];
 
-  final DatabaseReference _tripRequestsRef =
-      FirebaseDatabase.instance.ref().child("tripRequest");
-
-  // دریافت تمام سفرهای تکمیل شده در یک کوئری بهینه‌شده
   Future<void> fetchCompletedTrips() async {
-    final currentUid = FirebaseAuth.instance.currentUser?.uid;
-    if (currentUid == null) return;
+    final User? currentUser = _auth.currentUser;
+
+    if (currentUser == null) {
+      completedTrips = [];
+      currentDriverTotalTripsCompleted = '0';
+      notifyListeners();
+      return;
+    }
+
+    isLoading = true;
+    notifyListeners();
 
     try {
-      isLoading = true;
-      notifyListeners();
+      final QuerySnapshot<Map<String, dynamic>> snapshot =
+          await _firestore
+              .collection('rides')
+              .where('driverid', isEqualTo: currentUser.uid)
+              .get();
 
-      // فیلتر کردن سفرها بر اساس driverId مستقیم در سمت سرور
-      final querySnapshot = await _tripRequestsRef
-          .orderByChild("driverId")
-          .equalTo(currentUid)
-          .once();
+      final List<Map<String, dynamic>> trips = [];
 
-      final dataMap = querySnapshot.snapshot.value;
+      for (final QueryDocumentSnapshot<Map<String, dynamic>> document
+          in snapshot.docs) {
+        final Map<String, dynamic> data = document.data();
 
-      if (dataMap != null && dataMap is Map) {
-        List<Map<String, dynamic>> tempList = [];
+        final String status =
+            (data['status'] ?? '').toString().toLowerCase().trim();
 
-        dataMap.forEach((key, value) {
-          if (value is Map && value["status"] == "ended") {
-            Map<String, dynamic> tripData = Map<String, dynamic>.from(value);
-            tempList.add({"key": key, ...tripData});
-          }
-        });
-
-        completedTrips = tempList;
-        currentDriverTotalTripsCompleted = tempList.length.toString();
-      } else {
-        completedTrips = [];
-        currentDriverTotalTripsCompleted = "0";
+        if (status == 'completed' || status == 'ended') {
+          trips.add({
+            'id': document.id,
+            ...data,
+          });
+        }
       }
-    } catch (error) {
-      debugPrint("Error fetching completed trips: $error");
+
+      completedTrips = trips;
+      currentDriverTotalTripsCompleted = trips.length.toString();
+
+      debugPrint(
+        'Completed trips loaded: ${completedTrips.length}',
+      );
+    } catch (error, stackTrace) {
+      completedTrips = [];
+      currentDriverTotalTripsCompleted = '0';
+
+      debugPrint('Error loading completed trips: $error');
+      debugPrintStack(stackTrace: stackTrace);
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  // رفع خطای فراخوانی در trips_page.dart
-  String getCurrentDriverTotalNumberOfTripsCompleted() {
-    return currentDriverTotalTripsCompleted;
+  Future<void> getCompletedTrips() async {
+    await fetchCompletedTrips();
   }
 
-  // رفع خطای فراخوانی در trips_history_page.dart
-  Future<void> getCompletedTrips() async {
+  Future<void> getCurrentDriverTotalNumberOfTripsCompleted() async {
     await fetchCompletedTrips();
   }
 }
