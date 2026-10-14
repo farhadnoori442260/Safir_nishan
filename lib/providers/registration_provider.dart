@@ -577,26 +577,33 @@ class RegistrationProvider extends ChangeNotifier {
 
   // دریافت کارکرد/درآمد راننده از Cloud Firestore
   Future<void> fetchDriverEarnings() async {
-    try {
-      if (_auth.currentUser == null) return;
-      
-      DocumentSnapshot doc = await _firestore
-          .collection("drivers")
-          .doc(_auth.currentUser!.uid)
-          .get();
+  final uid = _auth.currentUser?.uid;
 
-      if (doc.exists && doc.data() != null) {
-        final data = doc.data() as Map<String, dynamic>;
-        double earnings = double.tryParse(data["earnings"]?.toString() ?? '0') ?? 0.0;
-        _driverEarnings = double.parse(earnings.toStringAsFixed(2));
-        notifyListeners(); 
-      } else {
-        _driverEarnings = 0.0;
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint("Error fetching driver's earnings: $e");
-    }
+  if (uid == null) return;
+
+  _isFetchLoading = true;
+  notifyListeners();
+
+  try {
+    final doc = await _firestore
+        .collection('drivers')
+        .doc(uid)
+        .get();
+
+    final data = doc.data();
+    final value = data?['earnings'];
+
+    _driverEarnings = value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '0') ?? 0.0;
+
+    debugPrint('EARNINGS: $_driverEarnings');
+  } catch (e) {
+    debugPrint('EARNINGS ERROR: $e');
+  } finally {
+    _isFetchLoading = false;
+    notifyListeners();
+  }
   }
 
   // دریافت سریع پروفایل راننده جاری
