@@ -1241,8 +1241,40 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             updateData['arrived_at'] = FieldValue.serverTimestamp();
           } else if (newStatus == TripStatus.onTrip) {
             updateData['started_at'] = FieldValue.serverTimestamp();
-          } else if (newStatus == TripStatus.completed) {
+                    } else if (newStatus == TripStatus.completed) {
+            // مبلغ نهایی سفر؛ کلیدهای متفاوت برای سازگاری با داده‌های قبلی
+            final dynamic rawFare = data['final_fare'] ??
+                data['fare_amount'] ??
+                data['fareAmount'] ??
+                data['fare'] ??
+                data['price'] ??
+                0;
+
+            final double totalFare = rawFare is num
+                ? rawFare.toDouble()
+                : double.tryParse(
+                      rawFare
+                          .toString()
+                          .replaceAll(',', '')
+                          .replaceAll(RegExp(r'[^d.]'), ''),
+                    ) ??
+                    0.0;
+
+            // درصد کمیسیون سیستم؛ در صورت نیاز فقط این عدد را تغییر بده
+            const double commissionPercent = 10.0;
+
+            final double commissionAmount =
+                totalFare * commissionPercent / 100;
+
+            final double driverEarnings = totalFare - commissionAmount;
+
             updateData['completed_at'] = FieldValue.serverTimestamp();
+
+            // اعداد خام را ذخیره کن، نه متن فرمت‌شده
+            updateData['total_fare'] = totalFare;
+            updateData['commission_percent'] = commissionPercent;
+            updateData['commission_amount'] = commissionAmount;
+            updateData['driver_earnings'] = driverEarnings;
           }
 
           transaction.update(tripRef, updateData);
