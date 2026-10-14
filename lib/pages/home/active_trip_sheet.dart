@@ -29,17 +29,27 @@ class ActiveTripSheet extends StatelessWidget {
     required this.getNavigationTarget,
   });
 
-  String _formatNumber(dynamic value, {required int decimals}) {
+    String _formatNumber(dynamic value, {required int decimals}) {
     if (value == null) return '---';
 
-    final String raw = value.toString();
-    final String cleaned = raw.replaceAll(RegExp(r'[^\d.]'), '');
+    if (value is num) {
+      return value.toDouble().toStringAsFixed(decimals);
+    }
+
+    final String raw = value.toString().trim();
+
+    if (raw.isEmpty) return '---';
+
+    final String cleaned = raw.replaceAll(',', '');
 
     final double? number = double.tryParse(cleaned);
-    if (number == null) return raw;
+
+    if (number == null) {
+      return raw;
+    }
 
     return number.toStringAsFixed(decimals);
-  }
+    }
 
   String _getActionButtonTitle(String currentStatus) {
     if (currentStatus == TripStatus.accepted) {
