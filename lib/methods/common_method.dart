@@ -141,76 +141,78 @@ class CommonMethods {
     return detailsModel;
   }
 
-  /// فرمول هوشمند محاسبه کرایه سفیر بر اساس نوع خدمت و مسافت
+    /// محاسبه کرایه بر اساس نوع وسیله، مسافت و مدت سفر
+  /// خروجی همیشه عدد صحیح است؛ مثلاً: 275
   String calculateFareAmount(
     DirectionDetails directionDetails, {
     String vehicleCategory = "economic_car",
     double surgeMultiplier = 1.0,
   }) {
-    double baseFare = 50.0;
-    double perKmRate = 20.0;
-    double perMinuteRate = 5.0;
-    double minimumFare = 80.0;
-    double bookingFee = 10.0;
+    double baseFare;
+    double perKmRate;
+    double perMinuteRate;
+    double minimumFare;
+    const double bookingFee = 20.0;
 
-    // تنظیم نرخ بر اساس نوع وسیله یا خدمت انتخاب‌شده
     switch (vehicleCategory) {
       case "modern_car":
-        baseFare = 80.0;
-        perKmRate = 30.0;
-        perMinuteRate = 8.0;
-        minimumFare = 130.0;
-        break;
-
-      case "motorbike":
-        baseFare = 30.0;
-        perKmRate = 12.0;
-        perMinuteRate = 3.0;
-        minimumFare = 50.0;
-        break;
-
-      case "cargo":
+      case "taxi":
         baseFare = 100.0;
         perKmRate = 35.0;
-        perMinuteRate = 10.0;
+        perMinuteRate = 8.0;
         minimumFare = 150.0;
         break;
 
-      case "intercity":
-        baseFare = 150.0;
+      case "motorbike":
+      case "bike":
+        baseFare = 70.0;
         perKmRate = 25.0;
-        perMinuteRate = 4.0;
-        minimumFare = 300.0;
+        perMinuteRate = 5.0;
+        minimumFare = 100.0;
+        break;
+
+      case "cargo":
+      case "freight":
+        baseFare = 180.0;
+        perKmRate = 60.0;
+        perMinuteRate = 12.0;
+        minimumFare = 250.0;
+        break;
+
+      case "intercity":
+        baseFare = 250.0;
+        perKmRate = 45.0;
+        perMinuteRate = 6.0;
+        minimumFare = 400.0;
         break;
 
       case "economic_car":
       default:
-        baseFare = 50.0;
-        perKmRate = 20.0;
-        perMinuteRate = 5.0;
-        minimumFare = 80.0;
+        baseFare = 100.0;
+        perKmRate = 35.0;
+        perMinuteRate = 8.0;
+        minimumFare = 150.0;
         break;
     }
 
     final double distanceInKm =
         (directionDetails.distanceValueDigits ?? 0) / 1000.0;
+
     final double durationInMinutes =
         (directionDetails.durationValueDigits ?? 0) / 60.0;
 
-    final double totalDistanceFare = distanceInKm * perKmRate;
-    final double totalDurationFare = durationInMinutes * perMinuteRate;
-
-    double totalFare =
-        (baseFare + totalDistanceFare + totalDurationFare + bookingFee) *
+    final double calculatedFare =
+        (baseFare +
+                (distanceInKm * perKmRate) +
+                (durationInMinutes * perMinuteRate) +
+                bookingFee) *
             surgeMultiplier;
 
-    if (totalFare < minimumFare) {
-      totalFare = minimumFare;
-    }
+    final double finalFare =
+        calculatedFare < minimumFare ? minimumFare : calculatedFare;
 
-    return totalFare.toStringAsFixed(0);
+    return finalFare.round().toString();
   }
-}
 
 /// نمونه متغیر عمومی جهت دسترسی سریع در برنامه
 final CommonMethods commonMethods = CommonMethods();
