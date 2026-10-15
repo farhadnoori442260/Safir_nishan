@@ -184,11 +184,10 @@ class _NotificationDialogState extends State<NotificationDialog> {
           transaction.update(
             tripRef,
             <String, dynamic>{
-              'status': TripStatus.accepted,
-              'driver_id': currentUser.uid,
-              'driverId': currentUser.uid,
-              'accepted_at': FieldValue.serverTimestamp(),
-              'updated_at': FieldValue.serverTimestamp(),
+            'status': TripStatus.accepted,
+            'driver_id': currentUser.uid,
+            'accepted_at': FieldValue.serverTimestamp(),
+            'updated_at': FieldValue.serverTimestamp(),
             },
           );
 
