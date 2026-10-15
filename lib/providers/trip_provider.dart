@@ -9,13 +9,13 @@ class TripProvider extends ChangeNotifier {
   String currentDriverTotalTripsCompleted = '0';
   bool isLoading = false;
 
-  List<Map<String, dynamic>> completedTrips = [];
+  List<Map<String, dynamic>> completedTrips = <Map<String, dynamic>>[];
 
   Future<void> fetchCompletedTrips() async {
     final User? currentUser = _auth.currentUser;
 
     if (currentUser == null) {
-      completedTrips = [];
+      completedTrips = <Map<String, dynamic>>[];
       currentDriverTotalTripsCompleted = '0';
       notifyListeners();
       return;
@@ -28,20 +28,20 @@ class TripProvider extends ChangeNotifier {
       final QuerySnapshot<Map<String, dynamic>> snapshot =
           await _firestore
               .collection('rides')
-              .where('driverid', isEqualTo: currentUser.uid)
+              .where('driver_id', isEqualTo: currentUser.uid)
               .get();
 
-      final List<Map<String, dynamic>> trips = [];
+      final List<Map<String, dynamic>> trips = <Map<String, dynamic>>[];
 
       for (final QueryDocumentSnapshot<Map<String, dynamic>> document
           in snapshot.docs) {
         final Map<String, dynamic> data = document.data();
 
         final String status =
-            (data['status'] ?? '').toString().toLowerCase().trim();
+            (data['status'] ?? '').toString().trim().toLowerCase();
 
-        if (status == 'completed' || status == 'ended') {
-          trips.add({
+        if (status == 'completed') {
+          trips.add(<String, dynamic>{
             'id': document.id,
             ...data,
           });
@@ -51,11 +51,9 @@ class TripProvider extends ChangeNotifier {
       completedTrips = trips;
       currentDriverTotalTripsCompleted = trips.length.toString();
 
-      debugPrint(
-        'Completed trips loaded: ${completedTrips.length}',
-      );
+      debugPrint('Completed trips loaded: ${completedTrips.length}');
     } catch (error, stackTrace) {
-      completedTrips = [];
+      completedTrips = <Map<String, dynamic>>[];
       currentDriverTotalTripsCompleted = '0';
 
       debugPrint('Error loading completed trips: $error');
