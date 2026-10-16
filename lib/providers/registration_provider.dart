@@ -371,7 +371,7 @@ class RegistrationProvider extends ChangeNotifier {
   }
 
   // متد آپلود تصویر روی Storage با قابلیت تشخیص تصاویر موجود
-    Future<String> uploadImageToFirebaseStorage(XFile? photo, String path, BuildContext context) async {
+  Future<String> uploadImageToFirebaseStorage(XFile? photo, String path, BuildContext context) async {
     if (photo == null) {
       throw Exception(tr(context, 'err_no_image_selected'));
     }
@@ -407,7 +407,6 @@ class RegistrationProvider extends ChangeNotifier {
       rethrow;
     }
   }
-
 
   // ذخیره اطلاعات کامل راننده در Cloud Firestore
   Future<void> saveUserData(BuildContext context) async {
@@ -577,33 +576,33 @@ class RegistrationProvider extends ChangeNotifier {
 
   // دریافت کارکرد/درآمد راننده از Cloud Firestore
   Future<void> fetchDriverEarnings() async {
-  final uid = _auth.currentUser?.uid;
+    final uid = _auth.currentUser?.uid;
 
-  if (uid == null) return;
+    if (uid == null) return;
 
-  _isFetchLoading = true;
-  notifyListeners();
-
-  try {
-    final doc = await _firestore
-        .collection('drivers')
-        .doc(uid)
-        .get();
-
-    final data = doc.data();
-    final value = data?['earnings'];
-
-    _driverEarnings = value is num
-        ? value.toDouble()
-        : double.tryParse(value?.toString() ?? '0') ?? 0.0;
-
-    debugPrint('EARNINGS: $_driverEarnings');
-  } catch (e) {
-    debugPrint('EARNINGS ERROR: $e');
-  } finally {
-    _isFetchLoading = false;
+    _isFetchLoading = true;
     notifyListeners();
-  }
+
+    try {
+      final doc = await _firestore
+          .collection('drivers')
+          .doc(uid)
+          .get();
+
+      final data = doc.data();
+      final value = data?['earnings'];
+
+      _driverEarnings = value is num
+          ? value.toDouble()
+          : double.tryParse(value?.toString() ?? '0') ?? 0.0;
+
+      debugPrint('EARNINGS: $_driverEarnings');
+    } catch (e) {
+      debugPrint('EARNINGS ERROR: $e');
+    } finally {
+      _isFetchLoading = false;
+      notifyListeners();
+    }
   }
 
   // دریافت سریع پروفایل راننده جاری
@@ -754,7 +753,7 @@ class RegistrationProvider extends ChangeNotifier {
     }
   }
 
-    Future<void> updateVehicleBasicInfo(BuildContext context) async {
+  Future<void> updateVehicleBasicInfo(BuildContext context) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -790,9 +789,9 @@ class RegistrationProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-    }
+  }
 
-    Future<void> updateVehicleImage(BuildContext context) async {
+  Future<void> updateVehicleImage(BuildContext context) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -830,9 +829,9 @@ class RegistrationProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-    }
+  }
 
-    Future<void> updateVehicleRegistraionImages(BuildContext context) async {
+  Future<void> updateVehicleRegistraionImages(BuildContext context) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -878,4 +877,5 @@ class RegistrationProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-    }
+  }
+}
