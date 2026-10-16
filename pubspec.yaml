@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
 
   easy_localization: ^3.0.7
-    shamsi_date: ^1.1.1
+  shamsi_date: ^1.1.1
 
   flutter_localizations:
     sdk: flutter
