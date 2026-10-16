@@ -35,11 +35,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _isNavArrowVisible = false;
   Position? currentPositionOfDriver;
 
-  // ───────── حرکت آیکن روی مسیر (منطق MapScreenRoute) ─────────
+  // ───────── حرکت آیکن روی مسیر ─────────
   late AnimationController _arrowAnimationController;
   List<LatLng> _navRoutePoints = <LatLng>[];
-  int _lastSyncedRouteVersion = -1; // نسخهٔ مسیرِ NavigationController
-  int _navProgressIndex = 0; // پیشرفت روی مسیر (فقط به جلو)
+  int _lastSyncedRouteVersion = -1;
+  int _navProgressIndex = 0;
   int _navLastRenderedSegment = -1;
   LatLng? _navLastRenderedPoint;
   Line? _navRemainingLine; // خط سبز (باقی‌ماندهٔ مسیر)
@@ -50,12 +50,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   LatLng? _arrowAnimStart;
   LatLng? _arrowAnimEnd;
-  LatLng? _arrowDisplayLatLng; // موقعیت لحظه‌ایِ آیکن (وسط انیمیشن)
+  LatLng? _arrowDisplayLatLng;
   LatLng? _arrowLastTarget;
   double _arrowAnimStartBearing = 0.0;
   double _arrowAnimEndBearing = 0.0;
   double _arrowDisplayBearing = 0.0;
   DateTime? _lastArrowUpdateAt;
+
+  // کنترل فریم‌های انیمیشن تا درخواست‌ها روی هم انباشته نشوند
+  bool _isArrowFrameInFlight = false;
+  int _lastArrowFrameMs = 0;
+  static const int _arrowFrameGapMs = 33; // حدود ۳۰ فریم بر ثانیه
 
   static const double _offRouteThresholdMeters = 25.0;
 
@@ -77,8 +82,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _isStartingRoute = false;
   bool _isDisposing = false;
 
+  // جلوگیری از پایان کاذب سفر
+  bool _isLocalTripEnding = false;
+  bool _isHandlingRemoteEnd = false;
+
   StreamSubscription<Position>? positionStreamHomePage;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? tripRequestStream;
+
+  // ✅ استریم سفر فعال یک بار ساخته می‌شود (نه داخل build)
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _activeTripStream;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -118,16 +130,43 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     mapController = controller;
   }
 
+  // ════════════════════════════════════════════════════════════
+  //  استریم سفر فعال
+  // ════════════════════════════════════════════════════════════
+
+  void _ensureActiveTripStream() {
+    if (_activeTripStream != null) return;
+
+    final String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    _activeTripStream = _firestore
+        .collection('rides')
+        .where('driver_id', isEqualTo: uid)
+        .where(
+          'status',
+          whereIn: [
+            TripStatus.accepted,
+            TripStatus.arrived,
+            TripStatus.onTrip,
+          ],
+        )
+        .snapshots();
+
+    if (mounted) setState(() {});
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  نقشه و دوربین
+  // ════════════════════════════════════════════════════════════
+
   Future<void> _centerMapOnDriver() async {
     if (mapController == null) return;
 
     final Position? livePosition = await getCurrentLiveLocationOfDriver();
     if (livePosition == null || mapController == null) return;
 
-    LatLng target = LatLng(
-      livePosition.latitude,
-      livePosition.longitude,
-    );
+    LatLng target = LatLng(livePosition.latitude, livePosition.longitude);
 
     if (mounted) {
       final NavigationController navController =
@@ -150,6 +189,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  /// منتظر می‌ماند تا استایل نقشه کامل لود شود (حداکثر ۱۰ ثانیه)
+  Future<bool> _waitForMapReady() async {
+    for (int i = 0; i < 50; i++) {
+      if (_isMapStyleReady && mapController != null) return true;
+      if (!mounted) return false;
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+    return _isMapStyleReady && mapController != null;
+  }
+
   bool _isTripOwnedByCurrentDriver(Map<String, dynamic> tripData) {
     final String? currentDriverId = FirebaseAuth.instance.currentUser?.uid;
     if (currentDriverId == null) return false;
@@ -161,47 +210,122 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return tripDriverId == currentDriverId;
   }
 
+  // ════════════════════════════════════════════════════════════
+  //  استخراج مختصات
+  // ════════════════════════════════════════════════════════════
+
+  double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString().trim());
+  }
+
+  bool _isValidLatLng(double? lat, double? lng) {
+    if (lat == null || lng == null) return false;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+    if (lat == 0 && lng == 0) return false;
+    return true;
+  }
+
   LatLng? _extractLatLng(
     Map<String, dynamic> data,
     List<String> keys, {
-    String? latKey,
-    String? lngKey,
+    List<String> latKeys = const <String>[],
+    List<String> lngKeys = const <String>[],
   }) {
     for (final String key in keys) {
       final dynamic value = data[key];
 
       if (value is GeoPoint) {
-        return LatLng(value.latitude, value.longitude);
+        if (_isValidLatLng(value.latitude, value.longitude)) {
+          return LatLng(value.latitude, value.longitude);
+        }
       }
 
       if (value is Map) {
-        final double? lat = double.tryParse(
-          value['latitude']?.toString() ?? value['lat']?.toString() ?? '',
-        );
+        final double? lat = _toDouble(value['latitude'] ?? value['lat']);
+        final double? lng =
+            _toDouble(value['longitude'] ?? value['lng'] ?? value['lon']);
 
-        final double? lng = double.tryParse(
-          value['longitude']?.toString() ?? value['lng']?.toString() ?? '',
-        );
-
-        if (lat != null && lng != null) {
-          return LatLng(lat, lng);
+        if (_isValidLatLng(lat, lng)) {
+          return LatLng(lat!, lng!);
         }
       }
     }
 
-    if (latKey != null && lngKey != null) {
-      final double? lat = double.tryParse(data[latKey]?.toString() ?? '');
-      final double? lng = double.tryParse(data[lngKey]?.toString() ?? '');
+    final int count = min(latKeys.length, lngKeys.length);
+    for (int i = 0; i < count; i++) {
+      final double? lat = _toDouble(data[latKeys[i]]);
+      final double? lng = _toDouble(data[lngKeys[i]]);
 
-      if (lat != null && lng != null) {
-        return LatLng(lat, lng);
+      if (_isValidLatLng(lat, lng)) {
+        return LatLng(lat!, lng!);
       }
     }
 
     return null;
   }
 
-  /// 🔧 اصلاح‌شده: آماده‌سازی تصویر با قابلیت مدیریت خطای انباشت تصویر
+  LatLng? _pickupLatLng(Map<String, dynamic> tripData) {
+    return _extractLatLng(
+      tripData,
+      const <String>[
+        'originLatLng',
+        'pickup_location',
+        'pickupLatLng',
+        'origin',
+        'pickup',
+        'origin_location',
+        'from_location',
+        'from',
+      ],
+      latKeys: const <String>[
+        'from_lat',
+        'pickup_lat',
+        'origin_lat',
+        'originLat',
+        'pickupLat',
+      ],
+      lngKeys: const <String>[
+        'from_lng',
+        'pickup_lng',
+        'origin_lng',
+        'originLng',
+        'pickupLng',
+      ],
+    );
+  }
+
+  LatLng? _destinationLatLng(Map<String, dynamic> tripData) {
+    return _extractLatLng(
+      tripData,
+      const <String>[
+        'destinationLatLng',
+        'dropoff_location',
+        'dropoffLatLng',
+        'destination',
+        'dropoff',
+        'destination_location',
+        'to_location',
+        'to',
+      ],
+      latKeys: const <String>[
+        'to_lat',
+        'dropoff_lat',
+        'destination_lat',
+        'destinationLat',
+        'dropoffLat',
+      ],
+      lngKeys: const <String>[
+        'to_lng',
+        'dropoff_lng',
+        'destination_lng',
+        'destinationLng',
+        'dropoffLng',
+      ],
+    );
+  }
+
   Future<void> _prepareDriverNavigationArrow() async {
     if (mapController == null) return;
 
@@ -217,7 +341,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       _isDriverArrowImageAdded = true;
     } catch (e) {
-      // اگر تصویر از قبل بارگذاری شده باشد، پرچم را true نگه می‌داریم
       if (e.toString().contains('already exists') ||
           e.toString().contains('mIsSubscribed')) {
         _isDriverArrowImageAdded = true;
@@ -242,6 +365,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     final double t = _arrowAnimationController.value;
 
+    final int nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (_isArrowFrameInFlight) return;
+    if (t < 1.0 && nowMs - _lastArrowFrameMs < _arrowFrameGapMs) return;
+
+    _lastArrowFrameMs = nowMs;
+
     final double latitude = _arrowAnimStart!.latitude +
         (_arrowAnimEnd!.latitude - _arrowAnimStart!.latitude) * t;
     final double longitude = _arrowAnimStart!.longitude +
@@ -254,6 +383,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _arrowDisplayLatLng = LatLng(latitude, longitude);
     _arrowDisplayBearing = bearing;
 
+    _isArrowFrameInFlight = true;
     try {
       await mapController!.updateSymbol(
         _driverNavigationSymbol!,
@@ -265,8 +395,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     } catch (e) {
       debugPrint('Nav arrow animation error: $e');
-      // اگر Symbol روی نقشه از دست رفته باشد، مجدداً null می‌کنیم تا مجدداً ساخته شود
+      // اگر Symbol از دست رفته باشد، در آپدیت بعدی از نو ساخته می‌شود
       _driverNavigationSymbol = null;
+    } finally {
+      _isArrowFrameInFlight = false;
     }
   }
 
@@ -286,7 +418,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
-  /// 🔧 اصلاح‌شده: مدیریت خودکار بازیابی تصویر و ساخت امن Symbol
   Future<void> _updateNavArrow(LatLng rawPosition, double rawHeading) async {
     if (mapController == null || !_isMapStyleReady || !mounted) return;
 
@@ -326,7 +457,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     }
 
-    // 🔧 اطمینان از آماده بودن تصویر قبل از افزودن/آپدیت آیکن
     if (!_isDriverArrowImageAdded) {
       await _prepareDriverNavigationArrow();
     }
@@ -339,7 +469,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         double bearing = _arrowAnimEndBearing;
 
         if (_driverNavigationSymbol == null) {
-          if (onRouteSnap != null && route.length > onRouteSnap.segmentIndex + 1) {
+          if (onRouteSnap != null &&
+              route.length > onRouteSnap.segmentIndex + 1) {
             bearing = _calculateBearing(
               route[onRouteSnap.segmentIndex],
               route[onRouteSnap.segmentIndex + 1],
@@ -365,6 +496,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _lastArrowUpdateAt = now;
 
         if (_driverNavigationSymbol == null) {
+          _arrowAnimationController.stop();
+
           _driverNavigationSymbol = await mapController!.addSymbol(
             SymbolOptions(
               geometry: target,
@@ -380,6 +513,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           _arrowDisplayBearing = bearing;
           _arrowAnimStartBearing = bearing;
           _arrowAnimEndBearing = bearing;
+          _arrowAnimStart = target;
+          _arrowAnimEnd = target;
 
           if (mounted && !_isNavArrowVisible) {
             setState(() {
@@ -402,7 +537,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }
       } catch (e) {
         debugPrint('Error updating driver navigation arrow: $e');
-        // در صورت بروز خطا Symbol را null می‌کنیم تا فریم بعدی مجدداً از نو ساخته شود
         _driverNavigationSymbol = null;
       }
     }
@@ -495,6 +629,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     } catch (e) {
       debugPrint('Error rendering navigation lines: $e');
+      _navRemainingLine = null;
+      _navTraveledLine = null;
     }
   }
 
@@ -575,6 +711,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return (atan2(y, x) * 180 / pi + 360) % 360;
   }
 
+  // ════════════════════════════════════════════════════════════
+  //  ارسال لوکیشن به Firestore
+  // ════════════════════════════════════════════════════════════
+
   void _queueDriverLocationWrite(Position position) {
     final DateTime now = DateTime.now();
     final DateTime? last = _lastLocationWriteAt;
@@ -637,7 +777,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Future<Position?> getCurrentLiveLocationOfDriver() async {
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
       if (!serviceEnabled) {
         await _showMessage('لطفاً GPS یا Location گوشی را فعال کنید.');
@@ -656,7 +796,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         return null;
       }
 
-      if (permission == LocationPermission.whileInUse && !_hasWarnedBackgroundLocation) {
+      if (permission == LocationPermission.whileInUse &&
+          !_hasWarnedBackgroundLocation) {
         _hasWarnedBackgroundLocation = true;
         unawaited(_promptEnableBackgroundLocation());
       }
@@ -666,10 +807,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
 
       currentPositionOfDriver = position;
-
-      if (mounted) {
-        setState(() {});
-      }
 
       return position;
     } catch (e) {
@@ -691,6 +828,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       });
 
       if (savedStatus) {
+        _ensureActiveTripStream();
         await goOnlineNow();
         setAndGetLocationUpdates();
         listenForTripRequests();
@@ -748,6 +886,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    _ensureActiveTripStream();
+
     driverOnlineTimestamp = DateTime.now();
     currentPositionOfDriver ??= await getCurrentLiveLocationOfDriver();
 
@@ -769,6 +909,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     await tripRequestStream?.cancel();
     tripRequestStream = null;
+
+    _activeTripStream = null;
 
     _locationWriteTimer?.cancel();
     _locationWriteTimer = null;
@@ -832,7 +974,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             LatLng(position.latitude, position.longitude),
             langCode: context.locale.languageCode,
           );
+        }
 
+        // فلش حتی اگر isNavigating هنوز true نشده باشد، روی مسیر حرکت می‌کند
+        if (_navRoutePoints.length >= 2 || navController.isNavigating) {
           _pendingNavPosition = position;
           unawaited(_processPendingNavPosition());
         }
@@ -874,8 +1019,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void initializePushNotificationSystem() {
-    final PushNotificationSystem notificationSystem =
-        PushNotificationSystem();
+    final PushNotificationSystem notificationSystem = PushNotificationSystem();
 
     notificationSystem.generateDeviceRegistrationToken();
     notificationSystem.startListeningForNewNotification(context);
@@ -947,7 +1091,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _arrowDisplayBearing = 0.0;
 
       if (mapController != null) {
-        await mapController!.clearLines();
+        try {
+          await mapController!.clearLines();
+        } catch (_) {}
+
         if (_driverNavigationSymbol != null) {
           try {
             await mapController!.removeSymbol(_driverNavigationSymbol!);
@@ -1004,9 +1151,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }
       }
 
-      final String fullCarPlate = (plateProvince.isNotEmpty && rawPlateNumber.isNotEmpty)
-          ? '$plateProvince - $plateCategory $rawPlateNumber ($plateType)'
-          : rawPlateNumber;
+      final String fullCarPlate =
+          (plateProvince.isNotEmpty && rawPlateNumber.isNotEmpty)
+              ? '$plateProvince - $plateCategory $rawPlateNumber ($plateType)'
+              : rawPlateNumber;
 
       final Map<String, dynamic> driverDataMap = {
         'driver_id': currentUser.uid,
@@ -1053,6 +1201,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
+  // ════════════════════════════════════════════════════════════
+  //  مسیریابی
+  // ════════════════════════════════════════════════════════════
+
   Future<void> _startPickupRoute(
     String tripId,
     Map<String, dynamic> tripData,
@@ -1062,24 +1214,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _isStartingRoute = true;
 
     try {
-      await _saveDriverDataToTripInfo(tripId);
+      // ذخیرهٔ اطلاعات راننده در پس‌زمینه تا شروع مسیر معطل نشود
+      unawaited(_saveDriverDataToTripInfo(tripId));
 
       currentPositionOfDriver ??= await getCurrentLiveLocationOfDriver();
       if (currentPositionOfDriver == null) return;
 
-      final LatLng? pickupLatLng = _extractLatLng(
-        tripData,
-        [
-          'originLatLng',
-          'pickup_location',
-          'pickupLatLng',
-          'origin',
-        ],
-        latKey: 'from_lat',
-        lngKey: 'from_lng',
-      );
+      final LatLng? pickupLatLng = _pickupLatLng(tripData);
 
       if (pickupLatLng == null) {
+        debugPrint('PICKUP: origin not found. keys=${tripData.keys.toList()}');
         await _showMessage('مختصات مبدأ این سفر پیدا نشد.');
         return;
       }
@@ -1094,8 +1238,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
         pickupLatLng,
       );
-
-      if (mounted) setState(() {});
     } catch (e) {
       debugPrint('Error starting pickup route: $e');
     } finally {
@@ -1115,19 +1257,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       currentPositionOfDriver ??= await getCurrentLiveLocationOfDriver();
       if (currentPositionOfDriver == null) return;
 
-      final LatLng? destinationLatLng = _extractLatLng(
-        tripData,
-        [
-          'destinationLatLng',
-          'dropoff_location',
-          'dropoffLatLng',
-          'destination',
-        ],
-        latKey: 'to_lat',
-        lngKey: 'to_lng',
-      );
+      final LatLng? destinationLatLng = _destinationLatLng(tripData);
 
       if (destinationLatLng == null) {
+        debugPrint(
+          'DESTINATION: not found. keys=${tripData.keys.toList()}',
+        );
         await _showMessage('مختصات مقصد این سفر پیدا نشد.');
         return;
       }
@@ -1142,8 +1277,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
         destinationLatLng,
       );
-
-      if (mounted) setState(() {});
     } catch (e) {
       debugPrint('Error starting destination route: $e');
     } finally {
@@ -1155,16 +1288,40 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     LatLng driverPos,
     LatLng destinationPos,
   ) async {
+    if (!mounted) return;
+
+    // ✅ صبر تا نقشه آماده شود
+    final bool ready = await _waitForMapReady();
+    if (!ready || !mounted) {
+      debugPrint('Map not ready; navigation skipped.');
+      return;
+    }
+
     final NavigationController navController =
         context.read<NavigationController>();
 
-    final List<LatLng> routePoints = await navController.startNavigation(
-      driverPos,
-      destinationPos,
-      context.locale.languageCode,
-    );
+    // پاک‌سازی مسیر قبلی (مثلاً مسیر مبدأ) قبل از رسم مسیر جدید
+    _navRemainingLine = null;
+    _navTraveledLine = null;
+
+    List<LatLng> routePoints = <LatLng>[];
+    try {
+      routePoints = await navController.startNavigation(
+        driverPos,
+        destinationPos,
+        context.locale.languageCode,
+      );
+    } catch (e) {
+      debugPrint('startNavigation error: $e');
+    }
 
     if (!mounted) return;
+
+    // ✅ اگر سرویس مسیریابی جواب نداد، خط مستقیم می‌کشیم تا چیزی دیده شود
+    if (routePoints.length < 2) {
+      debugPrint('Route empty → using straight-line fallback');
+      routePoints = <LatLng>[driverPos, destinationPos];
+    }
 
     _lastSyncedRouteVersion = navController.routeVersion;
     _navRoutePoints = List<LatLng>.of(routePoints);
@@ -1172,18 +1329,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _navLastRenderedSegment = -1;
     _navLastRenderedPoint = null;
 
-    if (_navRoutePoints.length >= 2) {
-      await _renderNavLines(
-        traveled: <LatLng>[],
-        remaining: _navRoutePoints,
-      );
-    }
+    await _renderNavLines(
+      traveled: <LatLng>[],
+      remaining: _navRoutePoints,
+    );
 
     if (currentPositionOfDriver != null) {
       _pendingNavPosition = currentPositionOfDriver;
       await _processPendingNavPosition();
     }
   }
+
+  // ════════════════════════════════════════════════════════════
+  //  تغییر وضعیت سفر
+  // ════════════════════════════════════════════════════════════
 
   Future<void> _updateTripStatus(
     String tripId,
@@ -1194,6 +1353,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     final User? driver = FirebaseAuth.instance.currentUser;
     if (driver == null) return;
+
+    if (newStatus == TripStatus.completed) {
+      _isLocalTripEnding = true;
+    }
 
     if (mounted) {
       setState(() {
@@ -1241,7 +1404,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             updateData['arrived_at'] = FieldValue.serverTimestamp();
           } else if (newStatus == TripStatus.onTrip) {
             updateData['started_at'] = FieldValue.serverTimestamp();
-                    } else if (newStatus == TripStatus.completed) {
+          } else if (newStatus == TripStatus.completed) {
             // مبلغ نهایی سفر؛ کلیدهای متفاوت برای سازگاری با داده‌های قبلی
             final dynamic rawFare = data['final_fare'] ??
                 data['fare_amount'] ??
@@ -1256,7 +1419,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       rawFare
                           .toString()
                           .replaceAll(',', '')
-                          .replaceAll(RegExp(r'[^d.]'), ''),
+                          .replaceAll(RegExp(r'[^\d.]'), ''),
                     ) ??
                     0.0;
 
@@ -1300,6 +1463,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
 
       if (newStatus == TripStatus.onTrip) {
+        activeTripStatus = TripStatus.onTrip;
         await _startDestinationRoute(tripId, tripData);
         return;
       }
@@ -1323,6 +1487,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       await _showMessage('تغییر وضعیت سفر انجام نشد. دوباره تلاش کنید.');
     } finally {
+      _isLocalTripEnding = false;
       if (mounted) {
         setState(() {
           _isTripActionLoading = false;
@@ -1336,6 +1501,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     final User? driver = FirebaseAuth.instance.currentUser;
     if (driver == null) return;
+
+    _isLocalTripEnding = true;
 
     if (mounted) {
       setState(() {
@@ -1406,6 +1573,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       await _showMessage('لغو سفر انجام نشد. دوباره تلاش کنید.');
     } finally {
+      _isLocalTripEnding = false;
       if (mounted) {
         setState(() {
           _isTripActionLoading = false;
@@ -1415,50 +1583,46 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _handleRemoteTripEnd() async {
-    await _clearRouteAndNavigation();
+    if (_isHandlingRemoteEnd || _isLocalTripEnding) return;
+    _isHandlingRemoteEnd = true;
 
     try {
-      await _setDriverStatus(status: 'waiting', isOnline: true);
-    } catch (e) {
-      debugPrint('Error resetting driver status after remote trip end: $e');
+      await _clearRouteAndNavigation();
+
+      try {
+        await _setDriverStatus(status: 'waiting', isOnline: true);
+      } catch (e) {
+        debugPrint('Error resetting driver status after remote trip end: $e');
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        activeTripId = null;
+        activeTripStatus = null;
+      });
+
+      await _showMessage('سفر توسط مسافر لغو شد.');
+    } finally {
+      _isHandlingRemoteEnd = false;
     }
-
-    if (!mounted) return;
-
-    setState(() {
-      activeTripId = null;
-      activeTripStatus = null;
-    });
-
-    await _showMessage('سفر توسط مسافر لغو شد.');
   }
 
   LatLng? _getNavigationTarget(
     String status,
     Map<String, dynamic> tripData,
   ) {
-    final bool goingToPickup = status == TripStatus.accepted ||
-        status == TripStatus.arrived;
+    final bool goingToPickup =
+        status == TripStatus.accepted || status == TripStatus.arrived;
 
-    return _extractLatLng(
-      tripData,
-      goingToPickup
-          ? [
-              'origin',
-              'originLatLng',
-              'pickup_location',
-              'pickupLatLng',
-            ]
-          : [
-              'destination',
-              'destinationLatLng',
-              'dropoff_location',
-              'dropoffLatLng',
-            ],
-      latKey: goingToPickup ? 'from_lat' : 'to_lat',
-      lngKey: goingToPickup ? 'from_lng' : 'to_lng',
-    );
+    return goingToPickup
+        ? _pickupLatLng(tripData)
+        : _destinationLatLng(tripData);
   }
+
+  // ════════════════════════════════════════════════════════════
+  //  رابط کاربری
+  // ════════════════════════════════════════════════════════════
 
   void _showStatusChangeModal() {
     if (_isTripActionLoading) return;
@@ -1618,8 +1782,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final User? currentUser = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -1640,9 +1802,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               myLocationTrackingMode: MyLocationTrackingMode.none,
               onMapCreated: _onMapCreated,
               onStyleLoadedCallback: () async {
+                // با هر بار لود استایل، همهٔ آیتم‌های قبلی روی نقشه پاک می‌شوند
                 _isMapStyleReady = true;
                 _isDriverArrowImageAdded = false;
+                _driverNavigationSymbol = null;
+                _navRemainingLine = null;
+                _navTraveledLine = null;
+                _navLastRenderedSegment = -1;
+                _navLastRenderedPoint = null;
+
                 await _prepareDriverNavigationArrow();
+
+                // اگر مسیری فعال بود، دوباره رسم شود
+                if (_navRoutePoints.length >= 2) {
+                  await _renderNavLines(
+                    traveled: <LatLng>[],
+                    remaining: _navRoutePoints,
+                  );
+
+                  final Position? p = currentPositionOfDriver;
+                  if (p != null) {
+                    _pendingNavPosition = p;
+                    unawaited(_processPendingNavPosition());
+                  }
+                }
               },
             ),
             Positioned(
@@ -1703,20 +1886,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            if (currentUser != null && isDriverAvailable)
+            if (isDriverAvailable && _activeTripStream != null)
               StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: _firestore
-                    .collection('rides')
-                    .where('driver_id', isEqualTo: currentUser.uid)
-                    .where(
-                      'status',
-                      whereIn: [
-                        TripStatus.accepted,
-                        TripStatus.arrived,
-                        TripStatus.onTrip,
-                      ],
-                    )
-                    .snapshots(),
+                stream: _activeTripStream,
                 builder: (
                   BuildContext context,
                   AsyncSnapshot<QuerySnapshot<Map<String, dynamic>>> snapshot,
@@ -1726,8 +1898,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     return const SizedBox.shrink();
                   }
 
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    if (activeTripId != null) {
+                  // ✅ تا وقتی داده نرسیده، هیچ تصمیمی دربارهٔ پایان سفر نگیر
+                  if (!snapshot.hasData) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final QuerySnapshot<Map<String, dynamic>> data =
+                      snapshot.data!;
+
+                  if (data.docs.isEmpty) {
+                    // نتیجهٔ خالی از کش، قطعی نیست؛ منتظر سرور می‌مانیم
+                    final bool uncertain = data.metadata.isFromCache;
+
+                    if (!uncertain &&
+                        activeTripId != null &&
+                        !_isLocalTripEnding &&
+                        !_isHandlingRemoteEnd) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (mounted && activeTripId != null) {
                           _handleRemoteTripEnd();
@@ -1739,7 +1925,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   }
 
                   final QueryDocumentSnapshot<Map<String, dynamic>> tripDoc =
-                      snapshot.data!.docs.first;
+                      data.docs.first;
 
                   final String tripId = tripDoc.id;
                   final Map<String, dynamic> tripData = tripDoc.data();
@@ -1759,8 +1945,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     WidgetsBinding.instance.addPostFrameCallback((_) async {
                       if (!mounted) return;
 
-                      if (previousTripId != null &&
-                          previousTripId != tripId) {
+                      if (previousTripId != null && previousTripId != tripId) {
                         await _clearRouteAndNavigation();
                       }
 
@@ -1782,8 +1967,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     },
                     onCancelTrip: _cancelTrip,
                     onMakePhoneCall: _makePhoneCall,
-                    onOpenExternalMap: (lat, lng) =>
-                        _openExternalMap(lat, lng),
+                    onOpenExternalMap: (lat, lng) => _openExternalMap(lat, lng),
                     getNavigationTarget: () =>
                         _getNavigationTarget(status, tripData),
                   );
