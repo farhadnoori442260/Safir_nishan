@@ -141,7 +141,7 @@ class CommonMethods {
     return detailsModel;
   }
 
-    /// محاسبه کرایه بر اساس نوع وسیله، مسافت و مدت سفر
+  /// محاسبه کرایه بر اساس نوع وسیله، مسافت و مدت سفر
   /// خروجی همیشه عدد صحیح است؛ مثلاً: 275
   String calculateFareAmount(
     DirectionDetails directionDetails, {
@@ -213,6 +213,7 @@ class CommonMethods {
 
     return finalFare.round().toString();
   }
+} // <--- این آکولاد بسته اضافه شد تا بدنه کلاس CommonMethods به درستی بسته شود
 
 /// نمونه متغیر عمومی جهت دسترسی سریع در برنامه
 final CommonMethods commonMethods = CommonMethods();
