@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
@@ -360,7 +361,7 @@ class ActiveTripSheet extends StatelessWidget {
                         passengerPhone.isEmpty
                             ? 'شماره تماس موجود نیست'
                             : passengerPhone,
-                        textDirection: TextDirection.ltr,
+                        textDirection: ui.TextDirection.ltr,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
