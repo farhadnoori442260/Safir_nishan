@@ -23,7 +23,28 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _messageController =
+      TextEditingController();
+
+  final FirebaseFirestore _firestore =
+      FirebaseFirestore.instance;
+
+  final FirebaseAuth _auth =
+      FirebaseAuth.instance;
+
+  bool _isSending = false;
+
+  CollectionReference<Map<String, dynamic>>
+      get _chatCollection {
+    return _firestore
+        .collection('rides')
+        .doc(widget.tripId)
+        .collection('chats');
+  }
+
+  String get _currentDriverId {
+    return _auth.currentUser?.uid ?? '';
+  }
 
   @override
   void dispose() {
@@ -31,262 +52,558 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
-  // 📞 متد تماس مستقیم تلفنی
-  Future<void> _makePhoneCall(String phoneNumber) async {
-    if (phoneNumber.isEmpty) return;
+  Future<void> _makePhoneCall(
+    String phoneNumber,
+  ) async {
+    final String phone = phoneNumber.trim();
+
+    if (phone.isEmpty) {
+      return;
+    }
 
     final Uri launchUri = Uri(
       scheme: 'tel',
-      path: phoneNumber,
+      path: phone,
     );
-    if (await canLaunchUrl(launchUri)) {
+
+    try {
+      final bool canCall =
+          await canLaunchUrl(launchUri);
+
+      if (!canCall) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'امکان برقراری تماس وجود ندارد',
+            ),
+          ),
+        );
+
+        return;
+      }
+
       await launchUrl(launchUri);
-    } else {
-      debugPrint("Could not launch $launchUri");
+    } catch (error) {
+      debugPrint('Phone call error: $error');
     }
   }
 
-  // این فقط برای فایل chat_page.dart سمت راننده (پروژه‌ی safir_drivers) است.
-// تابع sendMessage قبلی را با همین جایگزین کن.
-// کالکشن از قبل درست بود ("rides")؛ فقط try/catch و ترتیب clear() اصلاح شد.
+  Future<void> sendMessage() async {
+    final String text =
+        _messageController.text.trim();
 
-void sendMessage() async {
-  final String text = _messageController.text.trim();
-  if (text.isEmpty || widget.tripId.isEmpty) return;
+    final String driverId =
+        _currentDriverId;
 
-  final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? "";
+    if (text.isEmpty ||
+        driverId.isEmpty ||
+        widget.tripId.trim().isEmpty ||
+        _isSending) {
+      return;
+    }
 
-  try {
-    await FirebaseFirestore.instance
-        .collection("rides")
-        .doc(widget.tripId)
-        .collection("chats")
-        .add({
-      "senderId": currentUserId,
-      "senderType": "driver",
-      "message": text,
-      "timestamp": FieldValue.serverTimestamp(),
+    setState(() {
+      _isSending = true;
     });
 
-    // فقط بعد از موفقیت پاک می‌شود
-    if (mounted) _messageController.clear();
-  } catch (e) {
-    debugPrint("Error sending message: $e");
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ارسال پیام انجام نشد. دوباره تلاش کنید.')),
+    try {
+      await _chatCollection.add({
+        'senderId': driverId,
+        'senderType': 'driver',
+        'message': text,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      _messageController.clear();
+    } on FirebaseException catch (error) {
+      debugPrint(
+        'Driver chat Firebase error: '
+        '${error.code} - ${error.message}',
       );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.message ??
+                'ارسال پیام انجام نشد. دوباره تلاش کنید.',
+          ),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } catch (error) {
+      debugPrint('Driver chat send error: $error');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'ارسال پیام انجام نشد. دوباره تلاش کنید.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        _isSending = false;
+      });
     }
   }
-}
 
+  DateTime _getMessageDate(
+    QueryDocumentSnapshot<Map<String, dynamic>>
+        document,
+  ) {
+    final Map<String, dynamic> data =
+        document.data();
+
+    final Object? value = data['timestamp'];
+
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+
+    if (value is DateTime) {
+      return value;
+    }
+
+    if (value is String) {
+      return DateTime.tryParse(value) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+    }
+
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>>
+      _sortMessages(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>>
+        documents,
+  ) {
+    final List<QueryDocumentSnapshot<Map<String, dynamic>>>
+        sortedDocuments =
+        List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(
+      documents,
+    );
+
+    sortedDocuments.sort((a, b) {
+      return _getMessageDate(a).compareTo(
+        _getMessageDate(b),
+      );
+    });
+
+    return sortedDocuments;
+  }
+
+  String _formatTimestamp(Object? value) {
+    DateTime? date;
+
+    if (value is Timestamp) {
+      date = value.toDate();
+    } else if (value is DateTime) {
+      date = value;
+    } else if (value is String) {
+      date = DateTime.tryParse(value);
+    }
+
+    if (date == null) {
+      return 'اکنون';
+    }
+
+    return DateFormat('HH:mm').format(date);
+  }
+
+  bool _isMyMessage(
+    Map<String, dynamic> data,
+  ) {
+    final String senderId =
+        data['senderId']?.toString().trim() ?? '';
+
+    final String senderType =
+        data['senderType']?.toString().trim().toLowerCase() ??
+            '';
+
+    return senderId == _currentDriverId ||
+        senderType == 'driver';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryBrand,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: Row(
+      appBar: _buildAppBar(),
+      body: SafeArea(
+        child: Column(
           children: [
-            const CircleAvatar(
-              backgroundColor: Colors.white24,
-              child: Icon(Icons.person, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.passengerName.isNotEmpty
-                        ? widget.passengerName
-                        : 'passenger'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+              child: _buildMessages(),
+            ),
+            _buildMessageComposer(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    final String displayName =
+        widget.passengerName.trim().isNotEmpty
+            ? widget.passengerName.trim()
+            : 'passenger'.tr();
+
+    return AppBar(
+      backgroundColor: AppColors.primaryBrand,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: false,
+      titleSpacing: 0,
+      leading: IconButton(
+        onPressed: () => Navigator.pop(context),
+        icon: const Icon(
+          Icons.arrow_back_ios_new_rounded,
+          size: 20,
+        ),
+      ),
+      title: Row(
+        children: [
+          const CircleAvatar(
+            radius: 21,
+            backgroundColor: Colors.white24,
+            child: Icon(
+              Icons.person_rounded,
+              color: Colors.white,
+              size: 25,
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Text(
+              displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          tooltip: 'تماس',
+          onPressed: () {
+            _makePhoneCall(widget.passengerPhone);
+          },
+          icon: const Icon(
+            Icons.phone_enabled_rounded,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(width: 5),
+      ],
+    );
+  }
+
+  Widget _buildMessages() {
+    if (widget.tripId.trim().isEmpty) {
+      return _buildErrorState(
+        'شناسه سفر برای چت موجود نیست',
+      );
+    }
+
+    return StreamBuilder<
+        QuerySnapshot<Map<String, dynamic>>>(
+      // orderBy عمداً حذف شده است.
+      // چون پیام‌های قدیمی ممکن است timestamp نداشته باشند.
+      stream: _chatCollection.snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primaryBrand,
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          debugPrint(
+            'Driver chat stream error: '
+            '${snapshot.error}',
+          );
+
+          return _buildErrorState(
+            'خطا در دریافت پیام‌ها',
+          );
+        }
+
+        final List<
+            QueryDocumentSnapshot<Map<String, dynamic>>>
+            messages = _sortMessages(
+          snapshot.data?.docs ?? <
+              QueryDocumentSnapshot<Map<String, dynamic>>>[],
+        );
+
+        if (messages.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        return ListView.builder(
+          reverse: true,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          itemCount: messages.length,
+          itemBuilder: (context, index) {
+            final Map<String, dynamic> data =
+                messages[index].data();
+
+            return _buildMessageBubble(data);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMessageBubble(
+    Map<String, dynamic> data,
+  ) {
+    final String message =
+        data['message']?.toString().trim() ?? '';
+
+    if (message.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final bool isMe =
+        _isMyMessage(data);
+
+    return Align(
+      alignment: isMe
+          ? Alignment.centerRight
+          : Alignment.centerLeft,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth:
+              MediaQuery.of(context).size.width * 0.78,
+        ),
+        margin: const EdgeInsets.symmetric(
+          vertical: 4,
+        ),
+        padding: const EdgeInsets.fromLTRB(
+          14,
+          10,
+          12,
+          8,
+        ),
+        decoration: BoxDecoration(
+          color: isMe
+              ? AppColors.primaryBrand
+              : AppColors.cardBackground,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(
+              isMe ? 16 : 4,
+            ),
+            bottomRight: Radius.circular(
+              isMe ? 4 : 16,
+            ),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: isMe
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
+          children: [
+            Text(
+              message,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: isMe
+                    ? Colors.white
+                    : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatTimestamp(
+                    data['timestamp'],
                   ),
-                  Text(
-                    widget.passengerPhone.isNotEmpty
-                        ? widget.passengerPhone
-                        : 'chat_passenger_subtitle'.tr(),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.white70,
-                    ),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isMe
+                        ? Colors.white70
+                        : AppColors.textSecondary,
+                  ),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.done_all_rounded,
+                    size: 13,
+                    color: Colors.white70,
                   ),
                 ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Text(
+        'no_chat_messages'.tr(),
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment:
+              MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.cloud_off_rounded,
+              size: 54,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
               ),
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.phone_enabled_rounded, color: Colors.white),
-            onPressed: () => _makePhoneCall(widget.passengerPhone),
-          ),
-          const SizedBox(width: 6),
-        ],
       ),
-      body: Column(
-        children: [
-          // 📩 لیست پیام‌ها (دریافت زنده و لحظه‌ای)
-          Expanded(
-            child: widget.tripId.isEmpty
-                ? Center(
-                    child: Text(
-                      'no_chat_messages'.tr(),
-                      style: const TextStyle(color: AppColors.textSecondary),
-                    ),
-                  )
-                : StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection("rides")
-                        .doc(widget.tripId)
-                        .collection("chats")
-                        .orderBy("timestamp", descending: true)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primaryBrand,
-                          ),
-                        );
-                      }
+    );
+  }
 
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'no_chat_messages'.tr(),
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 14,
-                            ),
-                          ),
-                        );
-                      }
-
-                      var docs = snapshot.data!.docs;
-                      String currentUserId =
-                          FirebaseAuth.instance.currentUser?.uid ?? "";
-
-                      return ListView.builder(
-                        reverse: true,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          var data =
-                              docs[index].data() as Map<String, dynamic>;
-
-                          // 🟢 شرط اصلاح‌شده برای تشخیص درست پیام راننده
-                          bool isMe = data["senderType"] == "driver" ||
-                              data["senderId"] == currentUserId;
-
-                          return Align(
-                            alignment: isMe
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 4),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isMe
-                                    ? AppColors.primaryBrand
-                                    : AppColors.cardBackground,
-                                borderRadius: BorderRadius.only(
-                                  topLeft: const Radius.circular(16),
-                                  topRight: const Radius.circular(16),
-                                  bottomLeft: Radius.circular(isMe ? 16 : 4),
-                                  bottomRight: Radius.circular(isMe ? 4 : 16),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  )
-                                ],
-                              ),
-                              child: Text(
-                                data["message"] ?? "",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: isMe
-                                      ? Colors.white
-                                      : AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
+  Widget _buildMessageComposer() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 8,
+      ),
+      color: AppColors.cardBackground,
+      child: SafeArea(
+        top: false,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                minLines: 1,
+                maxLines: 4,
+                textDirection: TextDirection.rtl,
+                textInputAction:
+                    TextInputAction.newline,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'chat_type_hint'.tr(),
+                  hintTextDirection: TextDirection.rtl,
+                  hintStyle: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
                   ),
-          ),
-
-          // ✏️ باکس ارسال پیام
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: AppColors.cardBackground,
-            child: SafeArea(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textPrimary,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'chat_type_hint'.tr(),
-                        hintStyle: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
-                        ),
-                        fillColor: AppColors.background,
-                        filled: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                      ),
-                    ),
+                  border: OutlineInputBorder(
+                    borderRadius:
+                        BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
                   ),
-                  const SizedBox(width: 8),
-                  CircleAvatar(
-                    backgroundColor: AppColors.primaryBrand,
-                    child: IconButton(
-                      icon: const Icon(
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius:
+                        BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius:
+                        BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                  fillColor: AppColors.background,
+                  filled: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                ),
+                onSubmitted: (_) {
+                  if (!_isSending) {
+                    sendMessage();
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            CircleAvatar(
+              backgroundColor: _isSending
+                  ? Colors.grey
+                  : AppColors.primaryBrand,
+              child: IconButton(
+                onPressed:
+                    _isSending ? null : sendMessage,
+                icon: _isSending
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(
                         Icons.send_rounded,
                         color: Colors.white,
                         size: 20,
                       ),
-                      onPressed: sendMessage,
-                    ),
-                  ),
-                ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
