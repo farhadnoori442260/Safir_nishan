@@ -1700,11 +1700,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         isDriverAvailable = true;
                                       }
 
+                                      listenForTripRequests();
                                       await goOnlineNow();
                                       setAndGetLocationUpdates();
-                                      listenForTripRequests();
                                       await _saveDriverStatus(true);
-                                    } else {
+                                   } else {
                                       if (mounted) {
                                         setState(() {
                                           isDriverAvailable = false;
