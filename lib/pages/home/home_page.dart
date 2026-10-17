@@ -989,33 +989,36 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void listenForTripRequests() {
-    tripRequestStream?.cancel();
+  tripRequestStream?.cancel();
+  debugPrint('RIDES: listener started');
 
-    tripRequestStream = _firestore
-        .collection('rides')
-        .where('status', isEqualTo: TripStatus.searching)
-        .snapshots()
-        .listen(
-      (QuerySnapshot<Map<String, dynamic>> snapshot) {
-        if (!mounted || !isDriverAvailable || activeTripId != null) return;
+  tripRequestStream = _firestore
+      .collection('rides')
+      .where('status', isEqualTo: TripStatus.searching)
+      .snapshots()
+      .listen(
+    (QuerySnapshot<Map<String, dynamic>> snapshot) {
+      debugPrint('RIDES: docs=${snapshot.docs.length} '
+          'changes=${snapshot.docChanges.length} '
+          'online=$isDriverAvailable activeTripId=$activeTripId');
 
-        for (final DocumentChange<Map<String, dynamic>> change
-            in snapshot.docChanges) {
-          if (change.type != DocumentChangeType.added) continue;
+      if (!mounted || !isDriverAvailable || activeTripId != null) return;
 
-          final String tripId = change.doc.id;
+      for (final DocumentChange<Map<String, dynamic>> change
+          in snapshot.docChanges) {
+        if (change.type != DocumentChangeType.added) continue;
 
-          PushNotificationSystem().retrieveTripRequestInfo(
-            tripId,
-            context,
-          );
-        }
-      },
-      onError: (Object error, StackTrace stackTrace) {
-        debugPrint('Firestore ride listener error: $error');
-        debugPrintStack(stackTrace: stackTrace);
-      },
-    );
+        debugPrint('RIDES: new trip ${change.doc.id}');
+        PushNotificationSystem().retrieveTripRequestInfo(
+          change.doc.id,
+          context,
+        );
+      }
+    },
+    onError: (Object error, StackTrace stackTrace) {
+      debugPrint('RIDES ERROR: $error');
+    },
+  );
   }
 
   void initializePushNotificationSystem() {
