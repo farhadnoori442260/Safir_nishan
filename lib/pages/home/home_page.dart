@@ -804,6 +804,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       final Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.bestForNavigation,
+        timeLimit: const Duration(seconds: 10),
       );
 
       currentPositionOfDriver = position;
@@ -837,6 +838,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           debugPrint('goOnlineNow failed: $e');
         }
       }
+    } catch (e) {
+      debugPrint('Error loading driver status: $e');
+    }
+  }
 
   Future<void> _saveDriverStatus(bool status) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -989,36 +994,39 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void listenForTripRequests() {
-  tripRequestStream?.cancel();
-  debugPrint('RIDES: listener started');
+    tripRequestStream?.cancel();
+    debugPrint('RIDES: listener started');
 
-  tripRequestStream = _firestore
-      .collection('rides')
-      .where('status', isEqualTo: TripStatus.searching)
-      .snapshots()
-      .listen(
-    (QuerySnapshot<Map<String, dynamic>> snapshot) {
-      debugPrint('RIDES: docs=${snapshot.docs.length} '
-          'changes=${snapshot.docChanges.length} '
-          'online=$isDriverAvailable activeTripId=$activeTripId');
+    tripRequestStream = _firestore
+        .collection('rides')
+        .where('status', isEqualTo: TripStatus.searching)
+        .snapshots()
+        .listen(
+      (QuerySnapshot<Map<String, dynamic>> snapshot) {
+        debugPrint('RIDES: docs=${snapshot.docs.length} '
+            'changes=${snapshot.docChanges.length} '
+            'online=$isDriverAvailable activeTripId=$activeTripId');
 
-      if (!mounted || !isDriverAvailable || activeTripId != null) return;
+        if (!mounted || !isDriverAvailable || activeTripId != null) return;
 
-      for (final DocumentChange<Map<String, dynamic>> change
-          in snapshot.docChanges) {
-        if (change.type != DocumentChangeType.added) continue;
+        for (final DocumentChange<Map<String, dynamic>> change
+            in snapshot.docChanges) {
+          if (change.type != DocumentChangeType.added) continue;
 
-        debugPrint('RIDES: new trip ${change.doc.id}');
-        PushNotificationSystem().retrieveTripRequestInfo(
-          change.doc.id,
-          context,
-        );
-      }
-    },
-    onError: (Object error, StackTrace stackTrace) {
-      debugPrint('RIDES ERROR: $error');
-    },
-  );
+          final String tripId = change.doc.id;
+          debugPrint('RIDES: new trip $tripId');
+
+          PushNotificationSystem().retrieveTripRequestInfo(
+            tripId,
+            context,
+          );
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('RIDES ERROR: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      },
+    );
   }
 
   void initializePushNotificationSystem() {
@@ -1700,11 +1708,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         isDriverAvailable = true;
                                       }
 
+                                      _ensureActiveTripStream();
                                       listenForTripRequests();
-                                      await goOnlineNow();
                                       setAndGetLocationUpdates();
                                       await _saveDriverStatus(true);
-                                   } else {
+                                      await goOnlineNow();
+                                    } else {
                                       if (mounted) {
                                         setState(() {
                                           isDriverAvailable = false;
