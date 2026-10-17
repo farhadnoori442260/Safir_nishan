@@ -829,14 +829,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       if (savedStatus) {
         _ensureActiveTripStream();
-        await goOnlineNow();
-        setAndGetLocationUpdates();
         listenForTripRequests();
+        setAndGetLocationUpdates();
+        try {
+          await goOnlineNow();
+        } catch (e) {
+          debugPrint('goOnlineNow failed: $e');
+        }
       }
-    } catch (e) {
-      debugPrint('Error loading driver status: $e');
-    }
-  }
 
   Future<void> _saveDriverStatus(bool status) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
