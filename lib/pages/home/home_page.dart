@@ -745,8 +745,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   bool _hasWarnedBackgroundLocation = false;
 
-  Future<void> _promptEnableBackgroundLocation() async {
+    Future<void> _promptEnableBackgroundLocation() async {
     if (!mounted) return;
+
+    // 🔧 بررسی اینکه آیا قبلاً این پیام به کاربر نشان داده شده است یا نه
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final bool hasPromptedBefore = prefs.getBool('has_prompted_bg_location') ?? false;
+
+    if (hasPromptedBefore) return; // اگر قبلاً نشان داده شده، دیگر هرگز ظاهر نشود
+
+    // ذخیره وضعیت که دیگر نشان داده نشود
+    await prefs.setBool('has_prompted_bg_location', true);
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -765,6 +774,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
     );
   }
+
 
   Future<void> _showMessage(String message) async {
     if (!mounted) return;
