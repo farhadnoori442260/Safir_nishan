@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -436,7 +437,7 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             Text(
               message,
-              textDirection: TextDirection.rtl,
+              textDirection: ui.TextDirection.rtl,
               style: TextStyle(
                 fontSize: 14,
                 height: 1.4,
@@ -534,7 +535,7 @@ class _ChatPageState extends State<ChatPage> {
                 controller: _messageController,
                 minLines: 1,
                 maxLines: 4,
-                textDirection: TextDirection.rtl,
+                textDirection: ui.TextDirection.rtl,
                 textInputAction:
                     TextInputAction.newline,
                 style: const TextStyle(
@@ -543,7 +544,7 @@ class _ChatPageState extends State<ChatPage> {
                 ),
                 decoration: InputDecoration(
                   hintText: 'chat_type_hint'.tr(),
-                  hintTextDirection: TextDirection.rtl,
+                  hintTextDirection: ui.TextDirection.rtl,
                   hintStyle: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
