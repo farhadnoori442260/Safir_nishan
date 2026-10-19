@@ -160,24 +160,24 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   DateTime _getMessageDate(
-  QueryDocumentSnapshot<Map<String, dynamic>> document,
-) {
-  final Map<String, dynamic> data = document.data();
-  final Object? value = data['timestamp'];
+    QueryDocumentSnapshot<Map<String, dynamic>> document,
+  ) {
+    final Map<String, dynamic> data = document.data();
+    final Object? value = data['timestamp'];
 
-  if (value is Timestamp) return value.toDate();
-  if (value is DateTime) return value;
-  if (value is String) {
-    return DateTime.tryParse(value) ??
-        DateTime.fromMillisecondsSinceEpoch(0);
-  }
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) {
+      return DateTime.tryParse(value) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+    }
 
-  // پیامی که هنوز به سرور نرسیده، جدیدترین است
-  if (document.metadata.hasPendingWrites) {
-    return DateTime.now();
-  }
+    // پیامی که هنوز به سرور نرسیده، جدیدترین است
+    if (document.metadata.hasPendingWrites) {
+      return DateTime.now();
+    }
 
-  return DateTime.fromMillisecondsSinceEpoch(0);
+    return DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   List<QueryDocumentSnapshot<Map<String, dynamic>>>
@@ -363,11 +363,11 @@ class _ChatPageState extends State<ChatPage> {
           ),
           itemCount: messages.length,
           itemBuilder: (context, index) {
-       final Map<String, dynamic> data =
-           messages[messages.length - 1 - index].data();
+            final Map<String, dynamic> data =
+                messages[messages.length - 1 - index].data();
 
-         return _buildMessageBubble(data);
-         },
+            return _buildMessageBubble(data);
+          },
         );
       },
     );
