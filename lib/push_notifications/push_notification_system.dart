@@ -15,6 +15,9 @@ import 'package:safir_drivers/models/trip_details.dart';
 import 'package:safir_drivers/widgets/notification_dialog.dart';
 
 class PushNotificationSystem {
+  static final PushNotificationSystem _instance = PushNotificationSystem._internal();
+factory PushNotificationSystem() => _instance;
+PushNotificationSystem._internal();
   final FirebaseMessaging firebaseCloudMessaging = FirebaseMessaging.instance;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
