@@ -34,6 +34,11 @@ class _NotificationDialogState extends State<NotificationDialog> {
   Timer? _timer;
   bool _isAcceptingTrip = false;
 
+  // ✅ کانتکست دیالوگ لودینگ را نگه می‌داریم تا دقیقاً همان بسته شود
+  BuildContext? _loadingDialogContext;
+
+  static const Duration _acceptTimeout = Duration(seconds: 15);
+
   static const Color brandPrimary = Color(0xFF145A41);
   static const Color btnPrimary = Color(0xFF1B7A57);
   static const Color btnPressed = Color(0xFF0F4A35);
@@ -43,6 +48,7 @@ class _NotificationDialogState extends State<NotificationDialog> {
   @override
   void initState() {
     super.initState();
+    driverTripRequestTimeout = 40;
     _startTimeoutTimer();
   }
 
@@ -64,7 +70,8 @@ class _NotificationDialogState extends State<NotificationDialog> {
           return;
         }
 
-        if (tripRequestStatus == TripStatus.accepted) {
+        // وقتی راننده در حال قبول کردن است، تایمر نباید دیالوگ را ببندد
+        if (_isAcceptingTrip || tripRequestStatus == TripStatus.accepted) {
           timer.cancel();
           driverTripRequestTimeout = 40;
           return;
@@ -95,27 +102,51 @@ class _NotificationDialogState extends State<NotificationDialog> {
     }
   }
 
-  Future<void> _showLoadingDialog() async {
-    if (!mounted) return;
+  // ✅ بدون await: showDialog تا بسته‌شدن دیالوگ تمام نمی‌شود،
+  // پس نباید جلوی ادامهٔ کد را بگیرد.
+  void _showLoadingDialog() {
+    if (!mounted || _loadingDialogContext != null) return;
 
-    await showDialog<void>(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
-        return LoadingDialog(
-          messageText: 'msg_please_wait'.tr(),
+        _loadingDialogContext = dialogContext;
+        return PopScope(
+          canPop: false,
+          child: LoadingDialog(
+            messageText: 'msg_please_wait'.tr(),
+          ),
         );
       },
-    );
+    ).whenComplete(() {
+      _loadingDialogContext = null;
+    });
   }
 
+  // ✅ دقیقاً دیالوگ لودینگ را می‌بندد (نه دیالوگ دیگری را)
   void _closeLoadingDialog() {
-    if (!mounted) return;
+    final BuildContext? loadingContext = _loadingDialogContext;
+    if (loadingContext == null) return;
 
-    final NavigatorState navigator = Navigator.of(context);
+    _loadingDialogContext = null;
 
-    if (navigator.canPop()) {
-      navigator.pop();
+    try {
+      if (loadingContext.mounted) {
+        Navigator.of(loadingContext).pop();
+      }
+    } catch (e) {
+      debugPrint('Close loading dialog error: $e');
+    }
+  }
+
+  void _closeMainDialog(BuildContext dialogContext) {
+    try {
+      if (dialogContext.mounted && Navigator.of(dialogContext).canPop()) {
+        Navigator.of(dialogContext).pop();
+      }
+    } catch (e) {
+      debugPrint('Close main dialog error: $e');
     }
   }
 
@@ -152,10 +183,10 @@ class _NotificationDialogState extends State<NotificationDialog> {
     }
 
     _stopAudio();
-    await _showLoadingDialog();
+    _showLoadingDialog(); // ✅ بدون await
 
     bool accepted = false;
-    bool loadingDialogClosed = false;
+    String? userMessage;
 
     try {
       final FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -163,6 +194,7 @@ class _NotificationDialogState extends State<NotificationDialog> {
       final DocumentReference<Map<String, dynamic>> tripRef =
           firestore.collection('rides').doc(tripId);
 
+      // ✅ با timeout تا در اینترنت ضعیف / VPN برای همیشه گیر نکند
       accepted = await firestore.runTransaction<bool>(
         (Transaction transaction) async {
           final DocumentSnapshot<Map<String, dynamic>> snapshot =
@@ -184,69 +216,71 @@ class _NotificationDialogState extends State<NotificationDialog> {
           transaction.update(
             tripRef,
             <String, dynamic>{
-            'status': TripStatus.accepted,
-            'driver_id': currentUser.uid,
-            'accepted_at': FieldValue.serverTimestamp(),
-            'updated_at': FieldValue.serverTimestamp(),
+              'status': TripStatus.accepted,
+              'driver_id': currentUser.uid,
+              'accepted_at': FieldValue.serverTimestamp(),
+              'updated_at': FieldValue.serverTimestamp(),
             },
           );
 
           return true;
         },
-      );
-
-      _closeLoadingDialog();
-      loadingDialogClosed = true;
+      ).timeout(_acceptTimeout);
 
       if (!accepted) {
-        if (mounted) {
-          cMethods.displaySnackBar(
-            'این سفر قبلاً توسط راننده دیگری گرفته شده است.',
-            dialogContext,
-          );
-          Navigator.of(dialogContext).pop();
-        }
+        userMessage = 'این سفر قبلاً توسط راننده دیگری گرفته شده است.';
         return;
       }
 
-      await firestore.collection('drivers').doc(currentUser.uid).set(
-        <String, dynamic>{
-          'newTripStatus': TripStatus.accepted,
-          'activeTripId': tripId,
-          'updated_at': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-
-      cMethods.turnOffLocationUpdatesForHomePage();
-
-      if (mounted) {
-        Navigator.of(dialogContext).pop();
+      // ✅ شکست این مرحله نباید باعث شود سفرِ قبول‌شده «خطا» نشان داده شود
+      try {
+        await firestore
+            .collection('drivers')
+            .doc(currentUser.uid)
+            .set(
+              <String, dynamic>{
+                'newTripStatus': TripStatus.accepted,
+                'activeTripId': tripId,
+                'updated_at': FieldValue.serverTimestamp(),
+              },
+              SetOptions(merge: true),
+            )
+            .timeout(const Duration(seconds: 8));
+      } catch (e) {
+        debugPrint('Driver status update after accept failed: $e');
       }
+
+      try {
+        cMethods.turnOffLocationUpdatesForHomePage();
+      } catch (e) {
+        debugPrint('turnOffLocationUpdatesForHomePage error: $e');
+      }
+    } on TimeoutException catch (e) {
+      debugPrint('Accept trip timeout: $e');
+      accepted = false;
+      userMessage = 'اتصال اینترنت ضعیف است. دوباره تلاش کنید.';
     } catch (e, stackTrace) {
       debugPrint('Error accepting trip: $e');
       debugPrintStack(stackTrace: stackTrace);
-
-      if (!loadingDialogClosed) {
-        _closeLoadingDialog();
-      }
-
-      if (mounted) {
-        tripRequestStatus = '';
-
-        cMethods.displaySnackBar(
-          'خطایی رخ داد. دوباره تلاش کنید.',
-          dialogContext,
-        );
-
-        Navigator.of(dialogContext).pop();
-      }
+      accepted = false;
+      userMessage = 'خطایی رخ داد. دوباره تلاش کنید.';
     } finally {
+      // ✅ در هر حالتی لودینگ بسته می‌شود
+      _closeLoadingDialog();
+
       if (mounted) {
         setState(() {
           _isAcceptingTrip = false;
+          if (!accepted) tripRequestStatus = '';
         });
       }
+
+      if (userMessage != null) {
+        cMethods.displaySnackBar(userMessage, dialogContext);
+      }
+
+      // در همهٔ حالت‌ها (موفق یا ناموفق) دیالوگ اصلی بسته می‌شود
+      _closeMainDialog(dialogContext);
     }
   }
 
@@ -272,63 +306,67 @@ class _NotificationDialogState extends State<NotificationDialog> {
             ? 'no_bid_offer'.tr()
             : '${widget.bidAmount} $currencyUnit';
 
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
-      backgroundColor: Colors.white,
-      elevation: 10,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 22,
+    return PopScope(
+      // جلوگیری از بستن با دکمهٔ برگشت هنگام قبول سفر
+      canPop: !_isAcceptingTrip,
+      child: Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: const BoxDecoration(
-                color: cardBgLight,
-                shape: BoxShape.circle,
+        backgroundColor: Colors.white,
+        elevation: 10,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 22,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: const BoxDecoration(
+                  color: cardBgLight,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.local_taxi_rounded,
+                  color: brandPrimary,
+                  size: 38,
+                ),
               ),
-              child: const Icon(
-                Icons.local_taxi_rounded,
-                color: brandPrimary,
-                size: 38,
+              const SizedBox(height: 12),
+              Text(
+                'title_new_trip_request'.tr(),
+                style: const TextStyle(
+                  fontFamily: 'IranYekan',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.black87,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'title_new_trip_request'.tr(),
-              style: const TextStyle(
-                fontFamily: 'IranYekan',
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.black87,
+              const SizedBox(height: 16),
+              Divider(
+                height: 1,
+                color: Colors.grey.shade200,
               ),
-            ),
-            const SizedBox(height: 16),
-            Divider(
-              height: 1,
-              color: Colors.grey.shade200,
-            ),
-            const SizedBox(height: 16),
-            _buildLocations(),
-            const SizedBox(height: 16),
-            Divider(
-              height: 1,
-              color: Colors.grey.shade200,
-            ),
-            const SizedBox(height: 14),
-            _buildFareCard(
-              fareAmount: fareAmount,
-              bidAmount: bidAmount,
-              currencyUnit: currencyUnit,
-            ),
-            const SizedBox(height: 20),
-            _buildActionButtons(),
-          ],
+              const SizedBox(height: 16),
+              _buildLocations(),
+              const SizedBox(height: 16),
+              Divider(
+                height: 1,
+                color: Colors.grey.shade200,
+              ),
+              const SizedBox(height: 14),
+              _buildFareCard(
+                fareAmount: fareAmount,
+                bidAmount: bidAmount,
+                currencyUnit: currencyUnit,
+              ),
+              const SizedBox(height: 20),
+              _buildActionButtons(),
+            ],
+          ),
         ),
       ),
     );
@@ -520,8 +558,7 @@ class _NotificationDialogState extends State<NotificationDialog> {
                   ? null
                   : () => checkAvailabilityOfTripRequest(context),
               style: ButtonStyle(
-                backgroundColor:
-                    WidgetStateProperty.resolveWith<Color>(
+                backgroundColor: WidgetStateProperty.resolveWith<Color>(
                   (Set<WidgetState> states) {
                     if (states.contains(WidgetState.pressed)) {
                       return btnPressed;
