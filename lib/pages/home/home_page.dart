@@ -131,6 +131,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   // ════════════════════════════════════════════════════════════
+  //  تبدیل مبلغ (پشتیبانی از ارقام فارسی/عربی و جداکنندهٔ هزارگان)
+  // ════════════════════════════════════════════════════════════
+
+  double _parseMoney(dynamic raw) {
+    if (raw == null) return 0.0;
+    if (raw is num) return raw.toDouble();
+
+    String s = raw.toString();
+    const String fa = '۰۱۲۳۴۵۶۷۸۹';
+    const String ar = '٠١٢٣٤٥٦٧٨٩';
+
+    for (int i = 0; i < 10; i++) {
+      s = s.replaceAll(fa[i], '$i').replaceAll(ar[i], '$i');
+    }
+
+    // حذف جداکننده‌های هزارگان و هر کاراکتر غیرعددی
+    s = s
+        .replaceAll(RegExp(r'[,،٬\.٫\s]'), '')
+        .replaceAll(RegExp(r'[^\d]'), '');
+
+    return double.tryParse(s) ?? 0.0;
+  }
+
+  // ════════════════════════════════════════════════════════════
   //  استریم سفر فعال
   // ════════════════════════════════════════════════════════════
 
@@ -745,17 +769,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   bool _hasWarnedBackgroundLocation = false;
 
-    Future<void> _promptEnableBackgroundLocation() async {
+  Future<void> _promptEnableBackgroundLocation() async {
     if (!mounted) return;
 
     // 🔧 بررسی اینکه آیا قبلاً این پیام به کاربر نشان داده شده است یا نه
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final bool hasPromptedBefore = prefs.getBool('has_prompted_bg_location') ?? false;
+    final bool hasPromptedBefore =
+        prefs.getBool('has_prompted_bg_location') ?? false;
 
-    if (hasPromptedBefore) return; // اگر قبلاً نشان داده شده، دیگر هرگز ظاهر نشود
+    if (hasPromptedBefore) return; // اگر قبلاً نشان داده شده، دیگر ظاهر نشود
 
     // ذخیره وضعیت که دیگر نشان داده نشود
     await prefs.setBool('has_prompted_bg_location', true);
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -774,7 +801,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
     );
   }
-
 
   Future<void> _showMessage(String message) async {
     if (!mounted) return;
@@ -1389,6 +1415,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final DocumentReference<Map<String, dynamic>> tripRef =
           _firestore.collection('rides').doc(tripId);
 
+      // ✅ سند راننده؛ درآمد در همان تراکنش پایان سفر به آن اضافه می‌شود
+      final DocumentReference<Map<String, dynamic>> driverRef =
+          _firestore.collection('drivers').doc(driver.uid);
+
       final bool updated = await _firestore.runTransaction<bool>(
         (Transaction transaction) async {
           final DocumentSnapshot<Map<String, dynamic>> snapshot =
@@ -1421,28 +1451,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             'updated_at': FieldValue.serverTimestamp(),
           };
 
+          double earnedForDriver = 0.0;
+
           if (newStatus == TripStatus.arrived) {
             updateData['arrived_at'] = FieldValue.serverTimestamp();
           } else if (newStatus == TripStatus.onTrip) {
             updateData['started_at'] = FieldValue.serverTimestamp();
           } else if (newStatus == TripStatus.completed) {
             // مبلغ نهایی سفر؛ کلیدهای متفاوت برای سازگاری با داده‌های قبلی
-            final dynamic rawFare = data['final_fare'] ??
-                data['fare_amount'] ??
-                data['fareAmount'] ??
-                data['fare'] ??
-                data['price'] ??
-                0;
-
-            final double totalFare = rawFare is num
-                ? rawFare.toDouble()
-                : double.tryParse(
-                      rawFare
-                          .toString()
-                          .replaceAll(',', '')
-                          .replaceAll(RegExp(r'[^\d.]'), ''),
-                    ) ??
-                    0.0;
+            final double totalFare = _parseMoney(
+              data['final_fare'] ??
+                  data['total_fare'] ??
+                  data['fare_amount'] ??
+                  data['fareAmount'] ??
+                  data['fare'] ??
+                  data['price'],
+            );
 
             // درصد کمیسیون سیستم؛ در صورت نیاز فقط این عدد را تغییر بده
             const double commissionPercent = 10.0;
@@ -1451,6 +1475,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 totalFare * commissionPercent / 100;
 
             final double driverEarnings = totalFare - commissionAmount;
+            earnedForDriver = driverEarnings;
 
             updateData['completed_at'] = FieldValue.serverTimestamp();
 
@@ -1462,6 +1487,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           }
 
           transaction.update(tripRef, updateData);
+
+          // ✅ اضافه‌کردن درآمد به سند راننده (همین باعث می‌شود صفحهٔ درآمدها عدد را ببیند)
+          if (newStatus == TripStatus.completed && earnedForDriver > 0) {
+            transaction.set(
+              driverRef,
+              {
+                'earnings': FieldValue.increment(earnedForDriver),
+                'totalEarnings': FieldValue.increment(earnedForDriver),
+                'lastEarningTripId': tripId,
+                'updatedAt': FieldValue.serverTimestamp(),
+              },
+              SetOptions(merge: true),
+            );
+          }
+
           return true;
         },
       );
@@ -1498,6 +1538,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             activeTripId = null;
             activeTripStatus = null;
           });
+        }
+
+        // ✅ تازه‌کردن عدد درآمد بعد از پایان سفر
+        if (mounted) {
+          unawaited(
+            context.read<RegistrationProvider>().fetchDriverEarnings(),
+          );
         }
 
         await _showMessage('سفر با موفقیت پایان یافت.');
