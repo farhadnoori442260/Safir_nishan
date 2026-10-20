@@ -1570,6 +1570,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final User? driver = FirebaseAuth.instance.currentUser;
     if (driver == null) return;
 
+    // وضعیت لحظه‌ای سفر از اطلاعات روی صفحه خوانده می‌شود
+    final String status = activeTripStatus ?? '';
+    final bool cancellable = status == TripStatus.accepted ||
+        status == TripStatus.arrived ||
+        status == TripStatus.onTrip;
+
+    if (!cancellable) {
+      await _showMessage('لغو انجام نشد؛ وضعیت سفر قبلاً تغییر کرده است.');
+      return;
+    }
+
     _isLocalTripEnding = true;
 
     if (mounted) {
@@ -1582,50 +1593,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final DocumentReference<Map<String, dynamic>> tripRef =
           _firestore.collection('rides').doc(tripId);
 
-      final bool cancelled = await _firestore.runTransaction<bool>(
-        (Transaction transaction) async {
-          final DocumentSnapshot<Map<String, dynamic>> snapshot =
-              await transaction.get(tripRef);
-
-          if (!snapshot.exists) return false;
-
-          final Map<String, dynamic> data = snapshot.data() ?? {};
-          final String currentStatus = data['status']?.toString() ?? '';
-
-          final String assignedDriverId = data['driver_id']?.toString() ??
-              data['driverId']?.toString() ??
-              '';
-
-          if (assignedDriverId != driver.uid) return false;
-
-          if (currentStatus != TripStatus.accepted &&
-              currentStatus != TripStatus.arrived &&
-              currentStatus != TripStatus.onTrip) {
-            return false;
-          }
-
-          transaction.update(
-            tripRef,
-            {
-              'status': TripStatus.cancelledByDriver,
-              'cancelled_by': 'driver',
-              'cancelled_by_driver_id': driver.uid,
-              'cancelled_at': FieldValue.serverTimestamp(),
-              'updated_at': FieldValue.serverTimestamp(),
-            },
+      // ✅ بدون منتظر ماندن برای سرور:
+      // نوشتن محلی همان لحظه اعمال می‌شود، سفر از لیست سفرهای فعال خارج
+      // می‌شود و پنل سفر بسته می‌شود. بعداً خودکار به سرور می‌رسد.
+      unawaited(
+        tripRef.update({
+          'status': TripStatus.cancelledByDriver,
+          'cancelled_by': 'driver',
+          'cancelled_by_driver_id': driver.uid,
+          'cancelled_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        }).catchError((Object e) {
+          debugPrint('Cancel trip server error: $e');
+          unawaited(
+            _showMessage('لغو سفر روی سرور ثبت نشد. اتصال اینترنت را بررسی کنید.'),
           );
-
-          return true;
-        },
+        }),
       );
 
-      if (!cancelled) {
-        await _showMessage('لغو انجام نشد؛ وضعیت سفر قبلاً تغییر کرده است.');
-        return;
-      }
-
       await _clearRouteAndNavigation();
-      await _setDriverStatus(status: 'waiting', isOnline: true);
+
+      unawaited(
+        _setDriverStatus(status: 'waiting', isOnline: true).catchError((Object e) {
+          debugPrint('Error resetting driver status after cancel: $e');
+        }),
+      );
 
       if (mounted) {
         setState(() {
