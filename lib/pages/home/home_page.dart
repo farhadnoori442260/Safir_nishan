@@ -16,6 +16,7 @@ import 'package:safir_drivers/constants/trip_status.dart';
 import 'package:safir_drivers/controllers/navigation_controller.dart';
 import 'package:safir_drivers/pages/chat_page.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
+import 'package:safir_drivers/services/app_config_service.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
 import '../../push_notifications/push_notification_system.dart';
 import 'active_trip_sheet.dart';
@@ -97,6 +98,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    AppConfigService.instance.start();
     _arrowAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
@@ -1052,6 +1054,38 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           final String tripId = change.doc.id;
           debugPrint('RIDES: new trip $tripId');
 
+          final AppConfig config = AppConfigService.instance.config;
+
+          // سرویس از پنل ادمین غیرفعال شده
+          if (!config.isServiceActive) {
+            debugPrint('RIDES: service inactive, skip $tripId');
+            continue;
+          }
+
+          // فقط درخواست‌های داخل «شعاع جستجوی راننده» (از پنل ادمین)
+          final Map<String, dynamic>? rideData = change.doc.data();
+          final LatLng? pickupPoint =
+              rideData == null ? null : _pickupLatLng(rideData);
+          final Position? driverPosition = currentPositionOfDriver;
+
+          if (pickupPoint != null && driverPosition != null) {
+            final double distanceKm = Geolocator.distanceBetween(
+                  driverPosition.latitude,
+                  driverPosition.longitude,
+                  pickupPoint.latitude,
+                  pickupPoint.longitude,
+                ) /
+                1000;
+
+            if (distanceKm > config.searchRadiusKm) {
+              debugPrint(
+                'RIDES: $tripId is ${distanceKm.toStringAsFixed(1)} km away '
+                '(radius ${config.searchRadiusKm} km), skip',
+              );
+              continue;
+            }
+          }
+
           PushNotificationSystem().retrieveTripRequestInfo(
             tripId,
             context,
@@ -1419,6 +1453,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final DocumentReference<Map<String, dynamic>> driverRef =
           _firestore.collection('drivers').doc(driver.uid);
 
+      // ✅ درصد کمیسیون از پنل ادمین (آخرین مقدار از سرور)
+      double commissionPercentForTrip =
+          AppConfigService.instance.config.commissionPercent;
+
+      if (newStatus == TripStatus.completed) {
+        final AppConfig latest = await AppConfigService.instance.refresh();
+        commissionPercentForTrip = latest.commissionPercent;
+      }
+
       final bool updated = await _firestore.runTransaction<bool>(
         (Transaction transaction) async {
           final DocumentSnapshot<Map<String, dynamic>> snapshot =
@@ -1468,8 +1511,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   data['price'],
             );
 
-            // درصد کمیسیون سیستم؛ در صورت نیاز فقط این عدد را تغییر بده
-            const double commissionPercent = 10.0;
+            // درصد کمیسیون از تنظیمات پنل ادمین
+            final double commissionPercent = commissionPercentForTrip;
 
             final double commissionAmount =
                 totalFare * commissionPercent / 100;
