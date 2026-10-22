@@ -284,7 +284,7 @@
   "msg_payment_guide": "Please collect the amount above in cash from the passenger.",
   "btn_cash_received": "Payment Received",
   "unknown_address": "Unknown Address",
-  "err_trip_cancelled": "This ride was cancelled by the passenger.",
+  "trip_status_cancelled_by_you": "ride was cancelled by the passenger.",
   "err_trip_not_found": "Ride not found or expired.",
   "btn_external_navigation_origin": "Navigation to Passenger Pickup",
   "btn_external_navigation_destination": "Navigation to Passenger Dropoff",
