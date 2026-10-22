@@ -284,7 +284,7 @@
   "msg_payment_guide": "مبلغ فوق را نقداً از مسافر دریافت کنید.",
   "btn_cash_received": "مبلغ دریافت شد",
   "unknown_address": "آدرس نامشخص",
-  "err_trip_cancelled": "این سفر توسط مسافر لغو شد.",
+  "trip_status_cancelled_by_you": "سفر توسط مسافر لغو شد.",
   "err_trip_not_found": "سفر یافت نشد یا منقضی شده است.",
   "btn_external_navigation_origin": "مسیریابی به مبدأ مسافر",
   "btn_external_navigation_destination": "مسیریابی به مقصد مسافر",
