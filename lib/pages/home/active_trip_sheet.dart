@@ -519,7 +519,9 @@ class ActiveTripSheet extends StatelessWidget {
           child: _buildInfoCard(
             icon: Icons.schedule_rounded,
             label: 'زمان',
-            value: duration == '---' ? '---' : '$duration دقیقه',
+            value: duration == '---'
+          ? '---'
+          : '$duration ${'time_minute'.tr()}',
             color: const Color(0xFFF97316),
             backgroundColor: const Color(0xFFFFEDD5),
           ),
@@ -528,8 +530,10 @@ class ActiveTripSheet extends StatelessWidget {
         Expanded(
           child: _buildInfoCard(
             icon: Icons.route_rounded,
-            label: 'مسافت',
-            value: distance == '---' ? '---' : '$distance کیلومتر',
+            label: 'trip_distance_label'.tr(),
+            value: distance == '---'
+          ? '---'
+          : '$distance ${'km_unit'.tr()}',
             color: _blue,
             backgroundColor: const Color(0xFFDBEAFE),
           ),
@@ -538,8 +542,10 @@ class ActiveTripSheet extends StatelessWidget {
         Expanded(
           child: _buildInfoCard(
             icon: Icons.account_balance_wallet_rounded,
-            label: 'کرایه',
-            value: price == '---' ? '---' : '$price افغانی',
+            label: 'trip_fare_label'.tr(),
+            value: price == '---'
+          ? '---'
+          : '$price ${'currency_afg'.tr()}',
             color: _primary,
             backgroundColor: const Color(0xFFCCFBF1),
           ),
