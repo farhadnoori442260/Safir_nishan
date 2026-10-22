@@ -284,7 +284,7 @@
   "msg_payment_guide": "پورتنۍ پیسې له سپرلۍ څخه نغدې ترلاسه کړئ.",
   "btn_cash_received": "پیسې ترلاسه شوې",
   "unknown_address": "نامعلوم ادرس",
-  "err_trip_cancelled": "دا سفر د سپرلۍ لخوا لغوه شو.",
+  "trip_status_cancelled_by_you": "سفر د سپرلۍ لخوا لغوه شو.",
   "err_trip_not_found": "سفر ونه موندل شو یا پای ته رسیدلی.",
   "btn_external_navigation_origin": "د سپارونکي پیل ځای ته نیویګیشن",
   "btn_external_navigation_destination": "د سپارونکي مسير پای ته نیویګیشن",
