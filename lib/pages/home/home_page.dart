@@ -1705,7 +1705,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         activeTripStatus = null;
       });
 
-      await _showMessage('سفر توسط مسافر لغو شد.');
+      await _showMessage('trip_status_cancelled_by_you'.tr());
     } finally {
       _isHandlingRemoteEnd = false;
     }
