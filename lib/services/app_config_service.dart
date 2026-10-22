@@ -33,6 +33,10 @@ class AppConfig {
   final double freightMultiplierSuzuki;
   final double freightMultiplierMazda;
 
+  /// اگر true باشد، کرایه بین‌شهری در تعداد مسافر ضرب می‌شود.
+  /// (در پنل/Firestore فیلد منطقی intercity_per_passenger را بسازید)
+  final bool intercityPerPassenger;
+
   const AppConfig({
     required this.commissionPercent,
     required this.isServiceActive,
@@ -47,6 +51,7 @@ class AppConfig {
     required this.freightMultiplierZaranj,
     required this.freightMultiplierSuzuki,
     required this.freightMultiplierMazda,
+    required this.intercityPerPassenger,
   });
 
   /// مقدار پیش‌فرض تا وقتی تنظیمات از سرور نرسیده (یا خوانده نشده)
@@ -64,6 +69,7 @@ class AppConfig {
     freightMultiplierZaranj: 0.5,
     freightMultiplierSuzuki: 1.0,
     freightMultiplierMazda: 1.67,
+    intercityPerPassenger: false,
   );
 
   factory AppConfig.fromMap(Map<String, dynamic>? data) {
@@ -96,6 +102,10 @@ class AppConfig {
       freightMultiplierMazda: _readNum(
         data['freight_multiplier_mazda'],
         defaults.freightMultiplierMazda,
+      ),
+      intercityPerPassenger: _readBool(
+        data['intercity_per_passenger'],
+        defaults.intercityPerPassenger,
       ),
     );
   }
@@ -146,7 +156,15 @@ class AppConfig {
   }
 
   /// بین‌شهری (فقط کرایه به‌ازای کیلومتر)
-  double intercityFare(double km) => _fare(0, perKmIntercity, km);
+  /// (اگر intercity_per_passenger فعال باشد، در تعداد مسافر ضرب می‌شود)
+  double intercityFare(double km, {int passengers = 1}) {
+    final double base = _fare(0, perKmIntercity, km);
+
+    if (!intercityPerPassenger) return base;
+
+    final int count = passengers < 1 ? 1 : passengers;
+    return (base * count).roundToDouble();
+  }
 
   /// بر اساس نوع وسیله‌ای که در اپ مسافر انتخاب شده: Car، Auto، Bike
   double fareForVehicle(String vehicleType, double km) {
