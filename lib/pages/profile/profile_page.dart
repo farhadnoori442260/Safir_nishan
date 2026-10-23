@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:safir_drivers/pages/profileUpdation/driver_main_info.dart';
+import 'package:safir_drivers/pages/profileUpdation/driving_license_update_screen.dart';
+import 'package:safir_drivers/pages/profileUpdation/vehicleUpdation/vehicle_basic_info_screen.dart';
+import 'package:safir_drivers/pages/profileUpdation/vehicleUpdation/vehicle_registration_update_screen.dart';
 import 'package:safir_drivers/providers/authentication_provider.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
@@ -23,9 +26,9 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-
-      context.read<RegistrationProvider>().retrieveCurrentDriverInfo();
+      if (mounted) {
+        context.read<RegistrationProvider>().retrieveCurrentDriverInfo();
+      }
     });
   }
 
@@ -51,27 +54,25 @@ class _ProfilePageState extends State<ProfilePage> {
                     : 'profile_phone_not_set'.tr();
 
             final String email = driver['email']?.toString().trim() ?? '';
-            final String addressStr =
-                driver['address']?.toString().trim() ?? '';
+            final String address = driver['address']?.toString().trim() ?? '';
             final String photo = driver['photo']?.toString().trim() ?? '';
 
-            final double ratingVal =
-                double.tryParse(driver['rating']?.toString() ?? '5.0') ??
-                    5.0;
+            final double rating =
+                double.tryParse(driver['rating']?.toString() ?? '5.0') ?? 5.0;
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 110),
+              padding: const EdgeInsets.only(bottom: 105),
               child: Column(
                 children: [
                   _buildProfileHeader(
-                    context: context,
                     name: name,
                     phone: phone,
                     email: email,
-                    address: addressStr,
+                    address: address,
                     photo: photo,
-                    rating: ratingVal,
+                    rating: rating,
                   ),
+
                   const SizedBox(height: 8),
 
                   _buildSectionTitle('profile_section_account'.tr()),
@@ -85,7 +86,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const DriverMainInfo(),
+                          builder: (_) => const DriverMainInfo(),
                         ),
                       );
 
@@ -104,11 +105,44 @@ class _ProfilePageState extends State<ProfilePage> {
                     icon: Icons.directions_car_filled_outlined,
                     title: 'profile_menu_vehicle'.tr(),
                     subtitle: 'profile_menu_vehicle_subtitle'.tr(),
-                    onTap: () {
-                      _showPlaceholderPage(
+                    onTap: () async {
+                      await Navigator.push(
                         context,
-                        'profile_menu_vehicle'.tr(),
+                        MaterialPageRoute(
+                          builder: (_) => const VehicleBasicInfoScreen(),
+                        ),
                       );
+
+                      if (mounted) {
+                        context
+                            .read<RegistrationProvider>()
+                            .retrieveCurrentDriverInfo();
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  _buildSectionTitle('profile_section_documents'.tr()),
+
+                  _buildProfileMenuOption(
+                    context,
+                    icon: Icons.badge_outlined,
+                    title: 'profile_menu_license'.tr(),
+                    subtitle: 'profile_menu_license_subtitle'.tr(),
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DrivingLicenseUpdateScreen(),
+                        ),
+                      );
+
+                      if (mounted) {
+                        context
+                            .read<RegistrationProvider>()
+                            .retrieveCurrentDriverInfo();
+                      }
                     },
                   ),
 
@@ -116,14 +150,24 @@ class _ProfilePageState extends State<ProfilePage> {
 
                   _buildProfileMenuOption(
                     context,
-                    icon: Icons.badge_outlined,
-                    title: 'profile_menu_documents'.tr(),
-                    subtitle: 'profile_menu_documents_subtitle'.tr(),
-                    onTap: () {
-                      _showPlaceholderPage(
+                    icon: Icons.description_outlined,
+                    title: 'profile_menu_vehicle_registration'.tr(),
+                    subtitle:
+                        'profile_menu_vehicle_registration_subtitle'.tr(),
+                    onTap: () async {
+                      await Navigator.push(
                         context,
-                        'profile_menu_documents'.tr(),
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const VehicleRegistrationUpdateScreen(),
+                        ),
                       );
+
+                      if (mounted) {
+                        context
+                            .read<RegistrationProvider>()
+                            .retrieveCurrentDriverInfo();
+                      }
                     },
                   ),
 
@@ -140,7 +184,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const SettingsPage(),
+                          builder: (_) => const SettingsPage(),
                         ),
                       );
                     },
@@ -154,10 +198,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: 'profile_menu_support'.tr(),
                     subtitle: 'profile_menu_support_subtitle'.tr(),
                     onTap: () {
-                      _showPlaceholderPage(
-                        context,
-                        'profile_menu_support'.tr(),
-                      );
+                      _showSupportDialog(context);
                     },
                   ),
 
@@ -169,10 +210,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: 'profile_menu_privacy'.tr(),
                     subtitle: 'profile_menu_privacy_subtitle'.tr(),
                     onTap: () {
-                      _showPlaceholderPage(
-                        context,
-                        'profile_menu_privacy'.tr(),
-                      );
+                      _showPrivacyPage(context);
                     },
                   ),
 
@@ -198,14 +236,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   _buildProfileMenuOption(
                     context,
                     icon: Icons.delete_outline_rounded,
+                    iconColor: Colors.red.shade700,
                     title: 'profile_menu_delete_account'.tr(),
                     subtitle: 'profile_menu_delete_account_subtitle'.tr(),
-                    iconColor: Colors.red.shade700,
                     onTap: () {
-                      _showPlaceholderPage(
-                        context,
-                        'profile_menu_delete_account'.tr(),
-                      );
+                      _showDeleteAccountDialog(context, authProvider);
                     },
                   ),
                 ],
@@ -215,9 +250,11 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: Colors.red.shade700,
-          onPressed: () async {
-            await authProvider.signOut(context);
-          },
+          onPressed: authProvider.isLoading
+              ? null
+              : () async {
+                  await authProvider.signOut(context);
+                },
           icon: const Icon(
             Icons.logout_rounded,
             color: Colors.white,
@@ -237,7 +274,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildProfileHeader({
-    required BuildContext context,
     required String name,
     required String phone,
     required String email,
@@ -263,43 +299,33 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(
-                width: 80,
                 height: 80,
+                width: 80,
                 child: photo.isNotEmpty
                     ? CachedNetworkImage(
                         imageUrl: photo,
-                        imageBuilder: (context, imageProvider) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color:
-                                    AppColors.primaryBrand.withOpacity(0.20),
-                                width: 2,
-                              ),
-                              image: DecorationImage(
-                                image: imageProvider,
-                                fit: BoxFit.cover,
-                              ),
+                        imageBuilder: (context, imageProvider) => Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.primaryBrand.withOpacity(0.2),
+                              width: 2,
                             ),
-                          );
-                        },
-                        placeholder: (context, url) {
-                          return const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppColors.primaryBrand,
-                              ),
+                            image: DecorationImage(
+                              image: imageProvider,
+                              fit: BoxFit.cover,
                             ),
-                          );
-                        },
-                        errorWidget: (context, url, error) {
-                          return _buildAvatarPlaceholder();
-                        },
+                          ),
+                        ),
+                        placeholder: (_, __) => const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryBrand,
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) => _buildAvatarPlaceholder(),
                       )
                     : _buildAvatarPlaceholder(),
               ),
@@ -319,76 +345,49 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 7),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.phone_outlined,
-                          size: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Directionality(
-                            textDirection: TextDirection.ltr,
-                            child: Text(
-                              phone,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
+                    _buildHeaderRow(
+                      icon: Icons.phone_outlined,
+                      child: Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Text(
+                          phone,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
                           ),
                         ),
-                      ],
+                      ),
                     ),
                     if (email.isNotEmpty) ...[
                       const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.email_outlined,
-                            size: 14,
+                      _buildHeaderRow(
+                        icon: Icons.email_outlined,
+                        child: Text(
+                          email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              email,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                     if (address.isNotEmpty) ...[
                       const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: 14,
+                      _buildHeaderRow(
+                        icon: Icons.location_on_outlined,
+                        child: Text(
+                          address,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              address,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                     const SizedBox(height: 9),
@@ -403,13 +402,30 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _buildHeaderRow({
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 14,
+          color: AppColors.textSecondary,
+        ),
+        const SizedBox(width: 6),
+        Expanded(child: child),
+      ],
+    );
+  }
+
   Widget _buildAvatarPlaceholder() {
     return CircleAvatar(
       backgroundColor: Colors.grey.shade200,
       child: Icon(
         Icons.person_rounded,
-        size: 42,
         color: Colors.grey.shade500,
+        size: 42,
       ),
     );
   }
@@ -432,65 +448,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  void _showPlaceholderPage(BuildContext context, String title) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          backgroundColor: AppColors.background,
-          appBar: AppBar(
-            title: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            centerTitle: true,
-            backgroundColor: AppColors.cardBackground,
-            elevation: 1,
-            iconTheme: const IconThemeData(
-              color: AppColors.textPrimary,
-            ),
-          ),
-          body: Center(
-            child: Text(
-              'coming_soon'.tr(),
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showAboutDialog(BuildContext context) {
-    showAboutDialog(
-      context: context,
-      applicationName: 'app_name'.tr(),
-      applicationVersion: '1.0.0',
-      applicationIcon: const Icon(
-        Icons.local_taxi_rounded,
-        color: AppColors.primaryBrand,
-        size: 42,
-      ),
-      children: [
-        const SizedBox(height: 12),
-        Text(
-          'profile_about_description'.tr(),
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            height: 1.5,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildProfileMenuOption(
     BuildContext context, {
     required IconData icon,
@@ -499,15 +456,14 @@ class _ProfilePageState extends State<ProfilePage> {
     required VoidCallback onTap,
     Color? iconColor,
   }) {
-    final isRtl = Directionality.of(context) == TextDirection.rtl;
-    final itemIconColor = iconColor ?? AppColors.primaryBrand;
+    final bool isRtl = Directionality.of(context) == TextDirection.rtl;
+    final Color currentIconColor = iconColor ?? AppColors.primaryBrand;
 
     return Container(
       width: MediaQuery.of(context).size.width * 0.92,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
         color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(14),
         boxShadow: const [
           BoxShadow(
             color: Colors.black12,
@@ -531,7 +487,7 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 Icon(
                   icon,
-                  color: itemIconColor,
+                  color: currentIconColor,
                   size: 24,
                 ),
                 const SizedBox(width: 14),
@@ -563,10 +519,222 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(width: 8),
                 Icon(
                   isRtl ? Icons.chevron_left : Icons.chevron_right,
-                  size: 21,
                   color: AppColors.textSecondary.withOpacity(0.55),
+                  size: 21,
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSupportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.cardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'profile_menu_support'.tr(),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          content: Text(
+            'support_dialog_message'.tr(),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('close'.tr()),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showPrivacyPage(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PrivacyPolicyPage(),
+      ),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showAboutDialog(
+      context: context,
+      applicationName: 'app_name'.tr(),
+      applicationVersion: '1.0.0',
+      applicationIcon: const Icon(
+        Icons.local_taxi_rounded,
+        color: AppColors.primaryBrand,
+        size: 44,
+      ),
+      children: [
+        const SizedBox(height: 12),
+        Text(
+          'profile_about_description'.tr(),
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            height: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showDeleteAccountDialog(
+    BuildContext context,
+    AuthenticationProvider authProvider,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        bool isDeleting = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppColors.cardBackground,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: Text(
+                'profile_menu_delete_account'.tr(),
+                style: TextStyle(
+                  color: Colors.red.shade700,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              content: Text(
+                'delete_account_confirmation'.tr(),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDeleting
+                      ? null
+                      : () => Navigator.pop(dialogContext),
+                  child: Text('btn_cancel'.tr()),
+                ),
+                ElevatedButton(
+                  onPressed: isDeleting
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            isDeleting = true;
+                          });
+
+                          final bool deleted =
+                              await authProvider.deleteCurrentDriverAccount(
+                            context,
+                          );
+
+                          if (!context.mounted) return;
+
+                          if (deleted) {
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'account_delete_success'.tr(),
+                                ),
+                              ),
+                            );
+
+                            await authProvider.signOut(context);
+                          } else {
+                            if (dialogContext.mounted) {
+                              setDialogState(() {
+                                isDeleting = false;
+                              });
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: isDeleting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text('btn_delete'.tr()),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class PrivacyPolicyPage extends StatelessWidget {
+  const PrivacyPolicyPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.cardBackground,
+        elevation: 1,
+        centerTitle: true,
+        iconTheme: const IconThemeData(
+          color: AppColors.textPrimary,
+        ),
+        title: Text(
+          'profile_menu_privacy'.tr(),
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            'privacy_policy_text'.tr(),
+            style: const TextStyle(
+              fontSize: 14,
+              height: 1.8,
+              color: AppColors.textPrimary,
             ),
           ),
         ),
@@ -580,7 +748,7 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final bool isRtl = Directionality.of(context) == TextDirection.rtl;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -600,7 +768,7 @@ class SettingsPage extends StatelessWidget {
           color: AppColors.textPrimary,
         ),
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(16),
         child: _buildSettingsTile(
           context,
@@ -611,7 +779,7 @@ class SettingsPage extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const LanguagePage(),
+                builder: (_) => const LanguagePage(),
               ),
             );
           },
@@ -655,7 +823,10 @@ class SettingsPage extends StatelessWidget {
       ),
       child: ListTile(
         onTap: onTap,
-        leading: Icon(icon, color: AppColors.primaryBrand),
+        leading: Icon(
+          icon,
+          color: AppColors.primaryBrand,
+        ),
         title: Text(
           title,
           style: const TextStyle(
@@ -754,7 +925,6 @@ class _LanguagePageState extends State<LanguagePage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('lang_change_success'.tr()),
-                      duration: const Duration(seconds: 2),
                     ),
                   );
 
