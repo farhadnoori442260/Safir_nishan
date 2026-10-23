@@ -331,5 +331,9 @@
   "profile_about_description": "سفیر رانندگان، برنامهٔ مدیریت سفر و فعالیت رانندگان سفیر است.",
   "language_dari": "دری",
   "language_pashto": "پښتو",
-  "language_english": "English"
+  "language_english": "English",
+  "err_account_not_found": "حساب کاربری پیدا نشد.",
+  "err_recent_login_required": "برای حذف حساب، یک‌بار خارج شوید و دوباره وارد حساب شوید.",
+  "err_delete_account": "حذف حساب انجام نشد. لطفاً دوباره تلاش کنید.",
+  "account_delete_success": "حساب کاربری شما با موفقیت حذف شد."
 }
