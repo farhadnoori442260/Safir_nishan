@@ -17,137 +17,135 @@ class Dashboard extends StatefulWidget {
   State<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends State<Dashboard>
-    with SingleTickerProviderStateMixin {
-  TabController? controller;
+class _DashboardState extends State<Dashboard> {
+  late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
-    controller = TabController(length: 4, vsync: this);
+
+    _pages = const [
+      HomePage(),
+      EarningsPage(),
+      TripsPage(),
+      ProfilePage(),
+    ];
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshData();
+      _refreshInitialData();
     });
   }
 
-  void _refreshData() {
+  Future<void> _refreshInitialData() async {
     if (!mounted) return;
-    final regProvider = Provider.of<RegistrationProvider>(context, listen: false);
-    regProvider.retrieveCurrentDriverInfo();
-    regProvider.fetchDriverEarnings(); // فراخوانی متد دریافت درآمد و تعداد سفرها
+
+    final registrationProvider =
+        context.read<RegistrationProvider>();
+
+    try {
+      await Future.wait([
+        registrationProvider.retrieveCurrentDriverInfo(),
+        registrationProvider.fetchDriverEarnings(),
+      ]);
+    } catch (e) {
+      debugPrint('Dashboard initial refresh error: $e');
+    }
   }
 
-  @override
-  void dispose() {
-    controller?.dispose();
-    super.dispose();
+  Future<void> _onDestinationSelected(int index) async {
+    if (!mounted) return;
+
+    final dashboardProvider = context.read<DashboardProvider>();
+
+    if (dashboardProvider.selectedIndex == index) {
+      return;
+    }
+
+    dashboardProvider.setIndex(index);
+
+    // فقط هنگام رفتن به درآمدها یا پروفایل، اطلاعات مربوطه تازه می‌شود.
+    final registrationProvider =
+        context.read<RegistrationProvider>();
+
+    try {
+      if (index == 1) {
+        await registrationProvider.fetchDriverEarnings();
+      } else if (index == 3) {
+        await registrationProvider.retrieveCurrentDriverInfo();
+      }
+    } catch (e) {
+      debugPrint('Dashboard tab refresh error: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final dashboardProvider = Provider.of<DashboardProvider>(context);
-
-    if (controller != null && controller!.index != dashboardProvider.selectedIndex) {
-      controller!.index = dashboardProvider.selectedIndex;
-    }
+    final int selectedIndex = context.select<DashboardProvider, int>(
+      (provider) => provider.selectedIndex,
+    );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: TabBarView(
-        physics: const NeverScrollableScrollPhysics(),
-        controller: controller,
-        children: const [
-          HomePage(),
-          EarningsPage(),
-          TripsPage(),
-          ProfilePage(),
-        ],
+      backgroundColor: const Color(0xFFF6F8F7),
+      extendBody: true,
+      body: IndexedStack(
+        index: selectedIndex,
+        children: _pages,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primaryBrand.withOpacity(0.08),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.97),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: AppColors.primaryBrand.withOpacity(0.10),
             ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-            child: BottomNavigationBar(
-              items: [
-                BottomNavigationBarItem(
-                  icon: const Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Icon(Icons.map_outlined, size: 24),
-                  ),
-                  activeIcon: const Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Icon(Icons.map, size: 24),
-                  ),
-                  label: 'nav_home'.tr(),
-                ),
-                BottomNavigationBarItem(
-                  icon: const Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Icon(Icons.account_balance_wallet_outlined, size: 24),
-                  ),
-                  activeIcon: const Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Icon(Icons.account_balance_wallet, size: 24),
-                  ),
-                  label: 'nav_earnings'.tr(),
-                ),
-                BottomNavigationBarItem(
-                  icon: const Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Icon(Icons.route_outlined, size: 24),
-                  ),
-                  activeIcon: const Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Icon(Icons.route, size: 24),
-                  ),
-                  label: 'nav_trips'.tr(),
-                ),
-                BottomNavigationBarItem(
-                  icon: const Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Icon(Icons.person_outline_rounded, size: 24),
-                  ),
-                  activeIcon: const Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Icon(Icons.person_rounded, size: 24),
-                  ),
-                  label: 'nav_profile'.tr(),
-                ),
-              ],
-              currentIndex: dashboardProvider.selectedIndex,
-              unselectedItemColor: AppColors.iconSecondary,
-              selectedItemColor: AppColors.primaryBrand,
-              showSelectedLabels: true,
-              showUnselectedLabels: true,
-              selectedLabelStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
               ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
+            ],
+          ),
+          child: NavigationBar(
+            selectedIndex: selectedIndex,
+            onDestinationSelected: _onDestinationSelected,
+            height: 68,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            indicatorColor: AppColors.primaryBrand.withOpacity(0.14),
+            labelBehavior:
+                NavigationDestinationLabelBehavior.alwaysShow,
+            animationDuration: const Duration(milliseconds: 280),
+            destinations: [
+              NavigationDestination(
+                icon: const Icon(Icons.map_outlined),
+                selectedIcon: const Icon(Icons.map_rounded),
+                label: 'nav_home'.tr(),
               ),
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              onTap: (index) {
-                dashboardProvider.setIndex(index);
-                controller?.index = index;
-                // 📌 به‌روزرسانی مجدد داده‌ها هنگام کلیک روی هر تب
-                _refreshData();
-              },
-            ),
+              NavigationDestination(
+                icon: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                ),
+                selectedIcon: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                ),
+                label: 'nav_earnings'.tr(),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.route_outlined),
+                selectedIcon: const Icon(Icons.route_rounded),
+                label: 'nav_trips'.tr(),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.person_outline_rounded),
+                selectedIcon: const Icon(Icons.person_rounded),
+                label: 'nav_profile'.tr(),
+              ),
+            ],
           ),
         ),
       ),
