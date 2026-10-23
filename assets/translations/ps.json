@@ -336,7 +336,7 @@
   "err_account_not_found": "کارن حساب ونه موندل شو.",
   "err_recent_login_required": "د حساب د حذف لپاره، یو ځل ووځئ او بیا حساب ته ننوځئ.",
   "err_delete_account": "د حساب حذف ترسره نه شو. مهرباني وکړئ بیا هڅه وکړئ.",
-  "account_delete_success": "ستاسو حساب په بریالیتوب سره حذف شو."
+  "account_delete_success": "ستاسو حساب په بریالیتوب سره حذف شو.",
   "profile_section_documents": "اسناد",
   "profile_menu_license": "د موټرچلوونې جواز",
   "profile_menu_license_subtitle": "انځورونه او د جواز شمېره",
