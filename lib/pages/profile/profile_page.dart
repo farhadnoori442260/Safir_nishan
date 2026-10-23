@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:safir_drivers/pages/auth/register_screen.dart';
 import 'package:safir_drivers/pages/profileUpdation/driver_main_info.dart';
 import 'package:safir_drivers/pages/profileUpdation/driving_license_update_screen.dart';
 import 'package:safir_drivers/pages/profileUpdation/vehicleUpdation/vehicle_basic_info_screen.dart';
@@ -664,7 +665,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             );
 
-                            await authProvider.signOut(context);
+                            if (context.mounted) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (_) => const RegisterScreen(),
+                                ),
+                               (route) => false,
+                              );
+                            }
                           } else {
                             if (dialogContext.mounted) {
                               setDialogState(() {
