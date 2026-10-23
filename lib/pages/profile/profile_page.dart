@@ -21,17 +21,17 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Provider.of<RegistrationProvider>(context, listen: false)
-            .retrieveCurrentDriverInfo();
-      }
+      if (!mounted) return;
+
+      context.read<RegistrationProvider>().retrieveCurrentDriverInfo();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthenticationProvider>(context);
+    final authProvider = context.watch<AuthenticationProvider>();
 
     return SafeArea(
       child: Scaffold(
@@ -40,171 +40,47 @@ class _ProfilePageState extends State<ProfilePage> {
           builder: (context, regProvider, child) {
             final driver = regProvider.driverInformation;
 
-            String name = (driver['name'] != null && driver['name'].toString().isNotEmpty)
-                ? driver['name'].toString()
-                : "---";
+            final String name =
+                driver['name']?.toString().trim().isNotEmpty == true
+                    ? driver['name'].toString()
+                    : 'profile_name_not_set'.tr();
 
-            String phone = driver['phone']?.toString() ?? "---";
-            String email = driver['email']?.toString() ?? "";
-            String addressStr = driver['address']?.toString() ?? "";
-            String photo = driver['photo']?.toString() ?? "";
-            double ratingVal = double.tryParse(driver['rating']?.toString() ?? "5.0") ?? 5.0;
+            final String phone =
+                driver['phone']?.toString().trim().isNotEmpty == true
+                    ? driver['phone'].toString()
+                    : 'profile_phone_not_set'.tr();
+
+            final String email = driver['email']?.toString().trim() ?? '';
+            final String addressStr =
+                driver['address']?.toString().trim() ?? '';
+            final String photo = driver['photo']?.toString().trim() ?? '';
+
+            final double ratingVal =
+                double.tryParse(driver['rating']?.toString() ?? '5.0') ??
+                    5.0;
 
             return SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 110),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  // 📌 کارت اطلاعات اصلی راننده
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 24, bottom: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        width: MediaQuery.of(context).size.width * 0.92,
-                        decoration: BoxDecoration(
-                          color: AppColors.cardBackground,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black12,
-                              offset: Offset(0, 2),
-                              blurRadius: 8.0,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: <Widget>[
-                            // 🖼️ تصویر پروفایل راننده
-                            SizedBox(
-                              width: 80.0,
-                              height: 80.0,
-                              child: photo.isNotEmpty
-                                  ? CachedNetworkImage(
-                                      imageUrl: photo,
-                                      imageBuilder: (context, imageProvider) => Container(
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: AppColors.primaryBrand.withOpacity(0.2),
-                                            width: 2,
-                                          ),
-                                          image: DecorationImage(
-                                            image: imageProvider,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                      ),
-                                      placeholder: (context, url) => const Center(
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryBrand),
-                                        ),
-                                      ),
-                                      errorWidget: (context, url, error) => _buildAvatarPlaceholder(),
-                                    )
-                                  : _buildAvatarPlaceholder(),
-                            ),
-                            const SizedBox(width: 14),
-                            // 📝 مشخصات متنی راننده
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[
-                                  Text(
-                                    name,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    children: <Widget>[
-                                      const Icon(
-                                        Icons.phone,
-                                        size: 14,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Directionality(
-                                        textDirection: TextDirection.ltr,
-                                        child: Text(
-                                          phone,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (email.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: <Widget>[
-                                        const Icon(
-                                          Icons.email,
-                                          size: 14,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Flexible(
-                                          child: Text(
-                                            email,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                  if (addressStr.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: <Widget>[
-                                        const Icon(
-                                          Icons.location_on,
-                                          size: 14,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Flexible(
-                                          child: Text(
-                                            addressStr,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                  const SizedBox(height: 8),
-                                  RatingStars(ratting: ratingVal.toString()),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  _buildProfileHeader(
+                    context: context,
+                    name: name,
+                    phone: phone,
+                    email: email,
+                    address: addressStr,
+                    photo: photo,
+                    rating: ratingVal,
                   ),
+                  const SizedBox(height: 8),
 
-                  const SizedBox(height: 10),
+                  _buildSectionTitle('profile_section_account'.tr()),
 
-                  // 👤 گزینه اطلاعات کاربری
                   _buildProfileMenuOption(
                     context,
                     icon: Icons.account_circle_outlined,
                     title: 'profile_menu_account'.tr(),
+                    subtitle: 'profile_menu_account_subtitle'.tr(),
                     onTap: () async {
                       await Navigator.push(
                         context,
@@ -212,16 +88,54 @@ class _ProfilePageState extends State<ProfilePage> {
                           builder: (context) => const DriverMainInfo(),
                         ),
                       );
+
+                      if (mounted) {
+                        context
+                            .read<RegistrationProvider>()
+                            .retrieveCurrentDriverInfo();
+                      }
                     },
                   ),
 
                   const SizedBox(height: 12),
 
-                  // ⚙️ گزینه تنظیمات اپلیکیشن
+                  _buildProfileMenuOption(
+                    context,
+                    icon: Icons.directions_car_filled_outlined,
+                    title: 'profile_menu_vehicle'.tr(),
+                    subtitle: 'profile_menu_vehicle_subtitle'.tr(),
+                    onTap: () {
+                      _showPlaceholderPage(
+                        context,
+                        'profile_menu_vehicle'.tr(),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  _buildProfileMenuOption(
+                    context,
+                    icon: Icons.badge_outlined,
+                    title: 'profile_menu_documents'.tr(),
+                    subtitle: 'profile_menu_documents_subtitle'.tr(),
+                    onTap: () {
+                      _showPlaceholderPage(
+                        context,
+                        'profile_menu_documents'.tr(),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  _buildSectionTitle('profile_section_app'.tr()),
+
                   _buildProfileMenuOption(
                     context,
                     icon: Icons.settings_outlined,
                     title: 'profile_menu_settings'.tr(),
+                    subtitle: 'profile_menu_settings_subtitle'.tr(),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -234,17 +148,66 @@ class _ProfilePageState extends State<ProfilePage> {
 
                   const SizedBox(height: 12),
 
-                  // 🎧 گزینه مرکز پشتیبانی
                   _buildProfileMenuOption(
                     context,
-                    icon: Icons.help_outline,
+                    icon: Icons.help_outline_rounded,
                     title: 'profile_menu_support'.tr(),
+                    subtitle: 'profile_menu_support_subtitle'.tr(),
                     onTap: () {
-                      _showPlaceholderPage(context, 'profile_menu_support'.tr());
+                      _showPlaceholderPage(
+                        context,
+                        'profile_menu_support'.tr(),
+                      );
                     },
                   ),
 
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 12),
+
+                  _buildProfileMenuOption(
+                    context,
+                    icon: Icons.privacy_tip_outlined,
+                    title: 'profile_menu_privacy'.tr(),
+                    subtitle: 'profile_menu_privacy_subtitle'.tr(),
+                    onTap: () {
+                      _showPlaceholderPage(
+                        context,
+                        'profile_menu_privacy'.tr(),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  _buildProfileMenuOption(
+                    context,
+                    icon: Icons.info_outline_rounded,
+                    title: 'profile_menu_about'.tr(),
+                    subtitle: 'profile_menu_about_subtitle'.tr(),
+                    onTap: () {
+                      _showAboutDialog(context);
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  _buildSectionTitle(
+                    'profile_section_account_management'.tr(),
+                    color: Colors.red.shade700,
+                  ),
+
+                  _buildProfileMenuOption(
+                    context,
+                    icon: Icons.delete_outline_rounded,
+                    title: 'profile_menu_delete_account'.tr(),
+                    subtitle: 'profile_menu_delete_account_subtitle'.tr(),
+                    iconColor: Colors.red.shade700,
+                    onTap: () {
+                      _showPlaceholderPage(
+                        context,
+                        'profile_menu_delete_account'.tr(),
+                      );
+                    },
+                  ),
                 ],
               ),
             );
@@ -255,7 +218,11 @@ class _ProfilePageState extends State<ProfilePage> {
           onPressed: () async {
             await authProvider.signOut(context);
           },
-          icon: const Icon(Icons.logout, color: Colors.white, size: 18),
+          icon: const Icon(
+            Icons.logout_rounded,
+            color: Colors.white,
+            size: 18,
+          ),
           label: Text(
             'profile_logout'.tr(),
             style: const TextStyle(
@@ -269,13 +236,198 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _buildProfileHeader({
+    required BuildContext context,
+    required String name,
+    required String phone,
+    required String email,
+    required String address,
+    required String photo,
+    required double rating,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                offset: Offset(0, 2),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: photo.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: photo,
+                        imageBuilder: (context, imageProvider) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color:
+                                    AppColors.primaryBrand.withOpacity(0.20),
+                                width: 2,
+                              ),
+                              image: DecorationImage(
+                                image: imageProvider,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          );
+                        },
+                        placeholder: (context, url) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppColors.primaryBrand,
+                              ),
+                            ),
+                          );
+                        },
+                        errorWidget: (context, url, error) {
+                          return _buildAvatarPlaceholder();
+                        },
+                      )
+                    : _buildAvatarPlaceholder(),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.phone_outlined,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Directionality(
+                            textDirection: TextDirection.ltr,
+                            child: Text(
+                              phone,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (email.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.email_outlined,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (address.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              address,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 9),
+                    RatingStars(ratting: rating.toStringAsFixed(1)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAvatarPlaceholder() {
     return CircleAvatar(
       backgroundColor: Colors.grey.shade200,
       child: Icon(
-        Icons.person,
+        Icons.person_rounded,
         size: 42,
         color: Colors.grey.shade500,
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(
+    String title, {
+    Color? color,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: color ?? AppColors.textSecondary,
+        ),
       ),
     );
   }
@@ -298,11 +450,13 @@ class _ProfilePageState extends State<ProfilePage> {
             centerTitle: true,
             backgroundColor: AppColors.cardBackground,
             elevation: 1,
-            iconTheme: const IconThemeData(color: AppColors.textPrimary),
+            iconTheme: const IconThemeData(
+              color: AppColors.textPrimary,
+            ),
           ),
           body: Center(
             child: Text(
-              "$title ${'coming_soon'.tr()}",
+              'coming_soon'.tr(),
               style: const TextStyle(
                 fontSize: 16,
                 color: AppColors.textSecondary,
@@ -314,16 +468,43 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _showAboutDialog(BuildContext context) {
+    showAboutDialog(
+      context: context,
+      applicationName: 'app_name'.tr(),
+      applicationVersion: '1.0.0',
+      applicationIcon: const Icon(
+        Icons.local_taxi_rounded,
+        color: AppColors.primaryBrand,
+        size: 42,
+      ),
+      children: [
+        const SizedBox(height: 12),
+        Text(
+          'profile_about_description'.tr(),
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            height: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildProfileMenuOption(
     BuildContext context, {
     required IconData icon,
     required String title,
+    required String subtitle,
     required VoidCallback onTap,
+    Color? iconColor,
   }) {
     final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final itemIconColor = iconColor ?? AppColors.primaryBrand;
 
     return Container(
       width: MediaQuery.of(context).size.width * 0.92,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         color: AppColors.cardBackground,
@@ -331,35 +512,59 @@ class _ProfilePageState extends State<ProfilePage> {
           BoxShadow(
             color: Colors.black12,
             offset: Offset(0, 1),
-            blurRadius: 4.0,
+            blurRadius: 4,
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 13,
+            ),
             child: Row(
               children: [
-                Icon(icon, color: AppColors.primaryBrand, size: 24),
+                Icon(
+                  icon,
+                  color: itemIconColor,
+                  size: 24,
+                ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Icon(
                   isRtl ? Icons.chevron_left : Icons.chevron_right,
-                  size: 20,
-                  color: AppColors.textSecondary.withOpacity(0.5),
+                  size: 21,
+                  color: AppColors.textSecondary.withOpacity(0.55),
                 ),
               ],
             ),
@@ -370,7 +575,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
-// ⚙️ صفحه تنظیمات
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
@@ -392,31 +596,26 @@ class SettingsPage extends StatelessWidget {
         centerTitle: true,
         backgroundColor: AppColors.cardBackground,
         elevation: 1,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(
+          color: AppColors.textPrimary,
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // 🌐 آپشن تنظیم زبان
-            _buildSettingsTile(
+        padding: const EdgeInsets.all(16),
+        child: _buildSettingsTile(
+          context,
+          icon: Icons.language_rounded,
+          title: 'settings_language'.tr(),
+          subtitle: _getCurrentLanguageName(context),
+          onTap: () {
+            Navigator.push(
               context,
-              icon: Icons.language,
-              title: 'settings_language'.tr(),
-              subtitle: _getCurrentLanguageName(context),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const LanguagePage(),
-                  ),
-                );
-              },
-              isRtl: isRtl,
-            ),
-
-            // 📌 برای آپشن‌های بعدی (مثل حالت شب و ...) می‌توانید در اینجا لیست اضافه کنید.
-          ],
+              MaterialPageRoute(
+                builder: (context) => const LanguagePage(),
+              ),
+            );
+          },
+          isRtl: isRtl,
         ),
       ),
     );
@@ -425,12 +624,12 @@ class SettingsPage extends StatelessWidget {
   String _getCurrentLanguageName(BuildContext context) {
     switch (context.locale.languageCode) {
       case 'fa':
-        return 'دری';
+        return 'language_dari'.tr();
       case 'ps':
-        return 'پښتو';
+        return 'language_pashto'.tr();
       case 'en':
       default:
-        return 'English';
+        return 'language_english'.tr();
     }
   }
 
@@ -450,7 +649,7 @@ class SettingsPage extends StatelessWidget {
           BoxShadow(
             color: Colors.black12,
             offset: Offset(0, 1),
-            blurRadius: 4.0,
+            blurRadius: 4,
           ),
         ],
       ),
@@ -481,7 +680,6 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-// 🌐 صفحه اختصاصی انتخاب زبان
 class LanguagePage extends StatefulWidget {
   const LanguagePage({super.key});
 
@@ -514,10 +712,12 @@ class _LanguagePageState extends State<LanguagePage> {
         centerTitle: true,
         backgroundColor: AppColors.cardBackground,
         elevation: 1,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(
+          color: AppColors.textPrimary,
+        ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -530,42 +730,35 @@ class _LanguagePageState extends State<LanguagePage> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // گزینه زبان دری / فارسی
             _buildLanguageOption(
-              title: "دری",
+              title: 'language_dari'.tr(),
               locale: const Locale('fa'),
             ),
-
-            // گزینه زبان پشتو
             _buildLanguageOption(
-              title: "پښتو",
+              title: 'language_pashto'.tr(),
               locale: const Locale('ps'),
             ),
-
-            // گزینه زبان انگلیسی
             _buildLanguageOption(
-              title: "English",
+              title: 'language_english'.tr(),
               locale: const Locale('en'),
             ),
-
             const Spacer(),
-
-            // دکمه تایید تغییر زبان
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () async {
                   await context.setLocale(_selectedLocale);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('lang_change_success'.tr()),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                    Navigator.pop(context);
-                  }
+
+                  if (!mounted) return;
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('lang_change_success'.tr()),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+
+                  Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryBrand,
@@ -591,8 +784,12 @@ class _LanguagePageState extends State<LanguagePage> {
     );
   }
 
-  Widget _buildLanguageOption({required String title, required Locale locale}) {
-    bool isSelected = _selectedLocale.languageCode == locale.languageCode;
+  Widget _buildLanguageOption({
+    required String title,
+    required Locale locale,
+  }) {
+    final bool isSelected =
+        _selectedLocale.languageCode == locale.languageCode;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -613,8 +810,14 @@ class _LanguagePageState extends State<LanguagePage> {
           ),
         ),
         trailing: isSelected
-            ? const Icon(Icons.check_circle, color: AppColors.primaryBrand)
-            : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
+            ? const Icon(
+                Icons.check_circle,
+                color: AppColors.primaryBrand,
+              )
+            : const Icon(
+                Icons.radio_button_unchecked,
+                color: Colors.grey,
+              ),
         onTap: () {
           setState(() {
             _selectedLocale = locale;
