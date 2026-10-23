@@ -297,5 +297,17 @@
   "estimated_distance_label": "مسافت",
   "estimated_fare_label": "کرایه تخمینی",
   "origin_label": "مبدأ",
-  "destination_label": "مقصد"
+  "destination_label": "مقصد",
+  "trip_status_accepted": "سفر پذیرفته شد",
+  "trip_status_arrived": "به مبدأ رسیدید",
+  "trip_status_on_trip": "سفر در جریان است",
+  "active_trip_title": "سفر فعال",
+  "active_trip_subtitle": "جزئیات سفر و مسیریابی شما",
+  "phone_not_available": "شماره تماس موجود نیست",
+  "call_passenger": "تماس با مسافر",
+  "trip_time_label": "زمان",
+  "trip_distance_label": "مسافت",
+  "trip_fare_label": "کرایه",
+  "navigation_coordinates_not_found": "مختصات مبدأ یا مقصد این سفر پیدا نشد.",
+  "time_minute": "دقیقه"
 }
