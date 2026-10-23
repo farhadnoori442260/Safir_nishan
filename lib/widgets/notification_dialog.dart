@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:safir_drivers/constants/trip_status.dart';
+import 'package:safir_drivers/utils/trip_extras.dart';
 import '../global/global.dart';
 import '../methods/common_method.dart';
 import '../models/trip_details.dart';
@@ -16,11 +17,14 @@ class NotificationDialog extends StatefulWidget {
   final String? fareAmount;
   final String? bidAmount;
 
+  final Map<String, dynamic>? rideData;
+
   const NotificationDialog({
     super.key,
     this.tripDetailsInfo,
     this.fareAmount,
     this.bidAmount,
+    this.rideData,
   });
 
   @override
@@ -34,7 +38,6 @@ class _NotificationDialogState extends State<NotificationDialog> {
   Timer? _timer;
   bool _isAcceptingTrip = false;
 
-  // ✅ کانتکست دیالوگ لودینگ را نگه می‌داریم تا دقیقاً همان بسته شود
   BuildContext? _loadingDialogContext;
 
   static const Duration _acceptTimeout = Duration(seconds: 15);
@@ -70,7 +73,6 @@ class _NotificationDialogState extends State<NotificationDialog> {
           return;
         }
 
-        // وقتی راننده در حال قبول کردن است، تایمر نباید دیالوگ را ببندد
         if (_isAcceptingTrip || tripRequestStatus == TripStatus.accepted) {
           timer.cancel();
           driverTripRequestTimeout = 40;
@@ -102,16 +104,17 @@ class _NotificationDialogState extends State<NotificationDialog> {
     }
   }
 
-  // ✅ بدون await: showDialog تا بسته‌شدن دیالوگ تمام نمی‌شود،
-  // پس نباید جلوی ادامهٔ کد را بگیرد.
   void _showLoadingDialog() {
-    if (!mounted || _loadingDialogContext != null) return;
+    if (!mounted || _loadingDialogContext != null) {
+      return;
+    }
 
     showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         _loadingDialogContext = dialogContext;
+
         return PopScope(
           canPop: false,
           child: LoadingDialog(
@@ -124,10 +127,12 @@ class _NotificationDialogState extends State<NotificationDialog> {
     });
   }
 
-  // ✅ دقیقاً دیالوگ لودینگ را می‌بندد (نه دیالوگ دیگری را)
   void _closeLoadingDialog() {
     final BuildContext? loadingContext = _loadingDialogContext;
-    if (loadingContext == null) return;
+
+    if (loadingContext == null) {
+      return;
+    }
 
     _loadingDialogContext = null;
 
@@ -153,13 +158,15 @@ class _NotificationDialogState extends State<NotificationDialog> {
   Future<void> checkAvailabilityOfTripRequest(
     BuildContext dialogContext,
   ) async {
-    if (_isAcceptingTrip) return;
+    if (_isAcceptingTrip) {
+      return;
+    }
 
     final User? currentUser = FirebaseAuth.instance.currentUser;
 
     if (currentUser == null) {
       cMethods.displaySnackBar(
-        'لطفاً ابتدا وارد حساب راننده شوید.',
+        'notification_driver_login_required'.tr(),
         dialogContext,
       );
       return;
@@ -169,7 +176,7 @@ class _NotificationDialogState extends State<NotificationDialog> {
 
     if (tripId.isEmpty) {
       cMethods.displaySnackBar(
-        'شناسه سفر پیدا نشد.',
+        'notification_trip_id_not_found'.tr(),
         dialogContext,
       );
       return;
@@ -183,7 +190,7 @@ class _NotificationDialogState extends State<NotificationDialog> {
     }
 
     _stopAudio();
-    _showLoadingDialog(); // ✅ بدون await
+    _showLoadingDialog();
 
     bool accepted = false;
     String? userMessage;
@@ -194,45 +201,45 @@ class _NotificationDialogState extends State<NotificationDialog> {
       final DocumentReference<Map<String, dynamic>> tripRef =
           firestore.collection('rides').doc(tripId);
 
-      // ✅ با timeout تا در اینترنت ضعیف / VPN برای همیشه گیر نکند
-      accepted = await firestore.runTransaction<bool>(
-        (Transaction transaction) async {
-          final DocumentSnapshot<Map<String, dynamic>> snapshot =
-              await transaction.get(tripRef);
+      accepted = await firestore
+          .runTransaction<bool>(
+            (Transaction transaction) async {
+              final DocumentSnapshot<Map<String, dynamic>> snapshot =
+                  await transaction.get(tripRef);
 
-          if (!snapshot.exists || snapshot.data() == null) {
-            return false;
-          }
+              if (!snapshot.exists || snapshot.data() == null) {
+                return false;
+              }
 
-          final Map<String, dynamic> data = snapshot.data()!;
+              final Map<String, dynamic> data = snapshot.data()!;
 
-          final String currentStatus =
-              data['status']?.toString().trim().toLowerCase() ?? '';
+              final String currentStatus =
+                  data['status']?.toString().trim().toLowerCase() ?? '';
 
-          if (currentStatus != TripStatus.searching) {
-            return false;
-          }
+              if (currentStatus != TripStatus.searching) {
+                return false;
+              }
 
-          transaction.update(
-            tripRef,
-            <String, dynamic>{
-              'status': TripStatus.accepted,
-              'driver_id': currentUser.uid,
-              'accepted_at': FieldValue.serverTimestamp(),
-              'updated_at': FieldValue.serverTimestamp(),
+              transaction.update(
+                tripRef,
+                <String, dynamic>{
+                  'status': TripStatus.accepted,
+                  'driver_id': currentUser.uid,
+                  'accepted_at': FieldValue.serverTimestamp(),
+                  'updated_at': FieldValue.serverTimestamp(),
+                },
+              );
+
+              return true;
             },
-          );
-
-          return true;
-        },
-      ).timeout(_acceptTimeout);
+          )
+          .timeout(_acceptTimeout);
 
       if (!accepted) {
-        userMessage = 'این سفر قبلاً توسط راننده دیگری گرفته شده است.';
+        userMessage = 'notification_trip_already_taken'.tr();
         return;
       }
 
-      // ✅ شکست این مرحله نباید باعث شود سفرِ قبول‌شده «خطا» نشان داده شود
       try {
         await firestore
             .collection('drivers')
@@ -257,21 +264,25 @@ class _NotificationDialogState extends State<NotificationDialog> {
       }
     } on TimeoutException catch (e) {
       debugPrint('Accept trip timeout: $e');
+
       accepted = false;
-      userMessage = 'اتصال اینترنت ضعیف است. دوباره تلاش کنید.';
+      userMessage = 'notification_weak_internet_retry'.tr();
     } catch (e, stackTrace) {
       debugPrint('Error accepting trip: $e');
       debugPrintStack(stackTrace: stackTrace);
+
       accepted = false;
-      userMessage = 'خطایی رخ داد. دوباره تلاش کنید.';
+      userMessage = 'notification_trip_accept_error'.tr();
     } finally {
-      // ✅ در هر حالتی لودینگ بسته می‌شود
       _closeLoadingDialog();
 
       if (mounted) {
         setState(() {
           _isAcceptingTrip = false;
-          if (!accepted) tripRequestStatus = '';
+
+          if (!accepted) {
+            tripRequestStatus = '';
+          }
         });
       }
 
@@ -279,13 +290,14 @@ class _NotificationDialogState extends State<NotificationDialog> {
         cMethods.displaySnackBar(userMessage, dialogContext);
       }
 
-      // در همهٔ حالت‌ها (موفق یا ناموفق) دیالوگ اصلی بسته می‌شود
       _closeMainDialog(dialogContext);
     }
   }
 
   void _declineTrip() {
-    if (_isAcceptingTrip) return;
+    if (_isAcceptingTrip) {
+      return;
+    }
 
     _stopAudio();
 
@@ -299,15 +311,13 @@ class _NotificationDialogState extends State<NotificationDialog> {
     final String fareAmount = widget.fareAmount ?? '۰';
     final String currencyUnit = 'currency_unit'.tr();
 
-    final String bidAmount =
-        widget.bidAmount == null ||
-                widget.bidAmount == 'null' ||
-                widget.bidAmount!.trim().isEmpty
-            ? 'no_bid_offer'.tr()
-            : '${widget.bidAmount} $currencyUnit';
+    final String bidAmount = widget.bidAmount == null ||
+            widget.bidAmount == 'null' ||
+            widget.bidAmount!.trim().isEmpty
+        ? 'no_bid_offer'.tr()
+        : '${widget.bidAmount} $currencyUnit';
 
     return PopScope(
-      // جلوگیری از بستن با دکمهٔ برگشت هنگام قبول سفر
       canPop: !_isAcceptingTrip,
       child: Dialog(
         shape: RoundedRectangleBorder(
@@ -315,59 +325,187 @@ class _NotificationDialogState extends State<NotificationDialog> {
         ),
         backgroundColor: Colors.white,
         elevation: 10,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 22,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: const BoxDecoration(
-                  color: cardBgLight,
-                  shape: BoxShape.circle,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 22,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: const BoxDecoration(
+                    color: cardBgLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.local_taxi_rounded,
+                    color: brandPrimary,
+                    size: 38,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.local_taxi_rounded,
-                  color: brandPrimary,
-                  size: 38,
+                const SizedBox(height: 12),
+                Text(
+                  'title_new_trip_request'.tr(),
+                  style: const TextStyle(
+                    fontFamily: 'IranYekan',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'title_new_trip_request'.tr(),
-                style: const TextStyle(
-                  fontFamily: 'IranYekan',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Colors.black87,
+                const SizedBox(height: 16),
+                Divider(
+                  height: 1,
+                  color: Colors.grey.shade200,
                 ),
-              ),
-              const SizedBox(height: 16),
-              Divider(
-                height: 1,
-                color: Colors.grey.shade200,
-              ),
-              const SizedBox(height: 16),
-              _buildLocations(),
-              const SizedBox(height: 16),
-              Divider(
-                height: 1,
-                color: Colors.grey.shade200,
-              ),
-              const SizedBox(height: 14),
-              _buildFareCard(
-                fareAmount: fareAmount,
-                bidAmount: bidAmount,
-                currencyUnit: currencyUnit,
-              ),
-              const SizedBox(height: 20),
-              _buildActionButtons(),
-            ],
+                const SizedBox(height: 16),
+                _buildLocations(),
+                const SizedBox(height: 16),
+                Divider(
+                  height: 1,
+                  color: Colors.grey.shade200,
+                ),
+                const SizedBox(height: 14),
+                _buildExtras(),
+                _buildFareCard(
+                  fareAmount: fareAmount,
+                  bidAmount: bidAmount,
+                  currencyUnit: currencyUnit,
+                ),
+                const SizedBox(height: 20),
+                _buildActionButtons(),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildExtras() {
+    final TripExtras extras = TripExtras.fromRide(widget.rideData);
+
+    if (!extras.hasContent) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F9F8),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(
+                  extras.serviceIcon,
+                  size: 19,
+                  color: brandPrimary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  extras.serviceLabel,
+                  style: const TextStyle(
+                    fontFamily: 'IranYekan',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+            if (extras.items.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: extras.items
+                    .map(
+                      (TripExtraItem item) => _buildExtraChip(item),
+                    )
+                    .toList(),
+              ),
+            ],
+            for (final TripParty party in extras.parties)
+              if (party.name.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 10),
+                Row(
+                  children: <Widget>[
+                    Icon(
+                      Icons.person_outline_rounded,
+                      size: 17,
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'notification_party_name'.tr(
+                          namedArgs: <String, String>{
+                            'role': party.role,
+                            'name': party.name,
+                          },
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'IranYekan',
+                          fontSize: 12.5,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExtraChip(TripExtraItem item) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 9,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(
+            item.icon,
+            size: 14,
+            color: brandPrimary,
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              item.text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'IranYekan',
+                fontSize: 11.5,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
