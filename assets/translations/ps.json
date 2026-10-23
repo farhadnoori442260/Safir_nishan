@@ -332,5 +332,9 @@
   "profile_about_description": "د سفیر چلوونکي د سفرونو او د موټرچلوونکو د فعالیت د مدیریت برنامه ده.",
   "language_dari": "دري",
   "language_pashto": "پښتو",
-  "language_english": "انګلیسي"
+  "language_english": "انګلیسي",
+  "err_account_not_found": "کارن حساب ونه موندل شو.",
+  "err_recent_login_required": "د حساب د حذف لپاره، یو ځل ووځئ او بیا حساب ته ننوځئ.",
+  "err_delete_account": "د حساب حذف ترسره نه شو. مهرباني وکړئ بیا هڅه وکړئ.",
+  "account_delete_success": "ستاسو حساب په بریالیتوب سره حذف شو."
 }
