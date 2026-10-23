@@ -1,10 +1,12 @@
 import 'dart:ui' as ui;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import 'package:safir_drivers/constants/trip_status.dart';
 import 'package:safir_drivers/pages/chat_page.dart';
+import 'package:safir_drivers/utils/trip_extras.dart';
 
 class ActiveTripSheet extends StatelessWidget {
   final String tripId;
@@ -46,11 +48,12 @@ class ActiveTripSheet extends StatelessWidget {
       return value.toDouble().toStringAsFixed(decimals);
     }
 
-    final raw = value.toString().trim();
+    final String raw = value.toString().trim();
+
     if (raw.isEmpty) return '---';
 
-    final cleaned = raw.replaceAll(',', '');
-    final number = double.tryParse(cleaned);
+    final String cleaned = raw.replaceAll(',', '');
+    final double? number = double.tryParse(cleaned);
 
     return number == null ? raw : number.toStringAsFixed(decimals);
   }
@@ -73,18 +76,18 @@ class ActiveTripSheet extends StatelessWidget {
 
   String _getStatusText() {
     if (status == TripStatus.accepted) {
-  return 'trip_status_accepted'.tr();
-}
+      return 'active_trip_status_accepted'.tr();
+    }
 
-if (status == TripStatus.arrived) {
-  return 'trip_status_arrived'.tr();
-}
+    if (status == TripStatus.arrived) {
+      return 'active_trip_status_arrived'.tr();
+    }
 
-if (status == TripStatus.onTrip) {
-  return 'trip_status_on_trip'.tr();
-}
+    if (status == TripStatus.onTrip) {
+      return 'active_trip_status_on_trip'.tr();
+    }
 
-return 'active_trip_title'.tr();
+    return 'active_trip_status_active'.tr();
   }
 
   IconData _getStatusIcon() {
@@ -115,31 +118,31 @@ return 'active_trip_title'.tr();
 
   @override
   Widget build(BuildContext context) {
-    final passengerName = tripData['passenger_name']?.toString() ??
+    final String passengerName = tripData['passenger_name']?.toString() ??
         tripData['userName']?.toString() ??
         tripData['full_name']?.toString() ??
         'passenger'.tr();
 
-    final passengerPhone = tripData['passenger_phone']?.toString() ??
+    final String passengerPhone = tripData['passenger_phone']?.toString() ??
         tripData['userPhone']?.toString() ??
         tripData['phone']?.toString() ??
         '';
 
-    final passengerRating =
+    final String passengerRating =
         '${tripData['userRating'] ?? tripData['rating'] ?? '4.8'}';
 
-    final originAddress = tripData['origin_address']?.toString() ??
+    final String originAddress = tripData['origin_address']?.toString() ??
         tripData['originAddress']?.toString() ??
         tripData['pickup_address']?.toString() ??
         '-';
 
-    final destinationAddress =
+    final String destinationAddress =
         tripData['destination_address']?.toString() ??
             tripData['destinationAddress']?.toString() ??
             tripData['dropoff_address']?.toString() ??
             '-';
 
-    final duration = _formatNumber(
+    final String duration = _formatNumber(
       tripData['trip_duration'] ??
           tripData['duration'] ??
           tripData['estimatedDuration'] ??
@@ -147,14 +150,14 @@ return 'active_trip_title'.tr();
       decimals: 0,
     );
 
-    final distance = _formatNumber(
+    final String distance = _formatNumber(
       tripData['distance'] ??
           tripData['estimatedDistance'] ??
           tripData['distanceKm'],
       decimals: 1,
     );
 
-    final price = _formatNumber(
+    final String price = _formatNumber(
       tripData['total_fare'] ??
           tripData['fare_amount'] ??
           tripData['fareAmount'] ??
@@ -163,13 +166,18 @@ return 'active_trip_title'.tr();
       decimals: 0,
     );
 
+    final TripExtras extras = TripExtras.fromRide(tripData);
+
     return DraggableScrollableSheet(
       initialChildSize: 0.64,
       minChildSize: 0.25,
       maxChildSize: 0.92,
       snap: true,
-      snapSizes: const [0.25, 0.64, 0.92],
-      builder: (BuildContext context, ScrollController scrollController) {
+      snapSizes: const <double>[0.25, 0.64, 0.92],
+      builder: (
+        BuildContext context,
+        ScrollController scrollController,
+      ) {
         return Container(
           decoration: const BoxDecoration(
             color: _surface,
@@ -184,7 +192,7 @@ return 'active_trip_title'.tr();
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: [
+                children: <Widget>[
                   Container(
                     width: 42,
                     height: 5,
@@ -207,6 +215,10 @@ return 'active_trip_title'.tr();
                     destinationAddress: destinationAddress,
                   ),
                   const SizedBox(height: 12),
+                  if (extras.hasContent) ...<Widget>[
+                    _buildExtrasCard(extras),
+                    const SizedBox(height: 12),
+                  ],
                   _buildTripInformation(
                     duration: duration,
                     distance: distance,
@@ -239,12 +251,12 @@ return 'active_trip_title'.tr();
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [_primary, _primaryDark],
+          colors: <Color>[_primary, _primaryDark],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        boxShadow: <BoxShadow>[
           BoxShadow(
             color: _primary.withOpacity(0.22),
             blurRadius: 16,
@@ -253,7 +265,7 @@ return 'active_trip_title'.tr();
         ],
       ),
       child: Row(
-        children: [
+        children: <Widget>[
           Container(
             height: 40,
             width: 40,
@@ -271,7 +283,7 @@ return 'active_trip_title'.tr();
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: <Widget>[
                 Text(
                   _getStatusText(),
                   style: const TextStyle(
@@ -282,8 +294,8 @@ return 'active_trip_title'.tr();
                 ),
                 const SizedBox(height: 2),
                 Text(
-                 'active_trip_subtitle'.tr(),
-                  style: TextStyle(
+                  'active_trip_header_subtitle'.tr(),
+                  style: const TextStyle(
                     color: Color(0xFFD1FAE5),
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -309,7 +321,7 @@ return 'active_trip_title'.tr();
   }) {
     return _cardContainer(
       child: Row(
-        children: [
+        children: <Widget>[
           Container(
             height: 50,
             width: 50,
@@ -327,7 +339,7 @@ return 'active_trip_title'.tr();
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: <Widget>[
                 Text(
                   passengerName,
                   maxLines: 1,
@@ -340,7 +352,7 @@ return 'active_trip_title'.tr();
                 ),
                 const SizedBox(height: 5),
                 Row(
-                  children: [
+                  children: <Widget>[
                     const Icon(
                       Icons.star_rounded,
                       color: Color(0xFFF59E0B),
@@ -359,7 +371,7 @@ return 'active_trip_title'.tr();
                     Expanded(
                       child: Text(
                         passengerPhone.isEmpty
-                            ? 'phone_not_available'.tr()
+                            ? 'active_trip_phone_unavailable'.tr()
                             : passengerPhone,
                         textDirection: ui.TextDirection.ltr,
                         maxLines: 1,
@@ -376,35 +388,44 @@ return 'active_trip_title'.tr();
             ),
           ),
           const SizedBox(width: 8),
-          Semantics(
-            label: 'call_passenger'.tr(),
-            button: true,
-            child: Material(
-              color: passengerPhone.isEmpty
-                  ? const Color(0xFFF1F5F9)
-                  : const Color(0xFFDCFCE7),
-              borderRadius: BorderRadius.circular(14),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: passengerPhone.isEmpty
-                    ? null
-                    : () => onMakePhoneCall(passengerPhone),
-                child: Container(
-                  width: 46,
-                  height: 46,
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.phone_in_talk_rounded,
-                    color: passengerPhone.isEmpty
-                        ? const Color(0xFF94A3B8)
-                        : const Color(0xFF15803D),
-                    size: 22,
-                  ),
-                ),
-              ),
-            ),
+          _buildCallButton(
+            phone: passengerPhone,
+            label: 'active_trip_call_passenger'.tr(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCallButton({
+    required String phone,
+    required String label,
+    double size = 46,
+  }) {
+    final bool hasPhone = phone.trim().isNotEmpty;
+
+    return Semantics(
+      label: label,
+      button: true,
+      child: Material(
+        color: hasPhone ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: hasPhone ? () => onMakePhoneCall(phone.trim()) : null,
+          child: Container(
+            width: size,
+            height: size,
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.phone_in_talk_rounded,
+              color: hasPhone
+                  ? const Color(0xFF15803D)
+                  : const Color(0xFF94A3B8),
+              size: 22,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -416,9 +437,9 @@ return 'active_trip_title'.tr();
     return _cardContainer(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: <Widget>[
           Column(
-            children: [
+            children: <Widget>[
               Container(
                 width: 18,
                 height: 18,
@@ -456,7 +477,7 @@ return 'active_trip_title'.tr();
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              children: <Widget>[
                 _buildAddressText(
                   label: 'origin_label'.tr(),
                   value: originAddress,
@@ -483,7 +504,7 @@ return 'active_trip_title'.tr();
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+      children: <Widget>[
         Text(
           label,
           style: TextStyle(
@@ -508,20 +529,195 @@ return 'active_trip_title'.tr();
     );
   }
 
+  Widget _buildExtrasCard(TripExtras extras) {
+    return _cardContainer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                height: 36,
+                width: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCCFBF1),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  extras.serviceIcon,
+                  color: _primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  extras.serviceLabel,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                    color: _text,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (extras.items.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: extras.items
+                  .map(
+                    (TripExtraItem item) => _buildExtraChip(item),
+                  )
+                  .toList(),
+            ),
+          ],
+          for (final TripParty party in extras.parties) ...<Widget>[
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            const SizedBox(height: 12),
+            _buildPartyRow(party),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExtraChip(TripExtraItem item) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(item.icon, size: 15, color: _primary),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              item.text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _text,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPartyRow(TripParty party) {
+    final bool isSender = party.role == 'فرستنده';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                party.role,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: isSender ? const Color(0xFF15803D) : _danger,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                party.name.isEmpty
+                    ? 'active_trip_name_not_registered'.tr()
+                    : party.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: _text,
+                ),
+              ),
+              if (party.phone.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 2),
+                Text(
+                  party.phone,
+                  textDirection: ui.TextDirection.ltr,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: _mutedText,
+                  ),
+                ),
+              ],
+              if (party.detail.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 3),
+                Text(
+                  party.detail,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: _mutedText,
+                  ),
+                ),
+              ],
+              if (party.note.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 3),
+                Text(
+                  'active_trip_note_prefix'.tr(
+                    namedArgs: <String, String>{
+                      'note': party.note,
+                    },
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    color: _mutedText,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        _buildCallButton(
+          phone: party.phone,
+          label: 'active_trip_call_party'.tr(
+            namedArgs: <String, String>{
+              'role': party.role,
+            },
+          ),
+          size: 42,
+        ),
+      ],
+    );
+  }
+
   Widget _buildTripInformation({
     required String duration,
     required String distance,
     required String price,
   }) {
     return Row(
-      children: [
+      children: <Widget>[
         Expanded(
           child: _buildInfoCard(
             icon: Icons.schedule_rounded,
-            label: 'trip_time_label'.tr(),
+            label: 'active_trip_duration_label'.tr(),
             value: duration == '---'
-          ? '---'
-          : '$duration ${'time_minute'.tr()}',
+                ? '---'
+                : 'active_trip_minutes'.tr(
+                    namedArgs: <String, String>{
+                      'value': duration,
+                    },
+                  ),
             color: const Color(0xFFF97316),
             backgroundColor: const Color(0xFFFFEDD5),
           ),
@@ -530,10 +726,14 @@ return 'active_trip_title'.tr();
         Expanded(
           child: _buildInfoCard(
             icon: Icons.route_rounded,
-            label: 'trip_distance_label'.tr(),
+            label: 'active_trip_distance_label'.tr(),
             value: distance == '---'
-          ? '---'
-          : '$distance ${'km_unit'.tr()}',
+                ? '---'
+                : 'active_trip_kilometers'.tr(
+                    namedArgs: <String, String>{
+                      'value': distance,
+                    },
+                  ),
             color: _blue,
             backgroundColor: const Color(0xFFDBEAFE),
           ),
@@ -542,10 +742,14 @@ return 'active_trip_title'.tr();
         Expanded(
           child: _buildInfoCard(
             icon: Icons.account_balance_wallet_rounded,
-            label: 'trip_fare_label'.tr(),
+            label: 'active_trip_fare_label'.tr(),
             value: price == '---'
-          ? '---'
-          : '$price ${'currency_afg'.tr()}',
+                ? '---'
+                : 'active_trip_afghanis'.tr(
+                    namedArgs: <String, String>{
+                      'value': price,
+                    },
+                  ),
             color: _primary,
             backgroundColor: const Color(0xFFCCFBF1),
           ),
@@ -569,7 +773,7 @@ return 'active_trip_title'.tr();
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
-        children: [
+        children: <Widget>[
           Container(
             width: 29,
             height: 29,
@@ -615,7 +819,7 @@ return 'active_trip_title'.tr();
         border: Border.all(color: const Color(0xFFBFDBFE)),
       ),
       child: Row(
-        children: [
+        children: <Widget>[
           const Icon(
             Icons.info_outline_rounded,
             color: _blue,
@@ -684,11 +888,11 @@ return 'active_trip_title'.tr();
     required String passengerName,
     required String passengerPhone,
   }) {
-    final canCancel =
+    final bool canCancel =
         status != TripStatus.onTrip && status != TripStatus.completed;
 
     return Row(
-      children: [
+      children: <Widget>[
         Expanded(
           child: _buildOutlineActionButton(
             icon: Icons.chat_bubble_outline_rounded,
@@ -711,7 +915,7 @@ return 'active_trip_title'.tr();
                   },
           ),
         ),
-        if (canCancel) ...[
+        if (canCancel) ...<Widget>[
           const SizedBox(width: 10),
           Expanded(
             child: _buildOutlineActionButton(
@@ -762,7 +966,7 @@ return 'active_trip_title'.tr();
   }
 
   Widget _buildNavigationButton(BuildContext context) {
-    final isGoingToPickup =
+    final bool isGoingToPickup =
         status == TripStatus.accepted || status == TripStatus.arrived;
 
     return SizedBox(
@@ -778,8 +982,8 @@ return 'active_trip_title'.tr();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                      'navigation_coordinates_not_found'.tr(),
-                     ),
+                        'active_trip_location_not_found'.tr(),
+                      ),
                     ),
                   );
                   return;
@@ -825,7 +1029,7 @@ return 'active_trip_title'.tr();
         color: _card,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
+        boxShadow: <BoxShadow>[
           BoxShadow(
             color: const Color(0xFF0F172A).withOpacity(0.035),
             blurRadius: 14,
