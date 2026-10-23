@@ -297,5 +297,17 @@
   "estimated_distance_label": "Distance",
   "estimated_fare_label": "Est. Fare",
   "origin_label": "Origin",
-  "destination_label": "Destination"
+  "destination_label": "Destination",
+  "trip_status_accepted": "Trip accepted",
+  "trip_status_arrived": "You arrived at the pickup point",
+  "trip_status_on_trip": "Trip in progress",
+  "active_trip_title": "Active trip",
+  "active_trip_subtitle": "Your trip details and navigation",
+  "phone_not_available": "Phone number is not available",
+  "call_passenger": "Call passenger",
+  "trip_time_label": "Time",
+  "trip_distance_label": "Distance",
+  "trip_fare_label": "Fare",
+  "navigation_coordinates_not_found": "The pickup or destination coordinates for this trip were not found.",
+  "time_minute": "minutes"
 }
