@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:safir_drivers/pages/auth/register_screen.dart';
 import 'package:safir_drivers/pages/profileUpdation/driver_main_info.dart';
 import 'package:safir_drivers/pages/profileUpdation/driving_license_update_screen.dart';
-import 'package:safir_drivers/pages/profileUpdation/vehicleUpdation/vehicle_basic_info_screen.dart';
+import 'package:safir_drivers/pages/driverRegistration/vehicle_registration/vehicle_basic_info_screen.dart';
 import 'package:safir_drivers/pages/profileUpdation/vehicleUpdation/vehicle_registration_update_screen.dart';
 import 'package:safir_drivers/providers/authentication_provider.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
