@@ -298,5 +298,17 @@
   "estimated_distance_label": "فاصله",
   "estimated_fare_label": "تخمین شوې کرایه",
   "origin_label": "مبدأ",
-  "destination_label": "مقصد"
+  "destination_label": "مقصد",
+  "trip_status_accepted": "سفر ومنل شو",
+  "trip_status_arrived": "تاسو د سپرلۍ ځای ته ورسېدئ",
+  "trip_status_on_trip": "سفر روان دی",
+  "active_trip_title": "فعال سفر",
+  "active_trip_subtitle": "د سفر جزیات او لاره موندنه",
+  "phone_not_available": "د اړیکې شمېره نشته",
+  "call_passenger": "له مسافر سره اړیکه",
+  "trip_time_label": "وخت",
+  "trip_distance_label": "واټن",
+  "trip_fare_label": "کرایه",
+  "navigation_coordinates_not_found": "د دې سفر د مبدأ یا مقصد مختصات ونه موندل شول.",
+  "time_minute": "دقیقې"
 }
