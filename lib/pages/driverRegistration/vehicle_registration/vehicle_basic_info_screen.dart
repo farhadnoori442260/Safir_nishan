@@ -11,7 +11,7 @@ import 'package:safir_drivers/providers/authentication_provider.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
 
-import '../../widgets/rating_stars.dart';
+import 'package:safir_drivers/widgets/rating_stars.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
