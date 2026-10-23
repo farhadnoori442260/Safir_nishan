@@ -335,5 +335,14 @@
   "err_account_not_found": "Account not found.",
   "err_recent_login_required": "To delete your account, sign out and sign in again first.",
   "err_delete_account": "Could not delete the account. Please try again.",
-  "account_delete_success": "Your account has been deleted successfully."
+  "account_delete_success": "Your account has been deleted successfully.",
+  "profile_section_documents": "Documents",
+  "profile_menu_license": "Driving license",
+  "profile_menu_license_subtitle": "License photos and number",
+  "profile_menu_vehicle_registration": "Vehicle registration",
+  "profile_menu_vehicle_registration_subtitle": "Front and back registration photos",
+  "support_dialog_message": "Contact the Safir support team for help or to report a problem.",
+  "delete_account_confirmation": "Are you sure you want to permanently delete your account? This action cannot be undone.",
+  "privacy_policy_text": "Safir Drivers processes account information, location while active, vehicle details, and driver documents to provide transportation services. Information is used for registration, identity verification, trip operations, support, and legal requirements. Your information is not shared with unauthorized parties without a legal reason or operational need.",
+  "btn_delete": "Delete"
 }
