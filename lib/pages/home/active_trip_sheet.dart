@@ -73,18 +73,18 @@ class ActiveTripSheet extends StatelessWidget {
 
   String _getStatusText() {
     if (status == TripStatus.accepted) {
-      return 'سفر پذیرفته شد';
-    }
+  return 'trip_status_accepted'.tr();
+}
 
-    if (status == TripStatus.arrived) {
-      return 'به مبدأ رسیدید';
-    }
+if (status == TripStatus.arrived) {
+  return 'trip_status_arrived'.tr();
+}
 
-    if (status == TripStatus.onTrip) {
-      return 'سفر در جریان است';
-    }
+if (status == TripStatus.onTrip) {
+  return 'trip_status_on_trip'.tr();
+}
 
-    return 'سفر فعال';
+return 'active_trip_title'.tr();
   }
 
   IconData _getStatusIcon() {
@@ -281,8 +281,8 @@ class ActiveTripSheet extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
-                  'جزئیات سفر و مسیر‌یابی شما',
+                Text(
+                 'active_trip_subtitle'.tr(),
                   style: TextStyle(
                     color: Color(0xFFD1FAE5),
                     fontSize: 11,
@@ -359,7 +359,7 @@ class ActiveTripSheet extends StatelessWidget {
                     Expanded(
                       child: Text(
                         passengerPhone.isEmpty
-                            ? 'شماره تماس موجود نیست'
+                            ? 'phone_not_available'.tr()
                             : passengerPhone,
                         textDirection: ui.TextDirection.ltr,
                         maxLines: 1,
@@ -377,7 +377,7 @@ class ActiveTripSheet extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Semantics(
-            label: 'تماس با مسافر',
+            label: 'call_passenger'.tr(),
             button: true,
             child: Material(
               color: passengerPhone.isEmpty
@@ -458,13 +458,13 @@ class ActiveTripSheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildAddressText(
-                  label: 'مبدأ',
+                  label: 'origin_label'.tr(),
                   value: originAddress,
                   labelColor: const Color(0xFF15803D),
                 ),
                 const SizedBox(height: 16),
                 _buildAddressText(
-                  label: 'مقصد',
+                  label: 'destination_label'.tr(),
                   value: destinationAddress,
                   labelColor: _danger,
                 ),
@@ -518,7 +518,7 @@ class ActiveTripSheet extends StatelessWidget {
         Expanded(
           child: _buildInfoCard(
             icon: Icons.schedule_rounded,
-            label: 'زمان',
+            label: 'trip_time_label'.tr(),
             value: duration == '---'
           ? '---'
           : '$duration ${'time_minute'.tr()}',
