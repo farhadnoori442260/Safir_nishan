@@ -19,8 +19,8 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController phoneController = TextEditingController();
+  final CommonMethods commonMethods = CommonMethods();
 
-  // تنظیم کشور پیش‌فرض روی افغانستان برای اپلیکیشن سفیر
   Country selectedCountry = Country(
     phoneCode: '93',
     countryCode: 'AF',
@@ -40,364 +40,218 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  CommonMethods commonMethods = CommonMethods();
-
-  // 🌐 منوی انتخاب زبان
-  void _showLanguageSelector(BuildContext context) {
+  void _showLanguageSelector() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'select_language'.tr(),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
-              ),
-              const Divider(height: 25),
-              ListTile(
-                leading: const Text('🇦🇫', style: TextStyle(fontSize: 22)),
-                title: const Text('فارسی (دری)', style: TextStyle(fontSize: 16)),
-                onTap: () {
-                  context.setLocale(const Locale('fa'));
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Text('🇦🇫', style: TextStyle(fontSize: 22)),
-                title: const Text('پښتو', style: TextStyle(fontSize: 16)),
-                onTap: () {
-                  context.setLocale(const Locale('ps'));
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Text('🇬🇧', style: TextStyle(fontSize: 22)),
-                title: const Text('English', style: TextStyle(fontSize: 16)),
-                onTap: () {
-                  context.setLocale(const Locale('en'));
-                  Navigator.pop(context);
-                },
-              ),
-            ],
+                const SizedBox(height: 20),
+                Text(
+                  'select_language'.tr(),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildLanguageTile(
+                  title: 'فارسی (دری)',
+                  flag: '🇦🇫',
+                  locale: const Locale('fa'),
+                  sheetContext: sheetContext,
+                ),
+                _buildLanguageTile(
+                  title: 'پښتو',
+                  flag: '🇦🇫',
+                  locale: const Locale('ps'),
+                  sheetContext: sheetContext,
+                ),
+                _buildLanguageTile(
+                  title: 'English',
+                  flag: '🇬🇧',
+                  locale: const Locale('en'),
+                  sheetContext: sheetContext,
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthenticationProvider>(context);
-    return SafeArea(
-      child: Scaffold(
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 🌐 دکمه تغییر زبان بالای صفحه
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const SizedBox(),
-                    InkWell(
-                      onTap: () => _showLanguageSelector(context),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryBrand.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.primaryBrand),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.language, color: AppColors.primaryBrand, size: 18),
-                            const SizedBox(width: 6),
-                            Text(
-                              'language_button'.tr(),
-                              style: const TextStyle(
-                                color: AppColors.primaryBrand,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
+  Widget _buildLanguageTile({
+    required String title,
+    required String flag,
+    required Locale locale,
+    required BuildContext sheetContext,
+  }) {
+    final bool isSelected = context.locale.languageCode == locale.languageCode;
 
-                Text(
-                  'register_title'.tr(),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'register_subtitle'.tr(),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 20),
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? AppColors.primaryBrand.withOpacity(0.08)
+            : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isSelected
+              ? AppColors.primaryBrand
+              : Colors.grey.shade200,
+        ),
+      ),
+      child: ListTile(
+        onTap: () async {
+          await context.setLocale(locale);
 
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: TextFormField(
-                    controller: phoneController,
-                    maxLength: 9,
-                    textInputAction: TextInputAction.done,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                      color: AppColors.textPrimary,
-                    ),
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                    decoration: InputDecoration(
-                      counterText: '',
-                      hintText: '77 123 4567',
-                      hintStyle: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 18,
-                        letterSpacing: 1,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.primaryBrand, width: 2),
-                      ),
-                      prefixIcon: Container(
-                        padding: const EdgeInsets.fromLTRB(12.0, 14.0, 8.0, 14.0),
-                        child: InkWell(
-                          onTap: () {
-                            showCountryPicker(
-                              context: context,
-                              countryListTheme: const CountryListThemeData(
-                                borderRadius: BorderRadius.zero,
-                                bottomSheetHeight: 400,
-                              ),
-                              onSelect: (value) {
-                                setState(() {
-                                  selectedCountry = value;
-                                });
-                              },
-                            );
-                          },
-                          child: Text(
-                            ' +${selectedCountry.phoneCode}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ),
-                      suffixIcon: phoneController.text.length == 9
-                          ? Container(
-                              height: 20,
-                              width: 20,
-                              margin: const EdgeInsets.all(12.0),
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.primaryBrand,
-                              ),
-                              child: const Icon(
-                                Icons.done,
-                                size: 16,
-                                color: AppColors.buttonText,
-                              ),
-                            )
-                          : null,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 25),
-
-                SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: sendPhoneNumber,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryButton,
-                      foregroundColor: AppColors.buttonText,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: authProvider.isLoading
-                        ? const CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.buttonText,
-                          )
-                        : Text(
-                            'btn_continue'.tr(),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                ),
-
-                const SizedBox(height: 25),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(child: Divider(color: Colors.grey.shade300)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                      child: Text(
-                        'or_label'.tr(),
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    Expanded(child: Divider(color: Colors.grey.shade300)),
-                  ],
-                ),
-
-                const SizedBox(height: 25),
-
-                SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: authProvider.isLoading
-                        ? null
-                        : () async {
-                            if (!authProvider.isLoading) {
-                              await authProvider.signInWithGoogle(
-                                context,
-                                () async {
-                                  bool userExists = await authProvider.checkUserExistById();
-                                  bool userExistsInDatabase = await authProvider.checkUserExistByEmail(
-                                    authProvider.firebaseAuth.currentUser!.email!.toString(),
-                                  );
-
-                                  if (userExists) {
-                                    if (userExistsInDatabase) {
-                                      bool isBlocked = await authProvider.checkIfDriverIsBlocked();
-
-                                      if (isBlocked) {
-                                        if (!mounted) return;
-                                        Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => const BlockedScreen()),
-                                        );
-                                      } else {
-                                        await authProvider.getUserDataFromFirebaseDatabase();
-                                        bool isDriverComplete = await authProvider.checkDriverFieldsFilled();
-
-                                        if (isDriverComplete) {
-                                          navigate(isSingedIn: true);
-                                        } else {
-                                          navigate(isSingedIn: false);
-                                          if (!mounted) return;
-                                          commonMethods.displaySnackBar('complete_documents_error'.tr(), context);
-                                        }
-                                      }
-                                    } else {
-                                      navigate(isSingedIn: false);
-                                    }
-                                  } else {
-                                    navigate(isSingedIn: false);
-                                  }
-                                },
-                              );
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade200,
-                      foregroundColor: AppColors.textPrimary,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: authProvider.isGoogleSigInLoading
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryBrand),
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Image.asset(
-                                'assets/images/google_logo.png',
-                                height: 22,
-                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.login, color: AppColors.textPrimary),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'google_sign_in'.tr(),
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                Center(
-                  child: Text(
-                    'terms_and_conditions'.tr(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          if (!mounted) return;
+          Navigator.pop(sheetContext);
+        },
+        leading: Text(
+          flag,
+          style: const TextStyle(fontSize: 24),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: AppColors.textPrimary,
           ),
         ),
+        trailing: isSelected
+            ? const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.primaryBrand,
+              )
+            : const Icon(
+                Icons.radio_button_unchecked_rounded,
+                color: AppColors.textSecondary,
+              ),
       ),
     );
   }
 
-  void sendPhoneNumber() {
-    final authRepo = Provider.of<AuthenticationProvider>(context, listen: false);
-    String phoneNumber = phoneController.text.trim();
+  void _showCountryPicker() {
+    showCountryPicker(
+      context: context,
+      countryListTheme: CountryListThemeData(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
+        bottomSheetHeight: MediaQuery.of(context).size.height * 0.72,
+        inputDecoration: InputDecoration(
+          hintText: 'Search country',
+          prefixIcon: const Icon(Icons.search_rounded),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+      onSelect: (Country country) {
+        setState(() {
+          selectedCountry = country;
+        });
+      },
+    );
+  }
 
-    if (phoneNumber.isEmpty || phoneNumber.length != 9 || !RegExp(r'^[7][0-9]{8}$').hasMatch(phoneNumber)) {
+  Future<void> _handleGoogleSignIn() async {
+    final authProvider = context.read<AuthenticationProvider>();
+
+    await authProvider.signInWithGoogle(
+      context,
+      () async {
+        if (!mounted) return;
+
+        final user = authProvider.firebaseAuth.currentUser;
+
+        if (user == null) return;
+
+        try {
+          final bool userExists = await authProvider.checkUserExistById();
+
+          if (!mounted) return;
+
+          if (!userExists) {
+            navigate(isSignedIn: false);
+            return;
+          }
+
+          final bool isBlocked = await authProvider.checkIfDriverIsBlocked();
+
+          if (!mounted) return;
+
+          if (isBlocked) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const BlockedScreen(),
+              ),
+            );
+            return;
+          }
+
+          await authProvider.getUserDataFromFirebaseDatabase();
+
+          if (!mounted) return;
+
+          final bool isDriverComplete =
+              await authProvider.checkDriverFieldsFilled();
+
+          if (!mounted) return;
+
+          if (isDriverComplete) {
+            navigate(isSignedIn: true);
+          } else {
+            navigate(isSignedIn: false);
+
+            commonMethods.displaySnackBar(
+              'complete_documents_error'.tr(),
+              context,
+            );
+          }
+        } catch (_) {
+          if (!mounted) return;
+
+          commonMethods.displaySnackBar(
+            'error_occurred'.tr(),
+            context,
+          );
+        }
+      },
+    );
+  }
+
+  void sendPhoneNumber() {
+    final authProvider = context.read<AuthenticationProvider>();
+    final String phoneNumber = phoneController.text.trim();
+
+    if (phoneNumber.isEmpty ||
+        phoneNumber.length != 9 ||
+        !RegExp(r'^[7][0-9]{8}$').hasMatch(phoneNumber)) {
       commonMethods.displaySnackBar(
         'invalid_phone_error'.tr(),
         context,
@@ -405,24 +259,457 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    String fullPhoneNumber = '+${selectedCountry.phoneCode}$phoneNumber';
+    final String fullPhoneNumber = '+${selectedCountry.phoneCode}$phoneNumber';
 
-    authRepo.signInWithPhone(
+    authProvider.signInWithPhone(
       context: context,
       phoneNumber: fullPhoneNumber,
     );
   }
 
-  void navigate({required bool isSingedIn}) {
+  void navigate({required bool isSignedIn}) {
     if (!mounted) return;
-    if (isSingedIn) {
+
+    if (isSignedIn) {
       Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const Dashboard()),
-          (route) => false);
+        context,
+        MaterialPageRoute(
+          builder: (_) => const Dashboard(),
+        ),
+        (route) => false,
+      );
     } else {
-      Navigator.push(context,
-          MaterialPageRoute(builder: (context) => const DriverRegistration()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const DriverRegistration(),
+        ),
+      );
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthenticationProvider>();
+    final bool canContinue = phoneController.text.trim().length == 9;
+
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7FAF8),
+        body: Stack(
+          children: [
+            Positioned(
+              top: -90,
+              right: -75,
+              child: Container(
+                width: 230,
+                height: 230,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryBrand.withOpacity(0.10),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 120,
+              left: -120,
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primaryBrand.withOpacity(0.05),
+                ),
+              ),
+            ),
+            SingleChildScrollView(
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height - 40,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Align(
+                        alignment: AlignmentDirectional.topEnd,
+                        child: InkWell(
+                          onTap: _showLanguageSelector,
+                          borderRadius: BorderRadius.circular(24),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 13,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: AppColors.primaryBrand.withOpacity(0.25),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.language_rounded,
+                                  color: AppColors.primaryBrand,
+                                  size: 19,
+                                ),
+                                const SizedBox(width: 7),
+                                Text(
+                                  'language_button'.tr(),
+                                  style: const TextStyle(
+                                    color: AppColors.primaryBrand,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      Center(
+                        child: Container(
+                          width: 86,
+                          height: 86,
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryBrand,
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primaryBrand.withOpacity(0.24),
+                                blurRadius: 20,
+                                offset: const Offset(0, 9),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.local_taxi_rounded,
+                            color: Colors.white,
+                            size: 46,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 26),
+
+                      Text(
+                        'register_title'.tr(),
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 25,
+                          fontWeight: FontWeight.w800,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 9),
+                      Text(
+                        'register_subtitle'.tr(),
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                          height: 1.6,
+                        ),
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: Colors.grey.shade100,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.045),
+                              blurRadius: 18,
+                              offset: const Offset(0, 7),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'mobile_number'.tr(),
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+
+                            Directionality(
+                              textDirection: TextDirection.ltr,
+                              child: TextFormField(
+                                controller: phoneController,
+                                maxLength: 9,
+                                autofocus: true,
+                                textInputAction: TextInputAction.done,
+                                keyboardType: TextInputType.phone,
+                                onChanged: (_) => setState(() {}),
+                                onFieldSubmitted: (_) {
+                                  if (!authProvider.isLoading && canContinue) {
+                                    sendPhoneNumber();
+                                  }
+                                },
+                                style: const TextStyle(
+                                  fontSize: 19,
+                                  letterSpacing: 1.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: InputDecoration(
+                                  counterText: '',
+                                  hintText: '77 123 456',
+                                  hintStyle: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 17,
+                                    letterSpacing: 1.2,
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF9FBFA),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 17,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade200,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.primaryBrand,
+                                      width: 1.8,
+                                    ),
+                                  ),
+                                  prefixIconConstraints: const BoxConstraints(
+                                    minWidth: 116,
+                                  ),
+                                  prefixIcon: Padding(
+                                    padding: const EdgeInsets.only(left: 10),
+                                    child: InkWell(
+                                      onTap: _showCountryPicker,
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            selectedCountry.flagEmoji,
+                                            style: const TextStyle(fontSize: 20),
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            '+${selectedCountry.phoneCode}',
+                                            style: const TextStyle(
+                                              color: AppColors.textPrimary,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.keyboard_arrow_down_rounded,
+                                            color: AppColors.textSecondary,
+                                            size: 20,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  suffixIcon: canContinue
+                                      ? Container(
+                                          width: 24,
+                                          height: 24,
+                                          margin: const EdgeInsets.all(13),
+                                          decoration: const BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: AppColors.primaryBrand,
+                                          ),
+                                          child: const Icon(
+                                            Icons.check_rounded,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 18),
+
+                            SizedBox(
+                              width: double.infinity,
+                              height: 53,
+                              child: ElevatedButton(
+                                onPressed: authProvider.isLoading
+                                    ? null
+                                    : sendPhoneNumber,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryButton,
+                                  foregroundColor: AppColors.buttonText,
+                                  disabledBackgroundColor:
+                                      AppColors.primaryButton.withOpacity(0.55),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                ),
+                                child: authProvider.isLoading
+                                    ? const SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.4,
+                                          color: AppColors.buttonText,
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            'btn_continue'.tr(),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Icon(
+                                            Icons.arrow_forward_rounded,
+                                            size: 19,
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Divider(
+                              color: Colors.grey.shade300,
+                              height: 1,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 13),
+                            child: Text(
+                              'or_label'.tr(),
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Divider(
+                              color: Colors.grey.shade300,
+                              height: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 53,
+                        child: OutlinedButton(
+                          onPressed: authProvider.isGoogleSigInLoading ||
+                                  authProvider.isLoading
+                              ? null
+                              : _handleGoogleSignIn,
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppColors.textPrimary,
+                            side: BorderSide(
+                              color: Colors.grey.shade300,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          child: authProvider.isGoogleSigInLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.3,
+                                    color: AppColors.primaryBrand,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset(
+                                      'assets/images/google_logo.png',
+                                      height: 21,
+                                      errorBuilder: (_, __, ___) =>
+                                          const Icon(
+                                        Icons.g_mobiledata_rounded,
+                                        size: 27,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 11),
+                                    Text(
+                                      'google_sign_in'.tr(),
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+
+                      const Spacer(),
+
+                      Padding(
+                        padding: const EdgeInsets.only(top: 28),
+                        child: Center(
+                          child: Text(
+                            'terms_and_conditions'.tr(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              height: 1.6,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
