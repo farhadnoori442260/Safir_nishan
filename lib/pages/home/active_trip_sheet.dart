@@ -776,8 +776,10 @@ return 'active_trip_title'.tr();
 
                 if (targetPosition == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('مختصات مبدأ یا مقصد این سفر پیدا نشد.'),
+                    SnackBar(
+                      content: Text(
+                      'navigation_coordinates_not_found'.tr(),
+                     ),
                     ),
                   );
                   return;
