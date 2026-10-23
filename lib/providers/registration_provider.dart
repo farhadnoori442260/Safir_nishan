@@ -255,7 +255,7 @@ class RegistrationProvider extends ChangeNotifier {
   ) {
     if (!authProvider.isGoogleSignedIn) {
       phoneController.text =
-          authProvider.phoneNumber;
+          authProvider.phoneNumber ?? '';
     } else {
       emailController.text = authProvider
               .firebaseAuth.currentUser?.email ??
