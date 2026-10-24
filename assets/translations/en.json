@@ -424,5 +424,18 @@
   "time_period_morning": "Morning",
   "time_period_afternoon": "Afternoon",
   "time_period_evening": "Evening",
-  "time_period_night": "Night"
+  "time_period_night": "Night",
+  "tooltip_refresh": "Refresh",
+  "empty_trips_history_desc": "Your completed trips will be displayed in this section.",
+  "date_not_registered": "Date not registered",
+  "status_completed": "Completed",
+  "status_trip": "Trip",
+  "origin_not_registered": "Origin not registered",
+  "destination_not_registered": "Destination not registered",
+  "trip_number_format": "Trip #{}",
+  "origin_label_text": "Origin",
+  "destination_label_text": "Destination",
+  "fare_label_title": "Fare",
+  "distance_label_title": "Distance",
+  "duration_label_title": "Duration"
 }
