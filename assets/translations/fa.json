@@ -424,5 +424,18 @@
   "time_period_morning": "صبح",
   "time_period_afternoon": "بعد از ظهر",
   "time_period_evening": "عصر",
-  "time_period_night": "شب"
+  "time_period_night": "شب",
+  "tooltip_refresh": "تازه‌سازی",
+  "empty_trips_history_desc": "سفرهای تکمیل‌شده شما در این بخش نمایش داده می‌شود.",
+  "date_not_registered": "تاریخ ثبت نشده",
+  "status_completed": "تکمیل‌شده",
+  "status_trip": "سفر",
+  "origin_not_registered": "مبدأ ثبت نشده",
+  "destination_not_registered": "مقصد ثبت نشده",
+  "trip_number_format": "سفر شماره {}",
+  "origin_label_text": "مبدأ",
+  "destination_label_text": "مقصد",
+  "fare_label_title": "کرایه",
+  "distance_label_title": "مسافت",
+  "duration_label_title": "مدت"
 }
