@@ -425,5 +425,18 @@
   "time_period_morning": "سهار",
   "time_period_afternoon": "غرمه",
   "time_period_evening": "ماښام",
-  "time_period_night": "شپه"
+  "time_period_night": "شپه",
+  "tooltip_refresh": "تازه کول",
+  "empty_trips_history_desc": "ستاسو بشپړ شوي سفرونه پدې برخه کې ښودل کیږي.",
+  "date_not_registered": "نېټه نه ده ثبت شوې",
+  "status_completed": "بشپړ شو",
+  "status_trip": "سفر",
+  "origin_not_registered": "پيل ځای نه دی ثبت شوی",
+  "destination_not_registered": "پای ځای نه دی ثبت شوی",
+  "trip_number_format": "د سفر شمیره {}",
+  "origin_label_text": "پيل ځای",
+  "destination_label_text": "پای ځای",
+  "fare_label_title": "کرایه",
+  "distance_label_title": "واټن",
+  "duration_label_title": "موده"
 }
