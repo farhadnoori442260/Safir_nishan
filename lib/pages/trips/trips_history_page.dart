@@ -54,7 +54,7 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
         ),
         actions: [
           IconButton(
-            tooltip: 'تازه‌سازی',
+            tooltip: 'tooltip_refresh'.tr(),
             onPressed: tripProvider.isLoading ? null : _refresh,
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -138,13 +138,13 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
           ),
         ),
         const SizedBox(height: 8),
-        const Center(
+        Center(
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              'سفرهای تکمیل‌شده شما در این بخش نمایش داده می‌شود.',
+              'empty_trips_history_desc'.tr(),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
                 height: 1.5,
@@ -226,7 +226,7 @@ class _TripCard extends StatelessWidget {
     final DateTime? date = _dateValue();
 
     if (date == null) {
-      return 'تاریخ ثبت نشده';
+      return 'date_not_registered'.tr();
     }
 
     return DateFormat(
@@ -243,10 +243,10 @@ class _TripCard extends StatelessWidget {
         status == 'complete' ||
         status == 'ended' ||
         status == 'finished') {
-      return 'تکمیل‌شده';
+      return 'status_completed'.tr();
     }
 
-    return status.isEmpty ? 'سفر' : status;
+    return status.isEmpty ? 'status_trip'.tr() : status;
   }
 
   String _origin() {
@@ -299,11 +299,11 @@ class _TripCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String origin = _origin().isEmpty
-        ? 'مبدأ ثبت نشده'
+        ? 'origin_not_registered'.tr()
         : _origin();
 
     final String destination = _destination().isEmpty
-        ? 'مقصد ثبت نشده'
+        ? 'destination_not_registered'.tr()
         : _destination();
 
     return Container(
@@ -344,7 +344,7 @@ class _TripCard extends StatelessWidget {
                         CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'سفر شماره ${index + 1}',
+                        'trip_number_format'.tr(args: ['${index + 1}']),
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -397,14 +397,14 @@ class _TripCard extends StatelessWidget {
             _LocationRow(
               icon: Icons.radio_button_checked_rounded,
               iconColor: Colors.blue,
-              label: 'مبدأ',
+              label: 'origin_label_text'.tr(),
               value: origin,
               isLast: false,
             ),
             _LocationRow(
               icon: Icons.location_on_rounded,
               iconColor: Colors.redAccent,
-              label: 'مقصد',
+              label: 'destination_label_text'.tr(),
               value: destination,
               isLast: true,
             ),
@@ -419,23 +419,23 @@ class _TripCard extends StatelessWidget {
                 Expanded(
                   child: _InfoItem(
                     icon: Icons.payments_rounded,
-                    title: 'کرایه',
+                    title: 'fare_label_title'.tr(),
                     value:
-                        '${_formatAmount()} افغانی',
+                        '${_formatAmount()} ${_currencyAfgLabel()}',
                     valueColor: AppColors.primaryBrand,
                   ),
                 ),
                 Expanded(
                   child: _InfoItem(
                     icon: Icons.route_rounded,
-                    title: 'مسافت',
+                    title: 'distance_label_title'.tr(),
                     value: _distance(),
                   ),
                 ),
                 Expanded(
                   child: _InfoItem(
                     icon: Icons.access_time_rounded,
-                    title: 'مدت',
+                    title: 'duration_label_title'.tr(),
                     value: _duration(),
                   ),
                 ),
@@ -445,6 +445,14 @@ class _TripCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _currencyAfgLabel() {
+    try {
+      return 'currency_afg'.tr();
+    } catch (_) {
+      return 'افغانی';
+    }
   }
 }
 
