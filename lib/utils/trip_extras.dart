@@ -1,4 +1,7 @@
+import 'dart:ui' as ui;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 /// یک مورد کوتاه برای نمایش (آیکن + متن)
@@ -53,12 +56,12 @@ class TripExtras {
 
   factory TripExtras.fromRide(Map<String, dynamic>? data) {
     if (data == null) {
-      return const TripExtras._(
+      return TripExtras._(
         kind: TripServiceKind.taxi,
-        serviceLabel: 'تاکسی',
+        serviceLabel: 'service_taxi'.tr(),
         serviceIcon: Icons.local_taxi_rounded,
-        items: <TripExtraItem>[],
-        parties: <TripParty>[],
+        items: const <TripExtraItem>[],
+        parties: const <TripParty>[],
       );
     }
 
@@ -82,23 +85,23 @@ class TripExtras {
     IconData icon;
     switch (kind) {
       case TripServiceKind.cargo:
-        label = 'باربری';
+        label = 'service_cargo'.tr();
         icon = Icons.local_shipping_rounded;
         break;
       case TripServiceKind.intercity:
-        label = 'سفر بین‌شهری';
+        label = 'service_intercity'.tr();
         icon = Icons.route_rounded;
         break;
       case TripServiceKind.bike:
-        label = 'موتورسایکل';
+        label = 'service_bike'.tr();
         icon = Icons.two_wheeler_rounded;
         break;
       case TripServiceKind.vip:
-        label = 'تاکسی ویژه';
+        label = 'service_vip'.tr();
         icon = Icons.workspace_premium_rounded;
         break;
       case TripServiceKind.taxi:
-        label = 'تاکسی';
+        label = 'service_taxi'.tr();
         icon = Icons.local_taxi_rounded;
         break;
     }
@@ -112,7 +115,9 @@ class TripExtras {
       items.add(
         TripExtraItem(
           Icons.straighten_rounded,
-          'مسافت ${_fa(km.toStringAsFixed(1)).replaceAll('.', '٫')} کیلومتر',
+          'trip_distance_format'.tr(
+            args: <String>[_fa(km.toStringAsFixed(1)).replaceAll('.', '٫')],
+          ),
         ),
       );
     }
@@ -139,13 +144,16 @@ class TripExtras {
       final String payer = _str(data, <String>['cargo_payer']);
       if (payer.isNotEmpty) {
         items.add(
-          TripExtraItem(Icons.payments_outlined, 'پرداخت‌کننده: $payer'),
+          TripExtraItem(
+            Icons.payments_outlined,
+            'cargo_payer_format'.tr(args: <String>[payer]),
+          ),
         );
       }
 
       parties.add(
         TripParty(
-          role: 'فرستنده',
+          role: 'cargo_role_sender'.tr(),
           name: _str(data, <String>['cargo_sender_name']),
           phone: _str(data, <String>['cargo_sender_phone']),
           detail: _partyDetail(
@@ -158,7 +166,7 @@ class TripExtras {
 
       parties.add(
         TripParty(
-          role: 'گیرنده',
+          role: 'cargo_role_receiver'.tr(),
           name: _str(data, <String>['cargo_receiver_name']),
           phone: _str(data, <String>['cargo_receiver_phone']),
           detail: _partyDetail(
@@ -177,7 +185,9 @@ class TripExtras {
         items.add(
           TripExtraItem(
             Icons.calendar_month_rounded,
-            'تاریخ حرکت: ${formatJalaliDate(travelDate)}',
+            'intercity_date_format'.tr(
+              args: <String>[formatJalaliDate(travelDate)],
+            ),
           ),
         );
       }
@@ -187,7 +197,9 @@ class TripExtras {
         items.add(
           TripExtraItem(
             Icons.groups_rounded,
-            '${_fa(passengers)} مسافر',
+            'intercity_passengers_format'.tr(
+              args: <String>[_fa(passengers)],
+            ),
           ),
         );
       }
@@ -195,16 +207,20 @@ class TripExtras {
 
     // ───── گزینه‌های سفر ─────
     if (_bool(data['is_round_trip'])) {
-      items.add(const TripExtraItem(Icons.swap_horiz_rounded, 'رفت‌وبرگشت'));
+      items.add(
+        TripExtraItem(Icons.swap_horiz_rounded, 'option_round_trip'.tr()),
+      );
     }
 
     if (_bool(data['has_extra_luggage'])) {
-      items.add(const TripExtraItem(Icons.luggage_rounded, 'بار اضافه'));
+      items.add(
+        TripExtraItem(Icons.luggage_rounded, 'option_extra_luggage'.tr()),
+      );
     }
 
     if (_bool(data['prefer_silence'])) {
       items.add(
-        const TripExtraItem(Icons.volume_off_rounded, 'ترجیح سکوت'),
+        TripExtraItem(Icons.volume_off_rounded, 'option_prefer_silence'.tr()),
       );
     }
 
@@ -213,7 +229,9 @@ class TripExtras {
       items.add(
         TripExtraItem(
           Icons.timer_outlined,
-          'توقف ${_fa(stopMinutes)} دقیقه',
+          'option_stop_minutes_format'.tr(
+            args: <String>[_fa(stopMinutes)],
+          ),
         ),
       );
     }
@@ -224,7 +242,9 @@ class TripExtras {
       items.add(
         TripExtraItem(
           Icons.add_location_alt_outlined,
-          'مقصد دوم: $secondDestination',
+          'option_second_destination_format'.tr(
+            args: <String>[secondDestination],
+          ),
         ),
       );
     }
@@ -235,7 +255,9 @@ class TripExtras {
         items.add(
           TripExtraItem(
             Icons.event_available_rounded,
-            'زمان‌بندی‌شده: ${formatJalaliDateTime(scheduledAt)}',
+            'option_scheduled_format'.tr(
+              args: <String>[formatJalaliDateTime(scheduledAt)],
+            ),
           ),
         );
       }
@@ -256,16 +278,20 @@ class TripExtras {
 
   static String _cargoVehicleLabel(String id) {
     final String v = id.toLowerCase();
-    if (v.contains('zaranj')) return 'زرنج';
-    if (v.contains('suzuki')) return 'سوزوکی';
-    if (v.contains('mazda')) return 'مازدا';
+    if (v.contains('zaranj')) return 'cargo_vehicle_zaranj'.tr();
+    if (v.contains('suzuki')) return 'cargo_vehicle_suzuki'.tr();
+    if (v.contains('mazda')) return 'cargo_vehicle_mazda'.tr();
     return id;
   }
 
   static String _partyDetail(String plaque, String unit) {
     final List<String> parts = <String>[];
-    if (plaque.isNotEmpty) parts.add('پلاک/طبقه $plaque');
-    if (unit.isNotEmpty) parts.add('واحد $unit');
+    if (plaque.isNotEmpty) {
+      parts.add('party_detail_plaque'.tr(args: <String>[plaque]));
+    }
+    if (unit.isNotEmpty) {
+      parts.add('party_detail_unit'.tr(args: <String>[unit]));
+    }
     return parts.join('، ');
   }
 
@@ -329,20 +355,20 @@ class TripExtras {
   //  تاریخ شمسی (ماه‌های افغانی)
   // ════════════════════════════════════════════════════════════
 
-  static const List<String> _afghanMonths = <String>[
-    'حمل',
-    'ثور',
-    'جوزا',
-    'سرطان',
-    'اسد',
-    'سنبله',
-    'میزان',
-    'عقرب',
-    'قوس',
-    'جدی',
-    'دلو',
-    'حوت',
-  ];
+  static List<String> get _afghanMonths => <String>[
+        'month_hamal'.tr(),
+        'month_thawr'.tr(),
+        'month_jauza'.tr(),
+        'month_saratan'.tr(),
+        'month_asad'.tr(),
+        'month_sunbula'.tr(),
+        'month_mizan'.tr(),
+        'month_aqrab'.tr(),
+        'month_qaws'.tr(),
+        'month_jaddi'.tr(),
+        'month_dalw'.tr(),
+        'month_hoot'.tr(),
+      ];
 
   static List<int> _gregorianToJalali(int gy, int gm, int gd) {
     const List<int> gDaysBefore = <int>[
@@ -395,13 +421,13 @@ class TripExtras {
 
     String period;
     if (hour24 < 12) {
-      period = 'صبح';
+      period = 'time_period_morning'.tr();
     } else if (hour24 < 16) {
-      period = 'بعد از ظهر';
+      period = 'time_period_afternoon'.tr();
     } else if (hour24 < 19) {
-      period = 'عصر';
+      period = 'time_period_evening'.tr();
     } else {
-      period = 'شب';
+      period = 'time_period_night'.tr();
     }
 
     return '${formatJalaliDate(local)} • ${_fa(hour12)}:${_fa(minute)} $period';
