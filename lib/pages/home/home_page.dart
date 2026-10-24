@@ -774,14 +774,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Future<void> _promptEnableBackgroundLocation() async {
     if (!mounted) return;
 
-    // 🔧 بررسی اینکه آیا قبلاً این پیام به کاربر نشان داده شده است یا نه
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final bool hasPromptedBefore =
         prefs.getBool('has_prompted_bg_location') ?? false;
 
-    if (hasPromptedBefore) return; // اگر قبلاً نشان داده شده، دیگر ظاهر نشود
+    if (hasPromptedBefore) return;
 
-    // ذخیره وضعیت که دیگر نشان داده نشود
     await prefs.setBool('has_prompted_bg_location', true);
 
     if (!mounted) return;
@@ -790,12 +788,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 8),
-        content: const Text(
-          'برای ادامهٔ ارسال موقعیت حتی وقتی صفحه قفل است، از تنظیمات '
-          'گوشی روی مجوز موقعیت این اپ بزنید «همیشه اجازه بده».',
-        ),
+        content: Text('bg_location_prompt_msg'.tr()), // 🌐 اصلاح‌شده با کلید ترجمه
         action: SnackBarAction(
-          label: 'تنظیمات',
+          label: 'settings_label'.tr(), // 🌐 اصلاح‌شده با کلید ترجمه
           onPressed: () {
             unawaited(Geolocator.openAppSettings());
           },
@@ -818,7 +813,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
       if (!serviceEnabled) {
-        await _showMessage('لطفاً GPS یا Location گوشی را فعال کنید.');
+        await _showMessage('gps_disabled_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
         return null;
       }
 
@@ -830,7 +825,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        await _showMessage('اجازهٔ دسترسی به موقعیت مکانی داده نشده است.');
+        await _showMessage('location_permission_denied_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
         return null;
       }
 
@@ -850,7 +845,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       return position;
     } catch (e) {
       debugPrint('Error fetching driver location: $e');
-      await _showMessage('دریافت موقعیت مکانی انجام نشد.');
+      await _showMessage('location_fetch_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
       return null;
     }
   }
@@ -943,7 +938,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Future<void> goOfflineNow() async {
     if (activeTripId != null) {
-      await _showMessage('تا پایان یا لغو سفر فعال نمی‌توانید آفلاین شوید.');
+      await _showMessage('cannot_offline_active_trip_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
       return;
     }
 
@@ -989,11 +984,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 1,
         intervalDuration: const Duration(seconds: 1),
-        foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: 'سفیر — سفر فعال',
-          notificationText: 'در حال ارسال موقعیت مکانی شما به مسافر است.',
+        foregroundNotificationConfig: ForegroundNotificationConfig(
+          notificationTitle: 'notif_active_trip_title'.tr(), // 🌐 اصلاح‌شده با کلید ترجمه
+          notificationText: 'notif_active_trip_text'.tr(), // 🌐 اصلاح‌شده با کلید ترجمه
           enableWakeLock: true,
-          notificationIcon: AndroidResource(
+          notificationIcon: const AndroidResource(
             name: 'ic_launcher',
             defType: 'mipmap',
           ),
@@ -1019,7 +1014,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           );
         }
 
-        // فلش حتی اگر isNavigating هنوز true نشده باشد، روی مسیر حرکت می‌کند
         if (_navRoutePoints.length >= 2 || navController.isNavigating) {
           _pendingNavPosition = position;
           unawaited(_processPendingNavPosition());
@@ -1056,13 +1050,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
           final AppConfig config = AppConfigService.instance.config;
 
-          // سرویس از پنل ادمین غیرفعال شده
           if (!config.isServiceActive) {
             debugPrint('RIDES: service inactive, skip $tripId');
             continue;
           }
 
-          // فقط درخواست‌های داخل «شعاع جستجوی راننده» (از پنل ادمین)
           final Map<String, dynamic>? rideData = change.doc.data();
           final LatLng? pickupPoint =
               rideData == null ? null : _pickupLatLng(rideData);
@@ -1110,7 +1102,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final String number = phoneNumber.trim();
 
     if (number.isEmpty) {
-      await _showMessage('شمارهٔ تماس مسافر موجود نیست.');
+      await _showMessage('passenger_phone_not_found_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
       return;
     }
 
@@ -1120,11 +1112,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final bool launched = await launchUrl(phoneUri);
 
       if (!launched) {
-        await _showMessage('باز کردن تماس تلفنی ممکن نشد.');
+        await _showMessage('phone_launch_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
       }
     } catch (e) {
       debugPrint('Phone launch error: $e');
-      await _showMessage('باز کردن تماس تلفنی ممکن نشد.');
+      await _showMessage('phone_launch_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
     }
   }
 
@@ -1140,11 +1132,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
 
       if (!launched) {
-        await _showMessage('باز کردن نقشه انجام نشد.');
+        await _showMessage('map_launch_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
       }
     } catch (e) {
       debugPrint('External map launch error: $e');
-      await _showMessage('باز کردن نقشه انجام نشد.');
+      await _showMessage('map_launch_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
     }
   }
 
@@ -1295,7 +1287,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _isStartingRoute = true;
 
     try {
-      // ذخیرهٔ اطلاعات راننده در پس‌زمینه تا شروع مسیر معطل نشود
       unawaited(_saveDriverDataToTripInfo(tripId));
 
       currentPositionOfDriver ??= await getCurrentLiveLocationOfDriver();
@@ -1305,7 +1296,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       if (pickupLatLng == null) {
         debugPrint('PICKUP: origin not found. keys=${tripData.keys.toList()}');
-        await _showMessage('مختصات مبدأ این سفر پیدا نشد.');
+        await _showMessage('pickup_coords_not_found_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
         return;
       }
 
@@ -1344,7 +1335,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         debugPrint(
           'DESTINATION: not found. keys=${tripData.keys.toList()}',
         );
-        await _showMessage('مختصات مقصد این سفر پیدا نشد.');
+        await _showMessage('destination_coords_not_found_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
         return;
       }
 
@@ -1371,7 +1362,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   ) async {
     if (!mounted) return;
 
-    // ✅ صبر تا نقشه آماده شود
     final bool ready = await _waitForMapReady();
     if (!ready || !mounted) {
       debugPrint('Map not ready; navigation skipped.');
@@ -1381,7 +1371,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final NavigationController navController =
         context.read<NavigationController>();
 
-    // پاک‌سازی مسیر قبلی (مثلاً مسیر مبدأ) قبل از رسم مسیر جدید
     _navRemainingLine = null;
     _navTraveledLine = null;
 
@@ -1398,7 +1387,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     if (!mounted) return;
 
-    // ✅ اگر سرویس مسیریابی جواب نداد، خط مستقیم می‌کشیم تا چیزی دیده شود
     if (routePoints.length < 2) {
       debugPrint('Route empty → using straight-line fallback');
       routePoints = <LatLng>[driverPos, destinationPos];
@@ -1449,11 +1437,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final DocumentReference<Map<String, dynamic>> tripRef =
           _firestore.collection('rides').doc(tripId);
 
-      // ✅ سند راننده؛ درآمد در همان تراکنش پایان سفر به آن اضافه می‌شود
       final DocumentReference<Map<String, dynamic>> driverRef =
           _firestore.collection('drivers').doc(driver.uid);
 
-      // ✅ درصد کمیسیون از پنل ادمین (آخرین مقدار از سرور)
       double commissionPercentForTrip =
           AppConfigService.instance.config.commissionPercent;
 
@@ -1501,7 +1487,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           } else if (newStatus == TripStatus.onTrip) {
             updateData['started_at'] = FieldValue.serverTimestamp();
           } else if (newStatus == TripStatus.completed) {
-            // مبلغ نهایی سفر؛ کلیدهای متفاوت برای سازگاری با داده‌های قبلی
             final double totalFare = _parseMoney(
               data['final_fare'] ??
                   data['total_fare'] ??
@@ -1511,27 +1496,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   data['price'],
             );
 
-            // درصد کمیسیون از تنظیمات پنل ادمین
             final double commissionPercent = commissionPercentForTrip;
 
-            final double commissionAmount =
-                totalFare * commissionPercent / 100;
+            final double commissionAmount = double.parse(
+              (totalFare * commissionPercent / 100).toStringAsFixed(2),
+            );
 
-            final double driverEarnings = totalFare - commissionAmount;
+            final double driverEarnings = double.parse(
+              (totalFare - commissionAmount).toStringAsFixed(2),
+            );
             earnedForDriver = driverEarnings;
 
             updateData['completed_at'] = FieldValue.serverTimestamp();
 
-            // اعداد خام را ذخیره کن، نه متن فرمت‌شده
             updateData['total_fare'] = totalFare;
             updateData['commission_percent'] = commissionPercent;
             updateData['commission_amount'] = commissionAmount;
             updateData['driver_earnings'] = driverEarnings;
+
+            updateData['payment_method'] = 'cash';
+            updateData['commission_status'] = 'unpaid';
           }
 
           transaction.update(tripRef, updateData);
 
-          // ✅ اضافه‌کردن درآمد به سند راننده (همین باعث می‌شود صفحهٔ درآمدها عدد را ببیند)
           if (newStatus == TripStatus.completed && earnedForDriver > 0) {
             transaction.set(
               driverRef,
@@ -1550,9 +1538,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
 
       if (!updated) {
-        await _showMessage(
-          'عملیات انجام نشد؛ وضعیت سفر تغییر کرده یا سفر متعلق به شما نیست.',
-        );
+        await _showMessage('trip_status_update_failed_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
         return;
       }
 
@@ -1583,20 +1569,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           });
         }
 
-        // ✅ تازه‌کردن عدد درآمد بعد از پایان سفر
         if (mounted) {
           unawaited(
             context.read<RegistrationProvider>().fetchDriverEarnings(),
           );
         }
 
-        await _showMessage('سفر با موفقیت پایان یافت.');
+        await _showMessage('trip_completed_success_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
       }
     } catch (e, stackTrace) {
       debugPrint('Error updating trip status: $e');
       debugPrintStack(stackTrace: stackTrace);
 
-      await _showMessage('تغییر وضعیت سفر انجام نشد. دوباره تلاش کنید.');
+      await _showMessage('trip_status_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
     } finally {
       _isLocalTripEnding = false;
       if (mounted) {
@@ -1613,14 +1598,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final User? driver = FirebaseAuth.instance.currentUser;
     if (driver == null) return;
 
-    // وضعیت لحظه‌ای سفر از اطلاعات روی صفحه خوانده می‌شود
     final String status = activeTripStatus ?? '';
     final bool cancellable = status == TripStatus.accepted ||
         status == TripStatus.arrived ||
         status == TripStatus.onTrip;
 
     if (!cancellable) {
-      await _showMessage('لغو انجام نشد؛ وضعیت سفر قبلاً تغییر کرده است.');
+      await _showMessage('trip_cancel_not_allowed_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
       return;
     }
 
@@ -1636,9 +1620,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final DocumentReference<Map<String, dynamic>> tripRef =
           _firestore.collection('rides').doc(tripId);
 
-      // ✅ بدون منتظر ماندن برای سرور:
-      // نوشتن محلی همان لحظه اعمال می‌شود، سفر از لیست سفرهای فعال خارج
-      // می‌شود و پنل سفر بسته می‌شود. بعداً خودکار به سرور می‌رسد.
+      final StreamSubscription<DocumentSnapshot>? oldSubscription =
+          tripRequestStream as StreamSubscription<DocumentSnapshot>?;
+      unawaited(oldSubscription?.cancel());
+
       unawaited(
         tripRef.update({
           'status': TripStatus.cancelledByDriver,
@@ -1649,7 +1634,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }).catchError((Object e) {
           debugPrint('Cancel trip server error: $e');
           unawaited(
-            _showMessage('لغو سفر روی سرور ثبت نشد. اتصال اینترنت را بررسی کنید.'),
+            _showMessage('trip_cancel_server_error_msg'.tr()), // 🌐 اصلاح‌شده با کلید ترجمه
           );
         }),
       );
@@ -1669,12 +1654,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         });
       }
 
-      await _showMessage('سفر لغو شد.');
+      await _showMessage('trip_cancelled_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
     } catch (e, stackTrace) {
       debugPrint('Error cancelling trip: $e');
       debugPrintStack(stackTrace: stackTrace);
 
-      await _showMessage('لغو سفر انجام نشد. دوباره تلاش کنید.');
+      await _showMessage('trip_cancel_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
     } finally {
       _isLocalTripEnding = false;
       if (mounted) {
@@ -1705,7 +1690,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         activeTripStatus = null;
       });
 
-      await _showMessage('trip_status_cancelled_by_you'.tr());
+      await _showMessage('trip_cancelled_by_passenger_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
     } finally {
       _isHandlingRemoteEnd = false;
     }
@@ -1781,7 +1766,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   if (isDriverAvailable &&
                                       activeTripId != null) {
                                     await _showMessage(
-                                      'تا پایان یا لغو سفر فعال نمی‌توانید آفلاین شوید.',
+                                      'cannot_offline_active_trip_msg'.tr(), // 🌐 اصلاح‌شده با کلید ترجمه
                                     );
                                     return;
                                   }
@@ -1820,7 +1805,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   } catch (e) {
                                     debugPrint('Status update error: $e');
                                     await _showMessage(
-                                      'تغییر وضعیت راننده انجام نشد.',
+                                      'driver_status_update_error_msg'.tr(), // 🌐 اصلاح‌شده با کلید ترجمه
                                     );
                                   } finally {
                                     isLoading = false;
@@ -1906,7 +1891,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               myLocationTrackingMode: MyLocationTrackingMode.none,
               onMapCreated: _onMapCreated,
               onStyleLoadedCallback: () async {
-                // با هر بار لود استایل، همهٔ آیتم‌های قبلی روی نقشه پاک می‌شوند
                 _isMapStyleReady = true;
                 _isDriverArrowImageAdded = false;
                 _driverNavigationSymbol = null;
@@ -1917,7 +1901,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                 await _prepareDriverNavigationArrow();
 
-                // اگر مسیری فعال بود، دوباره رسم شود
                 if (_navRoutePoints.length >= 2) {
                   await _renderNavLines(
                     traveled: <LatLng>[],
@@ -2002,7 +1985,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     return const SizedBox.shrink();
                   }
 
-                  // ✅ تا وقتی داده نرسیده، هیچ تصمیمی دربارهٔ پایان سفر نگیر
                   if (!snapshot.hasData) {
                     return const SizedBox.shrink();
                   }
@@ -2011,7 +1993,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       snapshot.data!;
 
                   if (data.docs.isEmpty) {
-                    // نتیجهٔ خالی از کش، قطعی نیست؛ منتظر سرور می‌مانیم
                     final bool uncertain = data.metadata.isFromCache;
 
                     if (!uncertain &&
