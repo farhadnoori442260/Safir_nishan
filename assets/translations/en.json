@@ -132,7 +132,7 @@
   "car_img_take_photo": "Take Photo with Camera",
   "car_img_success": "Car photo updated successfully",
   "final_confirm": "Final Confirmation",
-  "vehicle_brand_label": "Brand / Company (e.g., Toyota)",
+  "vehicle_brand_label": "Brand / Model (e.g., Toyota)",
   "vehicle_brand_error": "Please enter vehicle brand",
   "vehicle_color_label": "Vehicle Color (e.g., White)",
   "vehicle_color_error": "Please enter vehicle color",
@@ -368,7 +368,7 @@
   "notification_weak_internet_retry": "The internet connection is weak. Please try again.",
   "notification_trip_accept_error": "An error occurred. Please try again.",
   "notification_party_name": "{role}: {name}",
-  "bg_location_prompt_msg": "To continue sharing your location even when the screen is locked, open your phone settings and set this app's location permission to "Allow all the time".",
+  "bg_location_prompt_msg": "To continue sharing your location even when the screen is locked, open your phone settings and set this app's location permission to 'Allow all the time'.",
   "location_fetch_error_msg": "Unable to retrieve your location.",
   "cannot_offline_active_trip_msg": "You cannot go offline until the active trip is completed or cancelled.",
   "notif_active_trip_title": "Safir — Active Trip",
@@ -437,5 +437,13 @@
   "destination_label_text": "Destination",
   "fare_label_title": "Fare",
   "distance_label_title": "Distance",
-  "duration_label_title": "Duration"
+  "duration_label_title": "Duration",
+  "chat_driver_default_name": "Safir Driver",
+  "chat_no_messages_yet": "No messages exchanged yet",
+  "chat_empty_subtitle": "Send your message to the driver",
+  "close_tooltip": "Close",
+  "chat_error_no_trip_id": "Trip ID for chat is not available",
+  "chat_error_loading_messages": "Error loading messages",
+  "chat_type_message_hint": "Type your message...",
+  "chat_time_now": "Now"
 }
