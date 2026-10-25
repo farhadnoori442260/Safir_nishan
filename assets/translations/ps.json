@@ -438,5 +438,13 @@
   "destination_label_text": "پای ځای",
   "fare_label_title": "کرایه",
   "distance_label_title": "واټن",
-  "duration_label_title": "موده"
+  "duration_label_title": "موده",
+  "chat_driver_default_name": "د سفیر چلوونکی",
+  "chat_no_messages_yet": "تر اوسه هېڅ پیغام نه دی تبادله شوی",
+  "chat_empty_subtitle": "خپل پیغام چلوونکي ته ولېږئ",
+  "close_tooltip": "تړل",
+  "chat_error_no_trip_id": "د چت لپاره د سفر شمېره نشته",
+  "chat_error_loading_messages": "د پیغامونو په ترلاسه کولو کې تېروتنه",
+  "chat_type_message_hint": "خپل پیغام ولیکئ...",
+  "chat_time_now": "اوس"
 }
