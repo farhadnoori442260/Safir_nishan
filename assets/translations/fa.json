@@ -437,5 +437,13 @@
   "destination_label_text": "مقصد",
   "fare_label_title": "کرایه",
   "distance_label_title": "مسافت",
-  "duration_label_title": "مدت"
+  "duration_label_title": "مدت",
+  "chat_driver_default_name": "راننده سفیر",
+  "chat_no_messages_yet": "هنوز پیامی رد و بدل نشده است",
+  "chat_empty_subtitle": "پیام خود را برای راننده ارسال کنید",
+  "close_tooltip": "بستن",
+  "chat_error_no_trip_id": "شناسه سفر برای چت موجود نیست",
+  "chat_error_loading_messages": "خطا در دریافت پیام‌ها",
+  "chat_type_message_hint": "پیام خود را بنویسید...",
+  "chat_time_now": "اکنون"
 }
