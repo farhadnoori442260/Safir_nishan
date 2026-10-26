@@ -15,33 +15,65 @@ class VehicleBasicInfoUpdateScreen extends StatefulWidget {
 
 class _VehicleBasicInfoUpdateScreenState
     extends State<VehicleBasicInfoUpdateScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  // لیست ولایت‌های افغانستان
-  final List<String> afghanistanProvinces = [
-    'کابل', 'هرات', 'بلخ', 'قندهار', 'ننگرهار', 'غزنی', 'پکتیا', 'پروان', 'کندز', 'دایکندی', 'بامیان'
+  final List<String> afghanistanProvinces = <String>[
+    'کابل',
+    'هرات',
+    'بلخ',
+    'قندهار',
+    'ننگرهار',
+    'غزنی',
+    'پکتیا',
+    'پروان',
+    'کندز',
+    'دایکندی',
+    'بامیان',
   ];
 
-  // حروف پلاک
-  final List<String> plateCategories = [
-    'ش', 'الف', 'ب', 'ت', 'ج', 'د', 'ر', 'ز', 'س', 'ص', 'ط', 'ع', 'ف', 'ق', 'ک', 'م', 'ن', 'و', 'هـ', 'ی'
+  final List<String> plateCategories = <String>[
+    'ش',
+    'الف',
+    'ب',
+    'ت',
+    'ج',
+    'د',
+    'ر',
+    'ز',
+    'س',
+    'ص',
+    'ط',
+    'ع',
+    'ف',
+    'ق',
+    'ک',
+    'م',
+    'ن',
+    'و',
+    'هـ',
+    'ی',
   ];
 
-  // نوع پلاک
-  final List<String> plateTypes = ['شخصی', 'موقتی', 'تاکسی', 'دولتی'];
+  final List<String> plateTypes = <String>[
+    'شخصی',
+    'موقتی',
+    'تاکسی',
+    'دولتی',
+  ];
 
-  static const List<Map<String, String>> _vehicleOptions = [
-    {
+  static const List<Map<String, String>> _vehicleOptions =
+      <Map<String, String>>[
+    <String, String>{
       'value': 'Car',
       'label': 'vehicle_car',
       'icon': 'assets/vehicles/home_car.png',
     },
-    {
+    <String, String>{
       'value': 'Bike',
       'label': 'vehicle_bike',
       'icon': 'assets/vehicles/bike.png',
     },
-    {
+    <String, String>{
       'value': 'cargo',
       'label': 'vehicle_cargo',
       'icon': 'assets/vehicles/cargo.png',
@@ -68,11 +100,13 @@ class _VehicleBasicInfoUpdateScreenState
       height: 32,
       width: 56,
       fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) => Icon(
-        fallbackIcon,
-        size: 28,
-        color: AppColors.primaryBrand,
-      ),
+      errorBuilder: (context, error, stackTrace) {
+        return Icon(
+          fallbackIcon,
+          size: 28,
+          color: AppColors.primaryBrand,
+        );
+      },
     );
   }
 
@@ -84,78 +118,111 @@ class _VehicleBasicInfoUpdateScreenState
         : fallback;
   }
 
+  void _saveVehicleInfo(
+    BuildContext context,
+    RegistrationProvider registrationProvider,
+  ) async {
+    if (_formKey.currentState?.validate() != true) {
+      return;
+    }
+
+    try {
+      await registrationProvider.updateVehicleBasicInfo(context);
+
+      if (!mounted) {
+        return;
+      }
+
+      CommonMethods().displaySnackBar(
+        'save_success'.tr(),
+        context,
+      );
+
+      Navigator.pop(context);
+    } catch (error, stackTrace) {
+      debugPrint('Error while saving vehicle info: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final CommonMethods commonMethods = CommonMethods();
+    // این Provider فقط یک بار گرفته می‌شود؛ به notifyListeners گوش نمی‌دهد.
+    final RegistrationProvider registrationProvider =
+        context.read<RegistrationProvider>();
 
-    return Consumer<RegistrationProvider>(
-      builder: (context, registrationProvider, child) => Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          backgroundColor: AppColors.cardBackground,
-          elevation: 0,
-          title: Text(
-            'vehicle_info_title'.tr(),
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: AppColors.textPrimary,
-            ),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.cardBackground,
+        elevation: 0,
+        title: Text(
+          'vehicle_info_title'.tr(),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: AppColors.textPrimary,
           ),
-          centerTitle: true,
-          leading: TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'close'.tr(),
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          leadingWidth: 70,
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: AppColors.cardBackground,
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          offset: Offset(0, 2),
-                          blurRadius: 6.0,
-                        ),
-                      ],
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      value: _vehicleOptions.any(
-                        (option) =>
-                            option['value'] ==
-                            registrationProvider.selectedVehicle,
-                      )
-                          ? registrationProvider.selectedVehicle
-                          : null,
-                      decoration: InputDecoration(
-                        labelText: 'vehicle_type_label'.tr(),
-                        labelStyle: const TextStyle(fontSize: 13),
-                        border: InputBorder.none,
+        centerTitle: true,
+        leading: TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(
+            'close'.tr(),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        leadingWidth: 70,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          keyboardDismissBehavior:
+              ScrollViewKeyboardDismissBehavior.manual,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: AppColors.cardBackground,
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: Colors.black12,
+                        offset: Offset(0, 2),
+                        blurRadius: 6,
                       ),
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                      isExpanded: true,
-                      items: _vehicleOptions.map((option) {
+                    ],
+                  ),
+                  child: DropdownButtonFormField<String>(
+                    value: _vehicleOptions.any(
+                      (Map<String, String> option) =>
+                          option['value'] ==
+                          registrationProvider.selectedVehicle,
+                    )
+                        ? registrationProvider.selectedVehicle
+                        : null,
+                    decoration: InputDecoration(
+                      labelText: 'vehicle_type_label'.tr(),
+                      labelStyle: const TextStyle(fontSize: 13),
+                      border: InputBorder.none,
+                    ),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                    ),
+                    isExpanded: true,
+                    items: _vehicleOptions.map(
+                      (Map<String, String> option) {
                         final String value = option['value']!;
 
                         final String fallbackLabel = value == 'Car'
@@ -167,8 +234,11 @@ class _VehicleBasicInfoUpdateScreenState
                         return DropdownMenuItem<String>(
                           value: value,
                           child: Row(
-                            children: [
-                              _vehicleOptionIcon(option['icon']!, value),
+                            children: <Widget>[
+                              _vehicleOptionIcon(
+                                option['icon']!,
+                                value,
+                              ),
                               const SizedBox(width: 12),
                               Text(
                                 _vehicleLabel(
@@ -180,319 +250,343 @@ class _VehicleBasicInfoUpdateScreenState
                             ],
                           ),
                         );
-                      }).toList(),
-                      validator: (val) => (val == null || val.isEmpty)
-                          ? 'vehicle_type_error'.tr()
-                          : null,
-                      onChanged: (val) {
-                        if (val != null) {
-                          registrationProvider.setSelectedVehicle(val);
-                          registrationProvider.checkVehicleBasicFormValidity();
-                        }
                       },
-                    ),
+                    ).toList(),
+                    validator: (String? value) {
+                      if (value == null || value.isEmpty) {
+                        return 'vehicle_type_error'.tr();
+                      }
+
+                      return null;
+                    },
+                    onChanged: (String? value) {
+                      if (value != null) {
+                        registrationProvider.setSelectedVehicle(value);
+                      }
+                    },
                   ),
-
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: AppColors.cardBackground,
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          offset: Offset(0, 2),
-                          blurRadius: 6.0,
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextFormField(
-                          controller: registrationProvider.brandController,
-                          decoration: InputDecoration(
-                            labelText: 'vehicle_brand_label'.tr(),
-                            labelStyle: const TextStyle(fontSize: 13),
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(12),
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: AppColors.cardBackground,
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: Colors.black12,
+                        offset: Offset(0, 2),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      TextFormField(
+                        controller: registrationProvider.brandController,
+                        decoration: InputDecoration(
+                          labelText: 'vehicle_brand_label'.tr(),
+                          labelStyle: const TextStyle(fontSize: 13),
+                          border: const OutlineInputBorder(
+                            borderRadius: BorderRadius.all(
+                              Radius.circular(12),
                             ),
                           ),
-                          validator: (value) =>
-                              (value == null || value.isEmpty)
-                                  ? 'vehicle_brand_error'.tr()
-                                  : null,
-                          onChanged: (_) =>
-                              registrationProvider.checkVehicleBasicFormValidity(),
-                        ),
-                        const SizedBox(height: 14),
-
-                        TextFormField(
-                          controller: registrationProvider.colorController,
-                          decoration: InputDecoration(
-                            labelText: 'vehicle_color_label'.tr(),
-                            labelStyle: const TextStyle(fontSize: 13),
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(12),
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                          ),
-                          validator: (value) =>
-                              (value == null || value.isEmpty)
-                                  ? 'vehicle_color_error'.tr()
-                                  : null,
-                          onChanged: (_) =>
-                              registrationProvider.checkVehicleBasicFormValidity(),
-                        ),
-                        const SizedBox(height: 14),
-
-                        TextFormField(
-                          controller:
-                              registrationProvider.productionYearController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'vehicle_year_label'.tr(),
-                            labelStyle: const TextStyle(fontSize: 13),
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(12),
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                          ),
-                          validator: (value) =>
-                              (value == null || value.isEmpty)
-                                  ? 'vehicle_year_error'.tr()
-                                  : null,
-                          onChanged: (_) =>
-                              registrationProvider.checkVehicleBasicFormValidity(),
-                        ),
-
-                        const SizedBox(height: 20),
-                        Text(
-                          'plate_info_header'.tr(),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: AppColors.primaryBrand,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        validator: (String? value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'vehicle_brand_error'.tr();
+                          }
 
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: DropdownButtonFormField<String>(
-                                value: afghanistanProvinces.contains(
-                                  registrationProvider.plateProvince,
-                                )
-                                    ? registrationProvider.plateProvince
-                                    : afghanistanProvinces.first,
-                                decoration: InputDecoration(
-                                  labelText: 'province'.tr(),
-                                  labelStyle: const TextStyle(fontSize: 11),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 10,
-                                  ),
+                          return null;
+                        },
+                        onChanged: (_) {
+                          registrationProvider
+                              .checkVehicleBasicFormValidity();
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: registrationProvider.colorController,
+                        decoration: InputDecoration(
+                          labelText: 'vehicle_color_label'.tr(),
+                          labelStyle: const TextStyle(fontSize: 13),
+                          border: const OutlineInputBorder(
+                            borderRadius: BorderRadius.all(
+                              Radius.circular(12),
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                        validator: (String? value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'vehicle_color_error'.tr();
+                          }
+
+                          return null;
+                        },
+                        onChanged: (_) {
+                          registrationProvider
+                              .checkVehicleBasicFormValidity();
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller:
+                            registrationProvider.productionYearController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'vehicle_year_label'.tr(),
+                          labelStyle: const TextStyle(fontSize: 13),
+                          border: const OutlineInputBorder(
+                            borderRadius: BorderRadius.all(
+                              Radius.circular(12),
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                        validator: (String? value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'vehicle_year_error'.tr();
+                          }
+
+                          return null;
+                        },
+                        onChanged: (_) {
+                          registrationProvider
+                              .checkVehicleBasicFormValidity();
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'plate_info_header'.tr(),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: AppColors.primaryBrand,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            flex: 3,
+                            child: DropdownButtonFormField<String>(
+                              value: afghanistanProvinces.contains(
+                                registrationProvider.plateProvince,
+                              )
+                                  ? registrationProvider.plateProvince
+                                  : afghanistanProvinces.first,
+                              decoration: InputDecoration(
+                                labelText: 'province'.tr(),
+                                labelStyle: const TextStyle(fontSize: 11),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                items: afghanistanProvinces.map((prov) {
-                                  return DropdownMenuItem(
-                                    value: prov,
+                                contentPadding:
+                                    const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 10,
+                                ),
+                              ),
+                              items: afghanistanProvinces.map(
+                                (String province) {
+                                  return DropdownMenuItem<String>(
+                                    value: province,
                                     child: Text(
-                                      prov,
+                                      province,
                                       style: const TextStyle(fontSize: 12),
                                     ),
                                   );
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    registrationProvider.setPlateProvince(val);
-                                    registrationProvider
-                                        .checkVehicleBasicFormValidity();
-                                  }
                                 },
-                              ),
+                              ).toList(),
+                              onChanged: (String? value) {
+                                if (value != null) {
+                                  registrationProvider
+                                      .setPlateProvince(value);
+                                }
+                              },
                             ),
-                            const SizedBox(width: 6),
-
-                            Expanded(
-                              flex: 2,
-                              child: DropdownButtonFormField<String>(
-                                value: plateCategories.contains(
-                                  registrationProvider.plateCategory,
-                                )
-                                    ? registrationProvider.plateCategory
-                                    : plateCategories.first,
-                                decoration: InputDecoration(
-                                  labelText: 'plate_letter'.tr(),
-                                  labelStyle: const TextStyle(fontSize: 11),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 10,
-                                  ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            flex: 2,
+                            child: DropdownButtonFormField<String>(
+                              value: plateCategories.contains(
+                                registrationProvider.plateCategory,
+                              )
+                                  ? registrationProvider.plateCategory
+                                  : plateCategories.first,
+                              decoration: InputDecoration(
+                                labelText: 'plate_letter'.tr(),
+                                labelStyle: const TextStyle(fontSize: 11),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                items: plateCategories.map((cat) {
-                                  return DropdownMenuItem(
-                                    value: cat,
+                                contentPadding:
+                                    const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 10,
+                                ),
+                              ),
+                              items: plateCategories.map(
+                                (String category) {
+                                  return DropdownMenuItem<String>(
+                                    value: category,
                                     child: Text(
-                                      cat,
+                                      category,
                                       style: const TextStyle(fontSize: 12),
                                     ),
                                   );
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    registrationProvider.setPlateCategory(val);
-                                    registrationProvider
-                                        .checkVehicleBasicFormValidity();
-                                  }
                                 },
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-
-                            Expanded(
-                              flex: 4,
-                              child: TextFormField(
-                                controller:
-                                    registrationProvider.numberPlateController,
-                                keyboardType: TextInputType.number,
-                                decoration: InputDecoration(
-                                  labelText: 'plate_number'.tr(),
-                                  labelStyle: const TextStyle(fontSize: 11),
-                                  hintText: '44892',
-                                  border: const OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(12),
-                                    ),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 10,
-                                  ),
-                                ),
-                                validator: (value) =>
-                                    (value == null || value.isEmpty)
-                                        ? 'plate_number_error'.tr()
-                                        : null,
-                                onChanged: (_) => registrationProvider
-                                    .checkVehicleBasicFormValidity(),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        DropdownButtonFormField<String>(
-                          value: plateTypes.contains(
-                            registrationProvider.plateType,
-                          )
-                              ? registrationProvider.plateType
-                              : plateTypes.first,
-                          decoration: InputDecoration(
-                            labelText: 'plate_type'.tr(),
-                            labelStyle: const TextStyle(fontSize: 12),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 10,
+                              ).toList(),
+                              onChanged: (String? value) {
+                                if (value != null) {
+                                  registrationProvider
+                                      .setPlateCategory(value);
+                                }
+                              },
                             ),
                           ),
-                          items: plateTypes.map((type) {
-                            return DropdownMenuItem(
+                          const SizedBox(width: 6),
+                          Expanded(
+                            flex: 4,
+                            child: TextFormField(
+                              controller:
+                                  registrationProvider.numberPlateController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'plate_number'.tr(),
+                                labelStyle: const TextStyle(fontSize: 11),
+                                hintText: '44892',
+                                border: const OutlineInputBorder(
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(12),
+                                  ),
+                                ),
+                                contentPadding:
+                                    const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 10,
+                                ),
+                              ),
+                              validator: (String? value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'plate_number_error'.tr();
+                                }
+
+                                return null;
+                              },
+                              onChanged: (_) {
+                                registrationProvider
+                                    .checkVehicleBasicFormValidity();
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String>(
+                        value: plateTypes.contains(
+                          registrationProvider.plateType,
+                        )
+                            ? registrationProvider.plateType
+                            : plateTypes.first,
+                        decoration: InputDecoration(
+                          labelText: 'plate_type'.tr(),
+                          labelStyle: const TextStyle(fontSize: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
+                        ),
+                        items: plateTypes.map(
+                          (String type) {
+                            return DropdownMenuItem<String>(
                               value: type,
                               child: Text(
                                 type,
                                 style: const TextStyle(fontSize: 13),
                               ),
                             );
-                          }).toList(),
-                          onChanged: (val) {
-                            if (val != null) {
-                              registrationProvider.setPlateType(val);
-                              registrationProvider
-                                  .checkVehicleBasicFormValidity();
-                            }
                           },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: !registrationProvider.isLoading
-                          ? () async {
-                              if (_formKey.currentState?.validate() == true) {
-                                try {
-                                  await registrationProvider
-                                      .updateVehicleBasicInfo(context);
-
-                                  if (context.mounted) {
-                                    commonMethods.displaySnackBar(
-                                      'save_success'.tr(),
-                                      context,
-                                    );
-                                    Navigator.pop(context);
-                                  }
-                                } catch (e) {
-                                  debugPrint('Error while saving data: $e');
-                                }
-                              }
-                            }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBrand,
-                        disabledBackgroundColor: Colors.grey.shade400,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        ).toList(),
+                        onChanged: (String? value) {
+                          if (value != null) {
+                            registrationProvider.setPlateType(value);
+                          }
+                        },
                       ),
-                      child: registrationProvider.isLoading
-                          ? const CircularProgressIndicator(
-                              color: Colors.white,
-                            )
-                          : Text(
-                              'confirm_and_submit'.tr(),
-                              style: const TextStyle(
-                                color: AppColors.buttonText,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 24),
+                Selector<RegistrationProvider, bool>(
+                  selector: (
+                    BuildContext context,
+                    RegistrationProvider provider,
+                  ) {
+                    return provider.isLoading;
+                  },
+                  builder: (
+                    BuildContext context,
+                    bool isLoading,
+                    Widget? child,
+                  ) {
+                    return SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: isLoading
+                            ? null
+                            : () {
+                                _saveVehicleInfo(
+                                  context,
+                                  registrationProvider,
+                                );
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBrand,
+                          disabledBackgroundColor: Colors.grey.shade400,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : Text(
+                                'confirm_and_submit'.tr(),
+                                style: const TextStyle(
+                                  color: AppColors.buttonText,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ),
