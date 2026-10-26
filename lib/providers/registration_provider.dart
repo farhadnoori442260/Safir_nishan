@@ -266,26 +266,34 @@ class RegistrationProvider extends ChangeNotifier {
     checkBasicFormValidity();
   }
 
-  void checkBasicFormValidity() {
-    if (_debounce?.isActive ?? false) {
-      _debounce!.cancel();
-    }
+  void checkVehicleBasicFormValidity() {
+  if (_debounce?.isActive ?? false) {
+    _debounce!.cancel();
+  }
 
-    _debounce = Timer(
-      const Duration(milliseconds: 300),
-      () {
-        _isFormValidBasic =
-            firstNameController.text.isNotEmpty &&
-                lastNameController.text.isNotEmpty &&
-                emailController.text.isNotEmpty &&
-                phoneController.text.isNotEmpty &&
-                addressController.text.isNotEmpty &&
-                dobController.text.isNotEmpty &&
-                _profilePhoto != null;
+  _debounce = Timer(
+    const Duration(milliseconds: 300),
+    () {
+      final bool isValid =
+          _selectedVehicle != null &&
+          _selectedVehicle!.isNotEmpty &&
+          brandController.text.trim().isNotEmpty &&
+          colorController.text.trim().isNotEmpty &&
+          numberPlateController.text.trim().isNotEmpty &&
+          productionYearController.text.trim().isNotEmpty &&
+          _plateProvince.isNotEmpty &&
+          _plateCategory.isNotEmpty &&
+          _plateType.isNotEmpty;
 
-        notifyListeners();
-      },
-    );
+      // فقط در صورت تغییر واقعیِ وضعیت دکمه، صفحه بازسازی شود.
+      if (_isVehicleBasicFormValid == isValid) {
+        return;
+      }
+
+      _isVehicleBasicFormValid = isValid;
+      notifyListeners();
+    },
+  );
   }
 
   void checkCNICFormValidity() {
