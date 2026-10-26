@@ -7,56 +7,57 @@ import 'package:safir_drivers/providers/trip_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
 import 'package:safir_drivers/utils/trip_extras.dart';
 
-// ════════════════════════════════════════════════════════════
-//  ابزارهای مشترک نمایش (عدد، تاریخ، مبلغ)
-// ════════════════════════════════════════════════════════════
-
 const String _enDigits = '0123456789';
 const String _faDigits = '۰۱۲۳۴۵۶۷۸۹';
 const String _arDigits = '٠١٢٣٤٥٦٧٨٩';
 
 String _toEnglishDigits(String input) {
-  String s = input;
+  String value = input;
+
   for (int i = 0; i < 10; i++) {
-    s = s.replaceAll(_faDigits[i], _enDigits[i]).replaceAll(_arDigits[i], _enDigits[i]);
+    value = value
+        .replaceAll(_faDigits[i], _enDigits[i])
+        .replaceAll(_arDigits[i], _enDigits[i]);
   }
-  return s;
+
+  return value;
 }
 
 String _toFaDigits(Object value) {
-  String s = value.toString();
+  String result = value.toString();
+
   for (int i = 0; i < 10; i++) {
-    s = s.replaceAll(_enDigits[i], _faDigits[i]);
+    result = result.replaceAll(_enDigits[i], _faDigits[i]);
   }
-  return s;
+
+  return result;
 }
 
-/// تبدیل هر مقدار (عدد، متن، متن با ویرگول یا ارقام فارسی) به عدد
 double? _toNumber(Object? value) {
   if (value == null) return null;
   if (value is num) return value.toDouble();
 
-  String s = _toEnglishDigits(value.toString().trim());
-  s = s.replaceAll(RegExp(r'[,،٬\s]'), '').replaceAll('٫', '.');
-  s = s.replaceAll(RegExp(r'[^0-9.\-]'), '');
+  String text = _toEnglishDigits(value.toString().trim());
+  text = text.replaceAll(RegExp(r'[,،٬s]'), '').replaceAll('٫', '.');
+  text = text.replaceAll(RegExp(r'[^0-9.-]'), '');
 
-  return double.tryParse(s);
+  return double.tryParse(text);
 }
 
-/// مبلغ با جداکنندهٔ هزارگان: 1234 → ۱,۲۳۴
 String _formatMoney(double value) {
   final String digits = value.round().abs().toString();
   final StringBuffer buffer = StringBuffer();
 
   for (int i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    if (i > 0 && (digits.length - i) % 3 == 0) {
+      buffer.write(',');
+    }
     buffer.write(digits[i]);
   }
 
-  return _toFaDigits((value < 0 ? '-' : '') + buffer.toString());
+  return _toFaDigits('${value < 0 ? '-' : ''}$buffer');
 }
 
-/// تاریخ سفر: اول زمان پایان سفر، بعد بقیه
 DateTime? _tripDate(Map<String, dynamic> trip) {
   final Object? raw = trip['completed_at'] ??
       trip['completedAt'] ??
@@ -88,7 +89,6 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-
       context.read<TripProvider>().getCompletedTrips();
     });
   }
@@ -101,7 +101,6 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
   Widget build(BuildContext context) {
     final TripProvider tripProvider = context.watch<TripProvider>();
 
-    // ✅ جدیدترین سفر بالا؛ شماره‌گذاری از قدیمی‌ترین (سفر ۱) به جدیدترین
     final List<Map<String, dynamic>> trips =
         List<Map<String, dynamic>>.of(tripProvider.completedTrips)
           ..sort((Map<String, dynamic> a, Map<String, dynamic> b) {
@@ -158,8 +157,9 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
                       ),
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                       itemCount: trips.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 14),
-                      itemBuilder: (context, index) {
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: 14),
+                      itemBuilder: (BuildContext context, int index) {
                         return _TripCard(
                           trip: trips[index],
                           tripNumber: trips.length - index,
@@ -176,9 +176,7 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
         parent: BouncingScrollPhysics(),
       ),
       children: [
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.28,
-        ),
+        SizedBox(height: MediaQuery.of(context).size.height * 0.28),
         Center(
           child: Container(
             width: 92,
@@ -237,8 +235,9 @@ class _TripCard extends StatelessWidget {
 
   String _text(Object? value) {
     if (value == null) return '';
-    final String s = value.toString().trim();
-    return s == 'null' ? '' : s;
+
+    final String result = value.toString().trim();
+    return result == 'null' ? '' : result;
   }
 
   String _firstText(List<Object?> values) {
@@ -246,10 +245,10 @@ class _TripCard extends StatelessWidget {
       final String result = _text(value);
       if (result.isNotEmpty) return result;
     }
+
     return '';
   }
 
-  /// کرایه: مبلغ نهایی ثبت‌شده در پایان سفر، وگرنه کرایهٔ اولیه
   String _formatFare() {
     final double? amount = _toNumber(
       trip['total_fare'] ??
@@ -269,7 +268,6 @@ class _TripCard extends StatelessWidget {
       return 'date_not_registered'.tr();
     }
 
-    // شمسی با ماه‌های افغانی، مثلاً «۲۸ میزان ۱۴۰۵ • ۲:۴۸ بعد از ظهر»
     return TripExtras.formatJalaliDateTime(date);
   }
 
@@ -312,7 +310,6 @@ class _TripCard extends StatelessWidget {
     ]);
   }
 
-  /// ✅ مسافت با یک رقم اعشار؛ قبلاً عدد خام (مثل 7.046300000001) نمایش داده می‌شد
   String _distance() {
     final double? km = _toNumber(
       trip['distance'] ?? trip['distanceInKm'] ?? trip['distanceKm'],
@@ -323,19 +320,17 @@ class _TripCard extends StatelessWidget {
     final String formatted =
         _toFaDigits(km.toStringAsFixed(1)).replaceAll('.', '٫');
 
-    return '$formatted کیلومتر';
+    return '$formatted ${'unit_km'.tr()}';
   }
 
   String _duration() {
-    final Object? raw = trip['duration'] ??
-        trip['durationText'] ??
-        trip['tripDuration'];
+    final Object? raw =
+        trip['duration'] ?? trip['durationText'] ?? trip['tripDuration'];
 
     if (raw == null) return '--';
 
-    // عدد خالی: دقیقه
     if (raw is num) {
-      return '${_toFaDigits(raw.round())} دقیقه';
+      return '${_toFaDigits(raw.round())} ${'unit_min'.tr()}';
     }
 
     final String text = _text(raw);
@@ -346,10 +341,8 @@ class _TripCard extends StatelessWidget {
 
   String _currencyLabel() {
     final String value = 'currency_afg'.tr();
-    return value == 'currency_afg' ? 'افغانی' : value;
+    return value == 'currency_afg' ? 'AFN' : value;
   }
-
-  // ───────── کمیسیون و درآمد راننده ─────────
 
   bool get _hasCommission => _toNumber(trip['commission_amount']) != null;
 
@@ -508,10 +501,9 @@ class _TripCard extends StatelessWidget {
     );
   }
 
-  /// درآمد راننده، کمیسیون شرکت و وضعیت پرداخت کمیسیون
   Widget _buildCommissionBox() {
     final double commission = _toNumber(trip['commission_amount']) ?? 0;
-    final double? earnings = _toNumber(trip['driver_earnings']);
+    final double? earnings = _toNumber(trip['driver_earnings'];
 
     final Color statusColor =
         _isCommissionSettled ? Colors.green : Colors.orange.shade800;
@@ -530,9 +522,9 @@ class _TripCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'درآمد شما',
-                  style: TextStyle(
+                Text(
+                  'driver_earnings_label'.tr(),
+                  style: const TextStyle(
                     fontSize: 10.5,
                     color: AppColors.textSecondary,
                   ),
@@ -555,9 +547,9 @@ class _TripCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'کمیسیون',
-                  style: TextStyle(
+                Text(
+                  'commission_label'.tr(),
+                  style: const TextStyle(
                     fontSize: 10.5,
                     color: AppColors.textSecondary,
                   ),
@@ -575,13 +567,18 @@ class _TripCard extends StatelessWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 9,
+              vertical: 5,
+            ),
             decoration: BoxDecoration(
               color: statusColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              _isCommissionSettled ? 'تصفیه‌شده' : 'پرداخت‌نشده',
+              _isCommissionSettled
+                  ? 'commission_settled'.tr()
+                  : 'commission_unpaid'.tr(),
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
