@@ -446,5 +446,11 @@
   "chat_error_no_trip_id": "د چت لپاره د سفر شمېره نشته",
   "chat_error_loading_messages": "د پیغامونو په ترلاسه کولو کې تېروتنه",
   "chat_type_message_hint": "خپل پیغام ولیکئ...",
-  "chat_time_now": "اوس"
+  "chat_time_now": "اوس",
+  "unit_km": "کیلومتر",
+  "unit_min": "دقیقه",
+  "driver_earnings_label": "ستاسو عاید",
+  "commission_label": "کمېشن",
+  "commission_settled": "تصفیه شوی",
+  "commission_unpaid": "نه دی ورکړل شوی"
 }
