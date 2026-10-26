@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../providers/registration_provider.dart';
@@ -9,10 +10,12 @@ class VehicleBasicInfoScreen extends StatefulWidget {
   const VehicleBasicInfoScreen({super.key});
 
   @override
-  State<VehicleBasicInfoScreen> createState() => _VehicleBasicInfoScreenState();
+  State<VehicleBasicInfoScreen> createState() =>
+      _VehicleBasicInfoScreenState();
 }
 
-class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
+class _VehicleBasicInfoScreenState
+    extends State<VehicleBasicInfoScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final List<String> afghanistanProvinces = [
@@ -90,6 +93,24 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
     return input;
   }
 
+  TextInputFormatter _englishNumberFormatter() {
+    return TextInputFormatter.withFunction((oldValue, newValue) {
+      if (!newValue.composing.isCollapsed) {
+        return newValue;
+      }
+
+      final String converted = _toEnglishNumbers(newValue.text);
+
+      return newValue.copyWith(
+        text: converted,
+        selection: TextSelection.collapsed(
+          offset: converted.length,
+        ),
+        composing: TextRange.empty,
+      );
+    });
+  }
+
   Widget _vehicleOptionIcon(String assetPath, String value) {
     IconData fallbackIcon;
 
@@ -165,6 +186,8 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
           body: Padding(
             padding: const EdgeInsets.all(16),
             child: SingleChildScrollView(
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.manual,
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -177,7 +200,9 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(
+                          color: Colors.grey.shade200,
+                        ),
                         borderRadius: BorderRadius.circular(16),
                         color: AppColors.cardBackground,
                         boxShadow: [
@@ -240,7 +265,8 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                         }).toList(),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            final String errorText = 'vehicle_type_error'.tr();
+                            final String errorText =
+                                'vehicle_type_error'.tr();
 
                             return errorText == 'vehicle_type_error'
                                 ? 'نوع وسیله را انتخاب کنید'
@@ -252,8 +278,6 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                         onChanged: (value) {
                           if (value != null) {
                             registrationProvider.setSelectedVehicle(value);
-                            registrationProvider
-                                .checkVehicleBasicFormValidity();
                           }
                         },
                       ),
@@ -261,7 +285,9 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                     const SizedBox(height: 10),
                     Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(
+                          color: Colors.grey.shade200,
+                        ),
                         borderRadius: BorderRadius.circular(20),
                         color: AppColors.cardBackground,
                         boxShadow: [
@@ -366,6 +392,11 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                             controller:
                                 registrationProvider.productionYearController,
                             keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              _englishNumberFormatter(),
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(4),
+                            ],
                             decoration: InputDecoration(
                               labelText: 'vehicle_year_label'.tr(),
                               labelStyle: const TextStyle(
@@ -401,21 +432,7 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
 
                               return null;
                             },
-                            onChanged: (value) {
-                              final String converted =
-                                  _toEnglishNumbers(value);
-
-                              if (converted != value) {
-                                registrationProvider
-                                    .productionYearController
-                                    .value = TextEditingValue(
-                                  text: converted,
-                                  selection: TextSelection.collapsed(
-                                    offset: converted.length,
-                                  ),
-                                );
-                              }
-
+                            onChanged: (_) {
                               registrationProvider
                                   .checkVehicleBasicFormValidity();
                             },
@@ -446,7 +463,8 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                                       fontSize: 11,
                                     ),
                                     border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius:
+                                          BorderRadius.circular(12),
                                     ),
                                     contentPadding:
                                         const EdgeInsets.symmetric(
@@ -454,21 +472,23 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                                       vertical: 10,
                                     ),
                                   ),
-                                  items: afghanistanProvinces.map((province) {
-                                    return DropdownMenuItem<String>(
-                                      value: province,
-                                      child: Text(
-                                        province,
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                    );
-                                  }).toList(),
+                                  items: afghanistanProvinces.map(
+                                    (province) {
+                                      return DropdownMenuItem<String>(
+                                        value: province,
+                                        child: Text(
+                                          province,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ).toList(),
                                   onChanged: (value) {
                                     if (value != null) {
                                       registrationProvider
                                           .setPlateProvince(value);
-                                      registrationProvider
-                                          .checkVehicleBasicFormValidity();
                                     }
                                   },
                                 ),
@@ -488,7 +508,8 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                                       fontSize: 11,
                                     ),
                                     border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius:
+                                          BorderRadius.circular(12),
                                     ),
                                     contentPadding:
                                         const EdgeInsets.symmetric(
@@ -496,21 +517,23 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                                       vertical: 10,
                                     ),
                                   ),
-                                  items: plateCategories.map((category) {
-                                    return DropdownMenuItem<String>(
-                                      value: category,
-                                      child: Text(
-                                        category,
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                    );
-                                  }).toList(),
+                                  items: plateCategories.map(
+                                    (category) {
+                                      return DropdownMenuItem<String>(
+                                        value: category,
+                                        child: Text(
+                                          category,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ).toList(),
                                   onChanged: (value) {
                                     if (value != null) {
                                       registrationProvider
                                           .setPlateCategory(value);
-                                      registrationProvider
-                                          .checkVehicleBasicFormValidity();
                                     }
                                   },
                                 ),
@@ -522,6 +545,11 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                                   controller: registrationProvider
                                       .numberPlateController,
                                   keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    _englishNumberFormatter(),
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(8),
+                                  ],
                                   decoration: InputDecoration(
                                     labelText: 'plate_number'.tr(),
                                     labelStyle: const TextStyle(
@@ -545,21 +573,7 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
 
                                     return null;
                                   },
-                                  onChanged: (value) {
-                                    final String converted =
-                                        _toEnglishNumbers(value);
-
-                                    if (converted != value) {
-                                      registrationProvider
-                                          .numberPlateController
-                                          .value = TextEditingValue(
-                                        text: converted,
-                                        selection: TextSelection.collapsed(
-                                          offset: converted.length,
-                                        ),
-                                      );
-                                    }
-
+                                  onChanged: (_) {
                                     registrationProvider
                                         .checkVehicleBasicFormValidity();
                                   },
@@ -597,8 +611,6 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                             onChanged: (value) {
                               if (value != null) {
                                 registrationProvider.setPlateType(value);
-                                registrationProvider
-                                    .checkVehicleBasicFormValidity();
                               }
                             },
                           ),
@@ -610,20 +622,20 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: registrationProvider
-                                .isVehicleBasicFormValid
-                            ? () async {
-                                if (_formKey.currentState?.validate() ==
-                                    true) {
-                                  Navigator.pop(context, true);
-                                }
-                              }
-                            : null,
+                        onPressed:
+                            registrationProvider.isVehicleBasicFormValid
+                                ? () async {
+                                    if (_formKey.currentState?.validate() ==
+                                        true) {
+                                      Navigator.pop(context, true);
+                                    }
+                                  }
+                                : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: registrationProvider
-                                  .isVehicleBasicFormValid
-                              ? AppColors.primaryButton
-                              : Colors.grey.shade400,
+                          backgroundColor:
+                              registrationProvider.isVehicleBasicFormValid
+                                  ? AppColors.primaryButton
+                                  : Colors.grey.shade400,
                           foregroundColor: AppColors.buttonText,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
