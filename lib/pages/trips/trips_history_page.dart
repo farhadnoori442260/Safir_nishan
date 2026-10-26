@@ -503,7 +503,7 @@ class _TripCard extends StatelessWidget {
 
   Widget _buildCommissionBox() {
     final double commission = _toNumber(trip['commission_amount']) ?? 0;
-    final double? earnings = _toNumber(trip['driver_earnings']‏);
+    final double? earnings = _toNumber(trip['driver_earnings']);
 
     final Color statusColor =
         _isCommissionSettled ? Colors.green : Colors.orange.shade800;
