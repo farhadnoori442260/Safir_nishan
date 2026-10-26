@@ -445,5 +445,11 @@
   "chat_error_no_trip_id": "Trip ID for chat is not available",
   "chat_error_loading_messages": "Error loading messages",
   "chat_type_message_hint": "Type your message...",
-  "chat_time_now": "Now"
+  "chat_time_now": "Now",
+  "unit_km": "km",
+  "unit_min": "min",
+  "driver_earnings_label": "Your earnings",
+  "commission_label": "Commission",
+  "commission_settled": "Settled",
+  "commission_unpaid": "Unpaid"
 }
