@@ -445,5 +445,11 @@
   "chat_error_no_trip_id": "شناسه سفر برای چت موجود نیست",
   "chat_error_loading_messages": "خطا در دریافت پیام‌ها",
   "chat_type_message_hint": "پیام خود را بنویسید...",
-  "chat_time_now": "اکنون"
+  "chat_time_now": "اکنون",
+  "unit_km": "کیلومتر",
+  "unit_min": "دقیقه",
+  "driver_earnings_label": "درآمد شما",
+  "commission_label": "کمیسیون",
+  "commission_settled": "تصفیه‌شده",
+  "commission_unpaid": "پرداخت‌نشده"
 }
