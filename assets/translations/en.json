@@ -368,7 +368,7 @@
   "notification_weak_internet_retry": "The internet connection is weak. Please try again.",
   "notification_trip_accept_error": "An error occurred. Please try again.",
   "notification_party_name": "{role}: {name}",
-  "bg_location_prompt_msg": "To continue sharing your location even when the screen is locked, open your phone settings and set this app's location permission to 'Allow all the time'.",
+  "bg_location_prompt_msg": "To continue sharing your location even when the screen is locked, open your phone settings and set this app's location permission to Allow all the time.",
   "location_fetch_error_msg": "Unable to retrieve your location.",
   "cannot_offline_active_trip_msg": "You cannot go offline until the active trip is completed or cancelled.",
   "notif_active_trip_title": "Safir — Active Trip",
