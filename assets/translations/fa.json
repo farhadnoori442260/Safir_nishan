@@ -191,6 +191,7 @@
   "no_driver_record": "اطلاعاتی برای این راننده یافت نشد.",
   "choose_profile_pic": "انتخاب تصویر پروفایل",
   "full_name": "نام و نام خانوادگی",
+  "vehicle_cargo": "باربری",
   "vehicle_type": "نوع وسیله نقلیه",
   "vehicle_model_hint": "مدل خودرو (مثال: تویوتا کرولا)",
   "vehicle_plate_label": "شماره پلاک",
