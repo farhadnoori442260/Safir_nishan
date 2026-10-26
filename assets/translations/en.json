@@ -344,6 +344,7 @@
   "support_dialog_message": "Contact the Safir support team for help or to report a problem.",
   "delete_account_confirmation": "Are you sure you want to permanently delete your account? This action cannot be undone.",
   "privacy_policy_text": "Safir Drivers processes account information, location while active, vehicle details, and driver documents to provide transportation services. Information is used for registration, identity verification, trip operations, support, and legal requirements. Your information is not shared with unauthorized parties without a legal reason or operational need.",
+  "vehicle_type_label": "Vehicle type",
   "vehicle_cargo": "Cargo",
   "btn_delete": "Delete",
   "active_trip_status_accepted": "Trip accepted",
