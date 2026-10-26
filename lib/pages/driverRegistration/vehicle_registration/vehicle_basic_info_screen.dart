@@ -167,9 +167,6 @@ class _VehicleBasicInfoScreenState extends State<VehicleBasicInfoScreen> {
             child: SingleChildScrollView(
               child: Form(
                 key: _formKey,
-                onChanged: () {
-                  registrationProvider.checkVehicleBasicFormValidity();
-                },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
