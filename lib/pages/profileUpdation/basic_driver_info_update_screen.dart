@@ -21,19 +21,19 @@ class _BasicDriverInfoUpdateScreenState
     extends State<BasicDriverInfoUpdateScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  static const List<String> _afghanMonths = <String>[
-    'حمل',
-    'ثور',
-    'جوزا',
-    'سرطان',
-    'اسد',
-    'سنبله',
-    'میزان',
-    'عقرب',
-    'قوس',
-    'جدی',
-    'دلو',
-    'حوت',
+  static const List<String> _afghanMonthKeys = <String>[
+    'jalali_month_hamal',
+    'jalali_month_sawr',
+    'jalali_month_jawza',
+    'jalali_month_saratan',
+    'jalali_month_asad',
+    'jalali_month_sunbula',
+    'jalali_month_mizan',
+    'jalali_month_aqrab',
+    'jalali_month_qaws',
+    'jalali_month_jadi',
+    'jalali_month_dalw',
+    'jalali_month_hut',
   ];
 
   String _toAfghanDigits(String value) {
@@ -50,7 +50,7 @@ class _BasicDriverInfoUpdateScreenState
       '9',
     ];
 
-    const List<String> farsi = <String>[
+    const List<String> afghan = <String>[
       '۰',
       '۱',
       '۲',
@@ -63,19 +63,23 @@ class _BasicDriverInfoUpdateScreenState
       '۹',
     ];
 
-    for (int index = 0; index < 10; index++) {
-      value = value.replaceAll(english[index], farsi[index]);
+    for (int index = 0; index < english.length; index++) {
+      value = value.replaceAll(english[index], afghan[index]);
     }
 
     return value;
   }
 
-  String _formatJalaliDate(Jalali date) {
+  String _monthName(BuildContext context, int month) {
+    return _afghanMonthKeys[month - 1].tr();
+  }
+
+  String _formatJalaliDate(BuildContext context, Jalali date) {
     final String day = date.day.toString().padLeft(2, '0');
     final String year = date.year.toString();
 
     return '${_toAfghanDigits(day)} '
-        '${_afghanMonths[date.month - 1]} '
+        '${_monthName(context, date.month)} '
         '${_toAfghanDigits(year)}';
   }
 
@@ -87,25 +91,42 @@ class _BasicDriverInfoUpdateScreenState
     return '$year/$month/$day';
   }
 
+  Jalali _currentJalaliDate() {
+    return Jalali.now();
+  }
+
   Jalali _getInitialJalaliDate(String savedDate) {
+    final Jalali today = _currentJalaliDate();
+
     try {
       final List<String> parts = savedDate.trim().split('/');
 
-      if (parts.length == 3) {
-        final int year = int.parse(parts[0]);
-        final int month = int.parse(parts[1]);
-        final int day = int.parse(parts[2]);
-
-        if (year >= 1300 &&
-            year <= Jalali.now().year &&
-            month >= 1 &&
-            month <= 12) {
-          return Jalali(year, month, day);
-        }
+      if (parts.length != 3) {
+        return today;
       }
-    } catch (_) {}
 
-    return Jalali(1379, 1, 1);
+      final int year = int.parse(parts[0]);
+      final int month = int.parse(parts[1]);
+      final int day = int.parse(parts[2]);
+
+      if (year < 1 ||
+          year > today.year ||
+          month < 1 ||
+          month > 12 ||
+          day < 1) {
+        return today;
+      }
+
+      final int maxDay = Jalali(year, month, 1).monthLength;
+
+      if (day > maxDay) {
+        return today;
+      }
+
+      return Jalali(year, month, day);
+    } catch (_) {
+      return today;
+    }
   }
 
   Future<void> _showAfghanDatePicker(
@@ -123,15 +144,16 @@ class _BasicDriverInfoUpdateScreenState
             BuildContext context,
             StateSetter setDialogState,
           ) {
-            final int currentJalaliYear = Jalali.now().year;
+            final Jalali today = _currentJalaliDate();
+            final int currentJalaliYear = today.year;
 
             return AlertDialog(
               titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
               contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
               actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              title: const Text(
-                'انتخاب تاریخ تولد',
-                style: TextStyle(
+              title: Text(
+                'dob_picker_title'.tr(),
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
@@ -152,7 +174,7 @@ class _BasicDriverInfoUpdateScreenState
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        _formatJalaliDate(selectedDate),
+                        _formatJalaliDate(context, selectedDate),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 17,
@@ -170,7 +192,7 @@ class _BasicDriverInfoUpdateScreenState
                             value: selectedDate.year,
                             isExpanded: true,
                             decoration: InputDecoration(
-                              labelText: 'سال',
+                              labelText: 'dob_year_label'.tr(),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -180,9 +202,9 @@ class _BasicDriverInfoUpdateScreenState
                               ),
                             ),
                             items: List<DropdownMenuItem<int>>.generate(
-                              currentJalaliYear - 1315 + 1,
+                              currentJalaliYear,
                               (int index) {
-                                final int year = 1315 + index;
+                                final int year = index + 1;
 
                                 return DropdownMenuItem<int>(
                                   value: year,
@@ -222,7 +244,7 @@ class _BasicDriverInfoUpdateScreenState
                             value: selectedDate.month,
                             isExpanded: true,
                             decoration: InputDecoration(
-                              labelText: 'ماه',
+                              labelText: 'dob_month_label'.tr(),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -234,9 +256,13 @@ class _BasicDriverInfoUpdateScreenState
                             items: List<DropdownMenuItem<int>>.generate(
                               12,
                               (int index) {
+                                final int month = index + 1;
+
                                 return DropdownMenuItem<int>(
-                                  value: index + 1,
-                                  child: Text(_afghanMonths[index]),
+                                  value: month,
+                                  child: Text(
+                                    _monthName(context, month),
+                                  ),
                                 );
                               },
                             ),
@@ -270,7 +296,7 @@ class _BasicDriverInfoUpdateScreenState
                       value: selectedDate.day,
                       isExpanded: true,
                       decoration: InputDecoration(
-                        labelText: 'روز',
+                        labelText: 'dob_day_label'.tr(),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -314,20 +340,17 @@ class _BasicDriverInfoUpdateScreenState
                   onPressed: () {
                     Navigator.pop(dialogContext);
                   },
-                  child: const Text('لغو'),
+                  child: Text('cancel'.tr()),
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(
-                      dialogContext,
-                      selectedDate,
-                    );
+                    Navigator.pop(dialogContext, selectedDate);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBrand,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('تأیید'),
+                  child: Text('confirm'.tr()),
                 ),
               ],
             );
@@ -340,9 +363,7 @@ class _BasicDriverInfoUpdateScreenState
       return;
     }
 
-    registrationProvider.dobController.text =
-        _formatJalaliStorage(result);
-
+    registrationProvider.dobController.text = _formatJalaliStorage(result);
     registrationProvider.checkBasicFormValidity();
   }
 
@@ -495,8 +516,7 @@ class _BasicDriverInfoUpdateScreenState
                                 return null;
                               },
                               onChanged: (_) {
-                                registrationProvider
-                                    .checkBasicFormValidity();
+                                registrationProvider.checkBasicFormValidity();
                               },
                             ),
                             const SizedBox(height: 16),
@@ -525,8 +545,7 @@ class _BasicDriverInfoUpdateScreenState
                                 return null;
                               },
                               onChanged: (_) {
-                                registrationProvider
-                                    .checkBasicFormValidity();
+                                registrationProvider.checkBasicFormValidity();
                               },
                             ),
                             const SizedBox(height: 16),
@@ -558,8 +577,7 @@ class _BasicDriverInfoUpdateScreenState
                                 return null;
                               },
                               onChanged: (_) {
-                                registrationProvider
-                                    .checkBasicFormValidity();
+                                registrationProvider.checkBasicFormValidity();
                               },
                             ),
                             const SizedBox(height: 16),
@@ -589,8 +607,7 @@ class _BasicDriverInfoUpdateScreenState
                                 return null;
                               },
                               onChanged: (_) {
-                                registrationProvider
-                                    .checkBasicFormValidity();
+                                registrationProvider.checkBasicFormValidity();
                               },
                             ),
                             const SizedBox(height: 16),
@@ -600,7 +617,7 @@ class _BasicDriverInfoUpdateScreenState
                               enabled: false,
                               decoration: InputDecoration(
                                 labelText:
-                                    '${'phone'.tr()} (${ 'not_registered'.tr() })',
+                                    '${'phone'.tr()} (${'not_registered'.tr()})',
                                 labelStyle: const TextStyle(fontSize: 13),
                                 border: const OutlineInputBorder(
                                   borderRadius: BorderRadius.all(
@@ -619,8 +636,8 @@ class _BasicDriverInfoUpdateScreenState
                               controller: registrationProvider.dobController,
                               readOnly: true,
                               decoration: InputDecoration(
-                                labelText: 'تاریخ تولد (هجری شمسی)',
-                                hintText: 'مثلاً 1379/02/22',
+                                labelText: 'dob_jalali_label'.tr(),
+                                hintText: 'dob_jalali_hint'.tr(),
                                 labelStyle: const TextStyle(fontSize: 13),
                                 border: const OutlineInputBorder(
                                   borderRadius: BorderRadius.all(
@@ -640,15 +657,13 @@ class _BasicDriverInfoUpdateScreenState
                               ),
                               validator: (String? value) {
                                 if (value == null || value.trim().isEmpty) {
-                                  return 'تاریخ تولد را انتخاب کنید';
+                                  return 'err_dob_required'.tr();
                                 }
 
                                 return null;
                               },
                               onTap: () {
-                                _showAfghanDatePicker(
-                                  registrationProvider,
-                                );
+                                _showAfghanDatePicker(registrationProvider);
                               },
                             ),
                           ],
@@ -682,9 +697,7 @@ class _BasicDriverInfoUpdateScreenState
                                   debugPrint(
                                     'Error while saving driver data: $error',
                                   );
-                                  debugPrintStack(
-                                    stackTrace: stackTrace,
-                                  );
+                                  debugPrintStack(stackTrace: stackTrace);
                                 }
                               }
                             : null,
