@@ -1,6 +1,6 @@
-import 'package:country_picker/country_picker.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../methods/common_method.dart';
@@ -21,18 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController phoneController = TextEditingController();
   final CommonMethods commonMethods = CommonMethods();
 
-  Country selectedCountry = Country(
-    phoneCode: '93',
-    countryCode: 'AF',
-    e164Sc: 0,
-    geographic: true,
-    level: 1,
-    name: 'Afghanistan',
-    example: 'Afghanistan',
-    displayName: 'Afghanistan',
-    displayNameNoCountryCode: 'AF',
-    e164Key: '',
-  );
+  static const String _afghanistanPhoneCode = '+93';
 
   @override
   void dispose() {
@@ -40,11 +29,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  bool get _isPhoneValid {
+    final String phoneNumber = phoneController.text.trim();
+
+    return RegExp(r'^7[0-9]{8}$').hasMatch(phoneNumber);
+  }
+
   void _showLanguageSelector() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
+      builder: (BuildContext sheetContext) {
         return SafeArea(
           top: false,
           child: Container(
@@ -57,7 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
+              children: <Widget>[
                 Container(
                   width: 42,
                   height: 4,
@@ -78,19 +73,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 12),
                 _buildLanguageTile(
                   title: 'فارسی (دری)',
-                  flag: '🇦🇫',
                   locale: const Locale('fa'),
                   sheetContext: sheetContext,
                 ),
                 _buildLanguageTile(
                   title: 'پښتو',
-                  flag: '🇦🇫',
                   locale: const Locale('ps'),
                   sheetContext: sheetContext,
                 ),
                 _buildLanguageTile(
                   title: 'English',
-                  flag: '🇬🇧',
                   locale: const Locale('en'),
                   sheetContext: sheetContext,
                 ),
@@ -104,11 +96,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildLanguageTile({
     required String title,
-    required String flag,
     required Locale locale,
     required BuildContext sheetContext,
   }) {
-    final bool isSelected = context.locale.languageCode == locale.languageCode;
+    final bool isSelected =
+        context.locale.languageCode == locale.languageCode;
 
     return Container(
       margin: const EdgeInsets.only(top: 10),
@@ -127,13 +119,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         onTap: () async {
           await context.setLocale(locale);
 
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
+
           Navigator.pop(sheetContext);
         },
-        leading: Text(
-          flag,
-          style: const TextStyle(fontSize: 24),
-        ),
         title: Text(
           title,
           style: TextStyle(
@@ -154,55 +145,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  void _showCountryPicker() {
-    showCountryPicker(
-      context: context,
-      countryListTheme: CountryListThemeData(
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
-        bottomSheetHeight: MediaQuery.of(context).size.height * 0.72,
-        inputDecoration: InputDecoration(
-          hintText: 'Search country',
-          prefixIcon: const Icon(Icons.search_rounded),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-      ),
-      onSelect: (Country country) {
-        setState(() {
-          selectedCountry = country;
-        });
-      },
-    );
-  }
-
   Future<void> _handleGoogleSignIn() async {
-    final authProvider = context.read<AuthenticationProvider>();
+    final AuthenticationProvider authProvider =
+        context.read<AuthenticationProvider>();
 
     await authProvider.signInWithGoogle(
       context,
       () async {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
         final user = authProvider.firebaseAuth.currentUser;
 
-        if (user == null) return;
+        if (user == null) {
+          return;
+        }
 
         try {
-          final bool userExists = await authProvider.checkUserExistById();
+          final bool userExists =
+              await authProvider.checkUserExistById();
 
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
 
           if (!userExists) {
             navigate(isSignedIn: false);
             return;
           }
 
-          final bool isBlocked = await authProvider.checkIfDriverIsBlocked();
+          final bool isBlocked =
+              await authProvider.checkIfDriverIsBlocked();
 
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
 
           if (isBlocked) {
             Navigator.pushReplacement(
@@ -216,12 +194,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
           await authProvider.getUserDataFromFirebaseDatabase();
 
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
 
           final bool isDriverComplete =
               await authProvider.checkDriverFieldsFilled();
 
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
 
           if (isDriverComplete) {
             navigate(isSignedIn: true);
@@ -234,7 +216,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             );
           }
         } catch (_) {
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
 
           commonMethods.displaySnackBar(
             'error_occurred'.tr(),
@@ -246,12 +230,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void sendPhoneNumber() {
-    final authProvider = context.read<AuthenticationProvider>();
     final String phoneNumber = phoneController.text.trim();
 
-    if (phoneNumber.isEmpty ||
-        phoneNumber.length != 9 ||
-        !RegExp(r'^[7][0-9]{8}$').hasMatch(phoneNumber)) {
+    if (!_isPhoneValid) {
       commonMethods.displaySnackBar(
         'invalid_phone_error'.tr(),
         context,
@@ -259,7 +240,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    final String fullPhoneNumber = '+${selectedCountry.phoneCode}$phoneNumber';
+    final AuthenticationProvider authProvider =
+        context.read<AuthenticationProvider>();
+
+    final String fullPhoneNumber =
+        '$_afghanistanPhoneCode$phoneNumber';
 
     authProvider.signInWithPhone(
       context: context,
@@ -268,7 +253,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void navigate({required bool isSignedIn}) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (isSignedIn) {
       Navigator.pushAndRemoveUntil(
@@ -276,28 +263,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
         MaterialPageRoute(
           builder: (_) => const Dashboard(),
         ),
-        (route) => false,
+        (Route<dynamic> route) => false,
       );
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const DriverRegistration(),
-        ),
-      );
+      return;
     }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const DriverRegistration(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthenticationProvider>();
-    final bool canContinue = phoneController.text.trim().length == 9;
+    final AuthenticationProvider authProvider =
+        context.watch<AuthenticationProvider>();
+
+    final bool canContinue = _isPhoneValid;
 
     return SafeArea(
       child: Scaffold(
         backgroundColor: const Color(0xFFF7FAF8),
         body: Stack(
-          children: [
+          children: <Widget>[
             Positioned(
               top: -90,
               right: -75,
@@ -333,7 +323,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: IntrinsicHeight(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                    children: <Widget>[
                       Align(
                         alignment: AlignmentDirectional.topEnd,
                         child: InkWell(
@@ -348,12 +338,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               color: Colors.white.withOpacity(0.9),
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
-                                color: AppColors.primaryBrand.withOpacity(0.25),
+                                color: AppColors.primaryBrand
+                                    .withOpacity(0.25),
                               ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: [
+                              children: <Widget>[
                                 const Icon(
                                   Icons.language_rounded,
                                   color: AppColors.primaryBrand,
@@ -374,7 +365,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-
                       Center(
                         child: Container(
                           width: 86,
@@ -382,9 +372,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           decoration: BoxDecoration(
                             color: AppColors.primaryBrand,
                             borderRadius: BorderRadius.circular(28),
-                            boxShadow: [
+                            boxShadow: <BoxShadow>[
                               BoxShadow(
-                                color: AppColors.primaryBrand.withOpacity(0.24),
+                                color: AppColors.primaryBrand
+                                    .withOpacity(0.24),
                                 blurRadius: 20,
                                 offset: const Offset(0, 9),
                               ),
@@ -397,9 +388,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 26),
-
                       Text(
                         'register_title'.tr(),
                         style: const TextStyle(
@@ -418,9 +407,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           height: 1.6,
                         ),
                       ),
-
                       const SizedBox(height: 28),
-
                       Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
@@ -429,7 +416,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           border: Border.all(
                             color: Colors.grey.shade100,
                           ),
-                          boxShadow: [
+                          boxShadow: <BoxShadow>[
                             BoxShadow(
                               color: Colors.black.withOpacity(0.045),
                               blurRadius: 18,
@@ -439,7 +426,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+                          children: <Widget>[
                             Text(
                               'mobile_number'.tr(),
                               style: const TextStyle(
@@ -449,7 +436,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             ),
                             const SizedBox(height: 10),
-
                             Directionality(
                               textDirection: TextDirection.ltr,
                               child: TextFormField(
@@ -458,9 +444,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 autofocus: true,
                                 textInputAction: TextInputAction.done,
                                 keyboardType: TextInputType.phone,
+                                inputFormatters:
+                                    <TextInputFormatter>[
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
                                 onChanged: (_) => setState(() {}),
                                 onFieldSubmitted: (_) {
-                                  if (!authProvider.isLoading && canContinue) {
+                                  if (!authProvider.isLoading &&
+                                      canContinue) {
                                     sendPhoneNumber();
                                   }
                                 },
@@ -480,53 +471,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   filled: true,
                                   fillColor: const Color(0xFFF9FBFA),
-                                  contentPadding: const EdgeInsets.symmetric(
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
                                     horizontal: 14,
                                     vertical: 17,
                                   ),
                                   enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
+                                    borderRadius:
+                                        BorderRadius.circular(15),
                                     borderSide: BorderSide(
                                       color: Colors.grey.shade200,
                                     ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
+                                    borderRadius:
+                                        BorderRadius.circular(15),
                                     borderSide: const BorderSide(
                                       color: AppColors.primaryBrand,
                                       width: 1.8,
                                     ),
                                   ),
-                                  prefixIconConstraints: const BoxConstraints(
-                                    minWidth: 116,
+                                  prefixIconConstraints:
+                                      const BoxConstraints(
+                                    minWidth: 70,
                                   ),
-                                  prefixIcon: Padding(
-                                    padding: const EdgeInsets.only(left: 10),
-                                    child: InkWell(
-                                      onTap: _showCountryPicker,
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            selectedCountry.flagEmoji,
-                                            style: const TextStyle(fontSize: 20),
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            '+${selectedCountry.phoneCode}',
-                                            style: const TextStyle(
-                                              color: AppColors.textPrimary,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const Icon(
-                                            Icons.keyboard_arrow_down_rounded,
-                                            color: AppColors.textSecondary,
-                                            size: 20,
-                                          ),
-                                        ],
+                                  prefixIcon: const Center(
+                                    child: Text(
+                                      _afghanistanPhoneCode,
+                                      style: TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
@@ -534,10 +509,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       ? Container(
                                           width: 24,
                                           height: 24,
-                                          margin: const EdgeInsets.all(13),
+                                          margin:
+                                              const EdgeInsets.all(13),
                                           decoration: const BoxDecoration(
                                             shape: BoxShape.circle,
-                                            color: AppColors.primaryBrand,
+                                            color:
+                                                AppColors.primaryBrand,
                                           ),
                                           child: const Icon(
                                             Icons.check_rounded,
@@ -549,44 +526,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 18),
-
                             SizedBox(
                               width: double.infinity,
                               height: 53,
                               child: ElevatedButton(
-                                onPressed: authProvider.isLoading
+                                onPressed: authProvider.isLoading ||
+                                        !canContinue
                                     ? null
                                     : sendPhoneNumber,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryButton,
-                                  foregroundColor: AppColors.buttonText,
-                                  disabledBackgroundColor:
-                                      AppColors.primaryButton.withOpacity(0.55),
+                                  backgroundColor:
+                                      AppColors.primaryButton,
+                                  foregroundColor:
+                                      AppColors.buttonText,
+                                  disabledBackgroundColor: AppColors
+                                      .primaryButton
+                                      .withOpacity(0.55),
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
+                                    borderRadius:
+                                        BorderRadius.circular(15),
                                   ),
                                 ),
                                 child: authProvider.isLoading
                                     ? const SizedBox(
                                         width: 22,
                                         height: 22,
-                                        child: CircularProgressIndicator(
+                                        child:
+                                            CircularProgressIndicator(
                                           strokeWidth: 2.4,
-                                          color: AppColors.buttonText,
+                                          color:
+                                              AppColors.buttonText,
                                         ),
                                       )
                                     : Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
-                                        children: [
+                                        children: <Widget>[
                                           Text(
                                             'btn_continue'.tr(),
                                             style: const TextStyle(
                                               fontSize: 16,
-                                              fontWeight: FontWeight.bold,
+                                              fontWeight:
+                                                  FontWeight.bold,
                                             ),
                                           ),
                                           const SizedBox(width: 8),
@@ -601,11 +584,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ],
                         ),
                       ),
-
                       const SizedBox(height: 24),
-
                       Row(
-                        children: [
+                        children: <Widget>[
                           Expanded(
                             child: Divider(
                               color: Colors.grey.shade300,
@@ -613,7 +594,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 13),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 13,
+                            ),
                             child: Text(
                               'or_label'.tr(),
                               style: const TextStyle(
@@ -630,9 +613,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 20),
-
                       SizedBox(
                         width: double.infinity,
                         height: 53,
@@ -643,12 +624,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               : _handleGoogleSignIn,
                           style: OutlinedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            foregroundColor: AppColors.textPrimary,
+                            foregroundColor:
+                                AppColors.textPrimary,
                             side: BorderSide(
                               color: Colors.grey.shade300,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
+                              borderRadius:
+                                  BorderRadius.circular(15),
                             ),
                           ),
                           child: authProvider.isGoogleSigInLoading
@@ -661,8 +644,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                 )
                               : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.center,
+                                  children: <Widget>[
                                     Image.asset(
                                       'assets/images/google_logo.png',
                                       height: 21,
@@ -678,16 +662,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       'google_sign_in'.tr(),
                                       style: const TextStyle(
                                         fontSize: 15,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight:
+                                            FontWeight.w600,
                                       ),
                                     ),
                                   ],
                                 ),
                         ),
                       ),
-
                       const Spacer(),
-
                       Padding(
                         padding: const EdgeInsets.only(top: 28),
                         child: Center(
