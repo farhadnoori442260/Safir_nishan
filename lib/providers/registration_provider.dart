@@ -365,40 +365,44 @@ class RegistrationProvider extends ChangeNotifier {
   }
 
   void setPlateProvince(String value) {
-    if (_plateProvince == value) {
-      return;
-    }
-
-    _plateProvince = value;
-    checkVehicleBasicFormValidity();
+  if (_plateProvince == value) {
+    return;
   }
 
-  void setPlateCategory(String value) {
-    if (_plateCategory == value) {
-      return;
-    }
+  _plateProvince = value;
+  notifyListeners();
+  checkVehicleBasicFormValidity();
+}
 
-    _plateCategory = value;
-    checkVehicleBasicFormValidity();
+void setPlateCategory(String value) {
+  if (_plateCategory == value) {
+    return;
   }
 
-  void setPlateType(String value) {
-    if (_plateType == value) {
-      return;
-    }
+  _plateCategory = value;
+  notifyListeners();
+  checkVehicleBasicFormValidity();
+}
 
-    _plateType = value;
-    checkVehicleBasicFormValidity();
+void setPlateType(String value) {
+  if (_plateType == value) {
+    return;
   }
 
-  void setSelectedVehicle(String vehicle) {
-    if (_selectedVehicle == vehicle) {
-      return;
-    }
+  _plateType = value;
+  notifyListeners();
+  checkVehicleBasicFormValidity();
+}
 
-    _selectedVehicle = vehicle;
-    checkVehicleBasicFormValidity();
+void setSelectedVehicle(String vehicle) {
+  if (_selectedVehicle == vehicle) {
+    return;
   }
+
+  _selectedVehicle = vehicle;
+  notifyListeners();
+  checkVehicleBasicFormValidity();
+}
 
   @override
   void dispose() {
