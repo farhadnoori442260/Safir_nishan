@@ -1872,49 +1872,52 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Stack(
           children: [
-            MapLibreMap(
-              initialCameraPosition: CameraPosition(
-                target: LatLng(
-                  currentPositionOfDriver?.latitude ?? 34.5553,
-                  currentPositionOfDriver?.longitude ?? 69.2075,
-                ),
-                zoom: 15,
-              ),
-              styleString: 'assets/map/style.json',
-              rotateGesturesEnabled: false,
-              tiltGesturesEnabled: false,
-              myLocationEnabled: !_isNavArrowVisible,
-              myLocationTrackingMode: MyLocationTrackingMode.none,
-              onMapCreated: _onMapCreated,
-              onStyleLoadedCallback: () async {
-                _isMapStyleReady = true;
-                _isDriverArrowImageAdded = false;
-                _driverNavigationSymbol = null;
-                _navRemainingLine = null;
-                _navTraveledLine = null;
-                _navLastRenderedSegment = -1;
-                _navLastRenderedPoint = null;
+            RepaintBoundary(
+  child: MapLibreMap(
+    initialCameraPosition: CameraPosition(
+      target: LatLng(
+        currentPositionOfDriver?.latitude ?? 34.5553,
+        currentPositionOfDriver?.longitude ?? 69.2075,
+      ),
+      zoom: 15,
+    ),
+    styleString: 'assets/map/style.json',
+    rotateGesturesEnabled: false,
+    tiltGesturesEnabled: false,
+    myLocationEnabled: !_isNavArrowVisible,
+    myLocationTrackingMode: MyLocationTrackingMode.none,
+    onMapCreated: _onMapCreated,
+    onStyleLoadedCallback: () async {
+      _isMapStyleReady = true;
+      _isDriverArrowImageAdded = false;
+      _driverNavigationSymbol = null;
+      _navRemainingLine = null;
+      _navTraveledLine = null;
+      _navLastRenderedSegment = -1;
+      _navLastRenderedPoint = null;
 
-                await _prepareDriverNavigationArrow();
+      await _prepareDriverNavigationArrow();
 
-                if (_navRoutePoints.length >= 2) {
-                  await _renderNavLines(
-                    traveled: <LatLng>[],
-                    remaining: _navRoutePoints,
-                  );
+      if (_navRoutePoints.length >= 2) {
+        await _renderNavLines(
+          traveled: <LatLng>[],
+          remaining: _navRoutePoints,
+        );
 
-                  final Position? p = currentPositionOfDriver;
-                  if (p != null) {
-                    _pendingNavPosition = p;
-                    unawaited(_processPendingNavPosition());
-                  }
-                }
-              },
-            ),
+        final Position? p = currentPositionOfDriver;
+        if (p != null) {
+          _pendingNavPosition = p;
+          unawaited(_processPendingNavPosition());
+        }
+      }
+    },
+  ),
+),
             Positioned(
               top: 20,
               right: 16,
