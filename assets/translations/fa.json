@@ -453,5 +453,12 @@
   "driver_earnings_label": "درآمد شما",
   "commission_label": "کمیسیون",
   "commission_settled": "تصفیه‌شده",
-  "commission_unpaid": "پرداخت‌نشده"
+  "commission_unpaid": "پرداخت‌نشده",
+  "dob_picker_title": "انتخاب تاریخ تولد",
+  "dob_year_label": "سال",
+  "dob_month_label": "ماه",
+  "dob_day_label": "روز",
+  "dob_jalali_label": "تاریخ تولد (هجری شمسی)",
+  "dob_jalali_hint": "مثلاً 1379/02/22",
+  "err_dob_required": "لطفاً تاریخ تولد را انتخاب کنید"
 }
