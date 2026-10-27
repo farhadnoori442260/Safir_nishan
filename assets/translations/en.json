@@ -453,5 +453,12 @@
   "driver_earnings_label": "Your earnings",
   "commission_label": "Commission",
   "commission_settled": "Settled",
-  "commission_unpaid": "Unpaid"
+  "commission_unpaid": "Unpaid",
+  "dob_picker_title": "Select Date of Birth",
+  "dob_year_label": "Year",
+  "dob_month_label": "Month",
+  "dob_day_label": "Day",
+  "dob_jalali_label": "Date of Birth (Solar Hijri)",
+  "dob_jalali_hint": "e.g., 1379/02/22",
+  "err_dob_required": "Please select your date of birth"
 }
