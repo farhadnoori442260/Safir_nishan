@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -27,16 +28,19 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController =
       TextEditingController();
 
+  final FocusNode _messageFocusNode = FocusNode();
+
+  final ScrollController _messagesScrollController =
+      ScrollController();
+
   final FirebaseFirestore _firestore =
       FirebaseFirestore.instance;
 
-  final FirebaseAuth _auth =
-      FirebaseAuth.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   bool _isSending = false;
 
-  CollectionReference<Map<String, dynamic>>
-      get _chatCollection {
+  CollectionReference<Map<String, dynamic>> get _chatCollection {
     return _firestore
         .collection('rides')
         .doc(widget.tripId)
@@ -50,12 +54,12 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void dispose() {
     _messageController.dispose();
+    _messageFocusNode.dispose();
+    _messagesScrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _makePhoneCall(
-    String phoneNumber,
-  ) async {
+  Future<void> _makePhoneCall(String phoneNumber) async {
     final String phone = phoneNumber.trim();
 
     if (phone.isEmpty) {
@@ -68,17 +72,16 @@ class _ChatPageState extends State<ChatPage> {
     );
 
     try {
-      final bool canCall =
-          await canLaunchUrl(launchUri);
+      final bool canCall = await canLaunchUrl(launchUri);
 
       if (!canCall) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'امکان برقراری تماس وجود ندارد',
-            ),
+            content: Text('امکان برقراری تماس وجود ندارد'),
           ),
         );
 
@@ -91,12 +94,21 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> sendMessage() async {
-    final String text =
-        _messageController.text.trim();
+  void _scrollToLatestMessage() {
+    if (!_messagesScrollController.hasClients) {
+      return;
+    }
 
-    final String driverId =
-        _currentDriverId;
+    _messagesScrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  Future<void> sendMessage() async {
+    final String text = _messageController.text.trim();
+    final String driverId = _currentDriverId;
 
     if (text.isEmpty ||
         driverId.isEmpty ||
@@ -110,29 +122,36 @@ class _ChatPageState extends State<ChatPage> {
     });
 
     try {
-      await _chatCollection.add({
+      await _chatCollection.add(<String, dynamic>{
         'senderId': driverId,
         'senderType': 'driver',
         'message': text,
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       _messageController.clear();
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToLatestMessage();
+      });
     } on FirebaseException catch (error) {
       debugPrint(
         'Driver chat Firebase error: '
         '${error.code} - ${error.message}',
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            error.message ??
-                'ارسال پیام انجام نشد. دوباره تلاش کنید.',
+            error.message ?? 'ارسال پیام انجام نشد. دوباره تلاش کنید.',
           ),
           backgroundColor: Colors.red.shade700,
         ),
@@ -140,18 +159,20 @@ class _ChatPageState extends State<ChatPage> {
     } catch (error) {
       debugPrint('Driver chat send error: $error');
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'ارسال پیام انجام نشد. دوباره تلاش کنید.',
-          ),
+          content: Text('ارسال پیام انجام نشد. دوباره تلاش کنید.'),
           backgroundColor: Colors.red,
         ),
       );
     } finally {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _isSending = false;
@@ -165,14 +186,19 @@ class _ChatPageState extends State<ChatPage> {
     final Map<String, dynamic> data = document.data();
     final Object? value = data['timestamp'];
 
-    if (value is Timestamp) return value.toDate();
-    if (value is DateTime) return value;
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+
+    if (value is DateTime) {
+      return value;
+    }
+
     if (value is String) {
       return DateTime.tryParse(value) ??
           DateTime.fromMillisecondsSinceEpoch(0);
     }
 
-    // پیامی که هنوز به سرور نرسیده، جدیدترین است
     if (document.metadata.hasPendingWrites) {
       return DateTime.now();
     }
@@ -180,22 +206,23 @@ class _ChatPageState extends State<ChatPage> {
     return DateTime.fromMillisecondsSinceEpoch(0);
   }
 
-  List<QueryDocumentSnapshot<Map<String, dynamic>>>
-      _sortMessages(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>>
-        documents,
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _sortMessages(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> documents,
   ) {
     final List<QueryDocumentSnapshot<Map<String, dynamic>>>
         sortedDocuments =
-        List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(
-      documents,
-    );
+        List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(documents);
 
-    sortedDocuments.sort((a, b) {
-      return _getMessageDate(a).compareTo(
-        _getMessageDate(b),
-      );
-    });
+    sortedDocuments.sort(
+      (
+        QueryDocumentSnapshot<Map<String, dynamic>> first,
+        QueryDocumentSnapshot<Map<String, dynamic>> second,
+      ) {
+        return _getMessageDate(first).compareTo(
+          _getMessageDate(second),
+        );
+      },
+    );
 
     return sortedDocuments;
   }
@@ -218,9 +245,7 @@ class _ChatPageState extends State<ChatPage> {
     return DateFormat('HH:mm').format(date);
   }
 
-  bool _isMyMessage(
-    Map<String, dynamic> data,
-  ) {
+  bool _isMyMessage(Map<String, dynamic> data) {
     final String senderId =
         data['senderId']?.toString().trim() ?? '';
 
@@ -234,27 +259,37 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final double keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
+
     return Scaffold(
+      // جلوگیری از resize ناگهانی کل صفحه هنگام بازشدن کیبورد.
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       appBar: _buildAppBar(),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: _buildMessages(),
-            ),
-            _buildMessageComposer(),
-          ],
+        top: false,
+        maintainBottomViewPadding: true,
+        child: AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.only(bottom: keyboardHeight),
+          child: Column(
+            children: <Widget>[
+              Expanded(
+                child: _buildMessages(),
+              ),
+              _buildMessageComposer(),
+            ],
+          ),
         ),
       ),
     );
   }
 
   PreferredSizeWidget _buildAppBar() {
-    final String displayName =
-        widget.passengerName.trim().isNotEmpty
-            ? widget.passengerName.trim()
-            : 'passenger'.tr();
+    final String displayName = widget.passengerName.trim().isNotEmpty
+        ? widget.passengerName.trim()
+        : 'passenger'.tr();
 
     return AppBar(
       backgroundColor: AppColors.primaryBrand,
@@ -270,7 +305,7 @@ class _ChatPageState extends State<ChatPage> {
         ),
       ),
       title: Row(
-        children: [
+        children: <Widget>[
           const CircleAvatar(
             radius: 21,
             backgroundColor: Colors.white24,
@@ -295,7 +330,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ],
       ),
-      actions: [
+      actions: <Widget>[
         IconButton(
           tooltip: 'تماس',
           onPressed: () {
@@ -318,14 +353,14 @@ class _ChatPageState extends State<ChatPage> {
       );
     }
 
-    return StreamBuilder<
-        QuerySnapshot<Map<String, dynamic>>>(
-      // orderBy عمداً حذف شده است.
-      // چون پیام‌های قدیمی ممکن است timestamp نداشته باشند.
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      // عمداً orderBy استفاده نشده تا پیام‌های قدیمی بدون timestamp نیز نمایش داده شوند.
       stream: _chatCollection.snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState ==
-            ConnectionState.waiting) {
+      builder: (
+        BuildContext context,
+        AsyncSnapshot<QuerySnapshot<Map<String, dynamic>>> snapshot,
+      ) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(
               color: AppColors.primaryBrand,
@@ -335,34 +370,42 @@ class _ChatPageState extends State<ChatPage> {
 
         if (snapshot.hasError) {
           debugPrint(
-            'Driver chat stream error: '
-            '${snapshot.error}',
+            'Driver chat stream error: ${snapshot.error}',
           );
 
-          return _buildErrorState(
-            'خطا در دریافت پیام‌ها',
-          );
+          return _buildErrorState('خطا در دریافت پیام‌ها');
         }
 
-        final List<
-            QueryDocumentSnapshot<Map<String, dynamic>>>
-            messages = _sortMessages(
-          snapshot.data?.docs ?? <
-              QueryDocumentSnapshot<Map<String, dynamic>>>[],
+        final List<QueryDocumentSnapshot<Map<String, dynamic>>> messages =
+            _sortMessages(
+          snapshot.data?.docs ??
+              <QueryDocumentSnapshot<Map<String, dynamic>>>[],
         );
 
         if (messages.isEmpty) {
           return _buildEmptyState();
         }
 
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_messageFocusNode.hasFocus) {
+            _scrollToLatestMessage();
+          }
+        });
+
         return ListView.builder(
+          controller: _messagesScrollController,
           reverse: true,
+          keyboardDismissBehavior:
+              ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 12,
           ),
           itemCount: messages.length,
-          itemBuilder: (context, index) {
+          itemBuilder: (
+            BuildContext context,
+            int index,
+          ) {
             final Map<String, dynamic> data =
                 messages[messages.length - 1 - index].data();
 
@@ -373,9 +416,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildMessageBubble(
-    Map<String, dynamic> data,
-  ) {
+  Widget _buildMessageBubble(Map<String, dynamic> data) {
     final String message =
         data['message']?.toString().trim() ?? '';
 
@@ -383,8 +424,7 @@ class _ChatPageState extends State<ChatPage> {
       return const SizedBox.shrink();
     }
 
-    final bool isMe =
-        _isMyMessage(data);
+    final bool isMe = _isMyMessage(data);
 
     return Align(
       alignment: isMe
@@ -392,18 +432,10 @@ class _ChatPageState extends State<ChatPage> {
           : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          maxWidth:
-              MediaQuery.of(context).size.width * 0.78,
+          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
         ),
-        margin: const EdgeInsets.symmetric(
-          vertical: 4,
-        ),
-        padding: const EdgeInsets.fromLTRB(
-          14,
-          10,
-          12,
-          8,
-        ),
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
         decoration: BoxDecoration(
           color: isMe
               ? AppColors.primaryBrand
@@ -411,14 +443,10 @@ class _ChatPageState extends State<ChatPage> {
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(
-              isMe ? 16 : 4,
-            ),
-            bottomRight: Radius.circular(
-              isMe ? 4 : 16,
-            ),
+            bottomLeft: Radius.circular(isMe ? 16 : 4),
+            bottomRight: Radius.circular(isMe ? 4 : 16),
           ),
-          boxShadow: [
+          boxShadow: <BoxShadow>[
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
               blurRadius: 4,
@@ -430,7 +458,7 @@ class _ChatPageState extends State<ChatPage> {
           crossAxisAlignment: isMe
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
-          children: [
+          children: <Widget>[
             Text(
               message,
               textDirection: ui.TextDirection.rtl,
@@ -445,11 +473,9 @@ class _ChatPageState extends State<ChatPage> {
             const SizedBox(height: 4),
             Row(
               mainAxisSize: MainAxisSize.min,
-              children: [
+              children: <Widget>[
                 Text(
-                  _formatTimestamp(
-                    data['timestamp'],
-                  ),
+                  _formatTimestamp(data['timestamp']),
                   style: TextStyle(
                     fontSize: 10,
                     color: isMe
@@ -457,7 +483,7 @@ class _ChatPageState extends State<ChatPage> {
                         : AppColors.textSecondary,
                   ),
                 ),
-                if (isMe) ...[
+                if (isMe) ...<Widget>[
                   const SizedBox(width: 4),
                   const Icon(
                     Icons.done_all_rounded,
@@ -491,9 +517,8 @@ class _ChatPageState extends State<ChatPage> {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
-          children: [
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
             Icon(
               Icons.cloud_off_rounded,
               size: 54,
@@ -521,86 +546,83 @@ class _ChatPageState extends State<ChatPage> {
         vertical: 8,
       ),
       color: AppColors.cardBackground,
-      child: SafeArea(
-        top: false,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                minLines: 1,
-                maxLines: 4,
-                textDirection: ui.TextDirection.rtl,
-                textInputAction:
-                    TextInputAction.newline,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'chat_type_hint'.tr(),
-                  hintTextDirection: ui.TextDirection.rtl,
-                  hintStyle: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  fillColor: AppColors.background,
-                  filled: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                ),
-                onSubmitted: (_) {
-                  if (!_isSending) {
-                    sendMessage();
-                  }
-                },
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: <Widget>[
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              focusNode: _messageFocusNode,
+              minLines: 1,
+              maxLines: 4,
+              textDirection: ui.TextDirection.rtl,
+              textInputAction: TextInputAction.newline,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textPrimary,
               ),
+              decoration: InputDecoration(
+                hintText: 'chat_type_hint'.tr(),
+                hintTextDirection: ui.TextDirection.rtl,
+                hintStyle: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                fillColor: AppColors.background,
+                filled: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+              ),
+              onTap: () {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _scrollToLatestMessage();
+                });
+              },
+              onSubmitted: (_) {
+                if (!_isSending) {
+                  sendMessage();
+                }
+              },
             ),
-            const SizedBox(width: 8),
-            CircleAvatar(
-              backgroundColor: _isSending
-                  ? Colors.grey
-                  : AppColors.primaryBrand,
-              child: IconButton(
-                onPressed:
-                    _isSending ? null : sendMessage,
-                icon: _isSending
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.send_rounded,
+          ),
+          const SizedBox(width: 8),
+          CircleAvatar(
+            backgroundColor: _isSending
+                ? Colors.grey
+                : AppColors.primaryBrand,
+            child: IconButton(
+              onPressed: _isSending ? null : sendMessage,
+              icon: _isSending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
                         color: Colors.white,
-                        size: 20,
                       ),
-              ),
+                    )
+                  : const Icon(
+                      Icons.send_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
