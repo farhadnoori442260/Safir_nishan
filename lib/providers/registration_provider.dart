@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 
-import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -21,73 +21,43 @@ import 'package:safir_drivers/utils/lang_helper.dart';
 
 class RegistrationProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore =
-      FirebaseFirestore.instance;
-  final FirebaseStorage _storage =
-      FirebaseStorage.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   bool _isLoading = false;
   bool _isFetchLoading = false;
-
-  XFile? _profilePhoto;
-  bool _isPhotoAdded = false;
+  bool _isDataFetched = false;
 
   bool _isFormValidBasic = false;
   bool _isFormValidCninc = false;
-
-  XFile? _cnicFrontImage;
-  XFile? _cnicBackImage;
-  XFile? _cnicWithSelfieImage;
-
   bool _isFormValidDrivingLicense = false;
-  XFile? _drivingLicenseFrontImage;
-  XFile? _drivingLicenseBackImage;
-
-  String? _selectedVehicle;
   bool _isVehicleBasicFormValid = false;
 
-  final RegExp licenseRegExp =
-      RegExp(r'^[A-Z]{2}-d{2}-d{4}$');
-
-  XFile? _vehicleImage;
+  bool _isPhotoAdded = false;
   bool _isVehiclePhotoAdded = false;
-
-  XFile? _vehicleRegistrationFrontImage;
-  XFile? _vehicleRegistrationBackImage;
-
-  bool _isDataFetched = false;
-
-  bool get isDataFetched => _isDataFetched;
 
   double _driverEarnings = 0.0;
 
-  double get driverEarnings => _driverEarnings;
+  XFile? _profilePhoto;
+  XFile? _cnicFrontImage;
+  XFile? _cnicBackImage;
+  XFile? _cnicWithSelfieImage;
+  XFile? _drivingLicenseFrontImage;
+  XFile? _drivingLicenseBackImage;
+  XFile? _vehicleImage;
+  XFile? _vehicleRegistrationFrontImage;
+  XFile? _vehicleRegistrationBackImage;
 
+  String? _selectedVehicle;
   String _plateProvince = 'کابل';
   String _plateCategory = 'ش';
   String _plateType = 'شخصی';
 
-  String get plateProvince => _plateProvince;
-  String get plateCategory => _plateCategory;
-  String get plateType => _plateType;
+  Timer? _debounce;
 
-  void setPlateProvince(String val) {
-    _plateProvince = val;
-    checkVehicleBasicFormValidity();
-    notifyListeners();
-  }
+  final CommonMethods commonMethods = CommonMethods();
 
-  void setPlateCategory(String val) {
-    _plateCategory = val;
-    checkVehicleBasicFormValidity();
-    notifyListeners();
-  }
-
-  void setPlateType(String val) {
-    _plateType = val;
-    checkVehicleBasicFormValidity();
-    notifyListeners();
-  }
+  final RegExp licenseRegExp = RegExp(r'^[A-Z]{2}-d{2}-d{4}$');
 
   final TextEditingController firstNameController =
       TextEditingController();
@@ -125,103 +95,132 @@ class RegistrationProvider extends ChangeNotifier {
   final TextEditingController productionYearController =
       TextEditingController();
 
-  XFile? get profilePhoto => _profilePhoto;
-  bool get isPhotoAdded => _isPhotoAdded;
-  bool get isFormValidBasic => _isFormValidBasic;
   bool get isLoading => _isLoading;
   bool get isFetchLoading => _isFetchLoading;
+  bool get isDataFetched => _isDataFetched;
+  bool get isFormValidBasic => _isFormValidBasic;
   bool get isFormValidCninc => _isFormValidCninc;
-  bool get isFormValidDrivingLicnese =>
-      _isFormValidDrivingLicense;
-  bool get isVehicleBasicFormValid =>
-      _isVehicleBasicFormValid;
-  String? get selectedVehicle => _selectedVehicle;
+  bool get isFormValidDrivingLicnese => _isFormValidDrivingLicense;
+  bool get isVehicleBasicFormValid => _isVehicleBasicFormValid;
+  bool get isPhotoAdded => _isPhotoAdded;
+  bool get isVehiclePhotoAdded => _isVehiclePhotoAdded;
+  double get driverEarnings => _driverEarnings;
 
+  XFile? get profilePhoto => _profilePhoto;
+  XFile? get cnincFrontImage => _cnicFrontImage;
+  XFile? get cnincBackImage => _cnicBackImage;
+  XFile? get cnicWithSelfieImage => _cnicWithSelfieImage;
+  XFile? get drivingLicenseFrontImage => _drivingLicenseFrontImage;
+  XFile? get drivingLicenseBackImage => _drivingLicenseBackImage;
+  XFile? get vehicleImage => _vehicleImage;
   XFile? get vehicleRegistrationFrontImage =>
       _vehicleRegistrationFrontImage;
-
-  set vehicleRegistrationFrontImage(XFile? val) {
-    _vehicleRegistrationFrontImage = val;
-    notifyListeners();
-  }
-
   XFile? get vehicleRegistrationBackImage =>
       _vehicleRegistrationBackImage;
 
-  set vehicleRegistrationBackImage(XFile? val) {
-    _vehicleRegistrationBackImage = val;
+  String? get selectedVehicle => _selectedVehicle;
+  String get plateProvince => _plateProvince;
+  String get plateCategory => _plateCategory;
+  String get plateType => _plateType;
+
+  set vehicleRegistrationFrontImage(XFile? value) {
+    if (_vehicleRegistrationFrontImage?.path == value?.path) {
+      return;
+    }
+
+    _vehicleRegistrationFrontImage = value;
     notifyListeners();
   }
 
-  Timer? _debounce;
+  set vehicleRegistrationBackImage(XFile? value) {
+    if (_vehicleRegistrationBackImage?.path == value?.path) {
+      return;
+    }
 
-  CommonMethods commonMethods = CommonMethods();
-
-  XFile? get cnicWithSelfieImage =>
-      _cnicWithSelfieImage;
-
-  set cnicWithSelfieImage(XFile? val) {
-    _cnicWithSelfieImage = val;
+    _vehicleRegistrationBackImage = value;
     notifyListeners();
   }
 
-  XFile? get cnincFrontImage => _cnicFrontImage;
+  set cnicWithSelfieImage(XFile? value) {
+    if (_cnicWithSelfieImage?.path == value?.path) {
+      return;
+    }
 
-  set cnincFrontImage(XFile? val) {
-    _cnicFrontImage = val;
+    _cnicWithSelfieImage = value;
     notifyListeners();
   }
 
-  XFile? get cnincBackImage => _cnicBackImage;
+  set cnincFrontImage(XFile? value) {
+    if (_cnicFrontImage?.path == value?.path) {
+      return;
+    }
 
-  set cnincBackImage(XFile? val) {
-    _cnicBackImage = val;
+    _cnicFrontImage = value;
+    checkCNICFormValidity();
     notifyListeners();
   }
 
-  XFile? get drivingLicenseFrontImage =>
-      _drivingLicenseFrontImage;
+  set cnincBackImage(XFile? value) {
+    if (_cnicBackImage?.path == value?.path) {
+      return;
+    }
 
-  set drivingLicenseFrontImage(XFile? val) {
-    _drivingLicenseFrontImage = val;
+    _cnicBackImage = value;
+    checkCNICFormValidity();
     notifyListeners();
   }
 
-  XFile? get drivingLicenseBackImage =>
-      _drivingLicenseBackImage;
+  set drivingLicenseFrontImage(XFile? value) {
+    if (_drivingLicenseFrontImage?.path == value?.path) {
+      return;
+    }
 
-  set drivingLicenseBackImage(XFile? val) {
-    _drivingLicenseBackImage = val;
+    _drivingLicenseFrontImage = value;
+    checkDrivingLicenseFormValidity();
     notifyListeners();
   }
 
-  XFile? get vehicleImage => _vehicleImage;
+  set drivingLicenseBackImage(XFile? value) {
+    if (_drivingLicenseBackImage?.path == value?.path) {
+      return;
+    }
 
-  set vehicleImage(XFile? val) {
-    _vehicleImage = val;
+    _drivingLicenseBackImage = value;
+    checkDrivingLicenseFormValidity();
     notifyListeners();
   }
 
-  bool get isVehiclePhotoAdded =>
-      _isVehiclePhotoAdded;
+  set vehicleImage(XFile? value) {
+    if (_vehicleImage?.path == value?.path) {
+      return;
+    }
 
-  set isVehiclePhotoAdded(bool val) {
-    _isVehiclePhotoAdded = val;
+    _vehicleImage = value;
+    notifyListeners();
+  }
+
+  set isVehiclePhotoAdded(bool value) {
+    if (_isVehiclePhotoAdded == value) {
+      return;
+    }
+
+    _isVehiclePhotoAdded = value;
     notifyListeners();
   }
 
   Map<String, dynamic> get driverInformation {
-    return {
-      'name':
-          '$driverName $driverSecondName'.trim().isNotEmpty
-              ? '$driverName $driverSecondName'
-              : firstNameController.text,
+    final String fullName = '$driverName $driverSecondName'.trim();
+
+    return <String, dynamic>{
+      'name': fullName.isNotEmpty
+          ? fullName
+          : firstNameController.text.trim(),
       'phone': driverPhone.isNotEmpty
           ? driverPhone
-          : phoneController.text,
+          : phoneController.text.trim(),
       'email': driverEmail.isNotEmpty
           ? driverEmail
-          : emailController.text,
+          : emailController.text.trim(),
       'rating': rating.isNotEmpty ? rating : '0.0',
       'photo': driverPhoto,
       'carModel': carModel,
@@ -231,21 +230,37 @@ class RegistrationProvider extends ChangeNotifier {
   }
 
   void startLoading() {
+    if (_isLoading) {
+      return;
+    }
+
     _isLoading = true;
     notifyListeners();
   }
 
   void stopLoading() {
+    if (!_isLoading) {
+      return;
+    }
+
     _isLoading = false;
     notifyListeners();
   }
 
   void startFetchLoading() {
+    if (_isFetchLoading) {
+      return;
+    }
+
     _isFetchLoading = true;
     notifyListeners();
   }
 
   void stopFetchLoading() {
+    if (!_isFetchLoading) {
+      return;
+    }
+
     _isFetchLoading = false;
     notifyListeners();
   }
@@ -254,29 +269,84 @@ class RegistrationProvider extends ChangeNotifier {
     AuthenticationProvider authProvider,
   ) {
     if (!authProvider.isGoogleSignedIn) {
-      phoneController.text =
-          authProvider.phoneNumber ?? '';
+      phoneController.text = authProvider.phoneNumber ?? '';
     } else {
-      emailController.text = authProvider
-              .firebaseAuth.currentUser?.email ??
-          '';
+      emailController.text =
+          authProvider.firebaseAuth.currentUser?.email ?? '';
       phoneController.text = '';
     }
 
     checkBasicFormValidity();
   }
 
-  void checkVehicleBasicFormValidity() {
-  if (_debounce?.isActive ?? false) {
-    _debounce!.cancel();
+  void _runDebounced(VoidCallback callback) {
+    _debounce?.cancel();
+
+    _debounce = Timer(
+      const Duration(milliseconds: 300),
+      callback,
+    );
   }
 
-  _debounce = Timer(
-    const Duration(milliseconds: 300),
-    () {
+  void checkBasicFormValidity() {
+    _runDebounced(() {
+      final String email = emailController.text.trim();
+
+      final bool isValid =
+          firstNameController.text.trim().isNotEmpty &&
+          lastNameController.text.trim().isNotEmpty &&
+          email.isNotEmpty &&
+          email.contains('@') &&
+          addressController.text.trim().length >= 5 &&
+          phoneController.text.trim().length >= 9 &&
+          dobController.text.trim().isNotEmpty;
+
+      if (_isFormValidBasic == isValid) {
+        return;
+      }
+
+      _isFormValidBasic = isValid;
+      notifyListeners();
+    });
+  }
+
+  void checkCNICFormValidity() {
+    _runDebounced(() {
+      final bool isValid =
+          _cnicFrontImage != null &&
+          _cnicBackImage != null &&
+          cnicController.text.trim().length >= 10;
+
+      if (_isFormValidCninc == isValid) {
+        return;
+      }
+
+      _isFormValidCninc = isValid;
+      notifyListeners();
+    });
+  }
+
+  void checkDrivingLicenseFormValidity() {
+    _runDebounced(() {
+      final bool isValid =
+          _drivingLicenseFrontImage != null &&
+          _drivingLicenseBackImage != null &&
+          drivingLicenseController.text.trim().isNotEmpty;
+
+      if (_isFormValidDrivingLicense == isValid) {
+        return;
+      }
+
+      _isFormValidDrivingLicense = isValid;
+      notifyListeners();
+    });
+  }
+
+  void checkVehicleBasicFormValidity() {
+    _runDebounced(() {
       final bool isValid =
           _selectedVehicle != null &&
-          _selectedVehicle!.isNotEmpty &&
+          _selectedVehicle!.trim().isNotEmpty &&
           brandController.text.trim().isNotEmpty &&
           colorController.text.trim().isNotEmpty &&
           numberPlateController.text.trim().isNotEmpty &&
@@ -285,81 +355,49 @@ class RegistrationProvider extends ChangeNotifier {
           _plateCategory.isNotEmpty &&
           _plateType.isNotEmpty;
 
-      // فقط در صورت تغییر واقعیِ وضعیت دکمه، صفحه بازسازی شود.
       if (_isVehicleBasicFormValid == isValid) {
         return;
       }
 
       _isVehicleBasicFormValid = isValid;
       notifyListeners();
-    },
-  );
+    });
   }
 
-  void checkCNICFormValidity() {
-    if (_debounce?.isActive ?? false) {
-      _debounce!.cancel();
+  void setPlateProvince(String value) {
+    if (_plateProvince == value) {
+      return;
     }
 
-    _debounce = Timer(
-      const Duration(milliseconds: 300),
-      () {
-        _isFormValidCninc =
-            _cnicFrontImage != null &&
-                _cnicBackImage != null &&
-                cnicController.text.isNotEmpty &&
-                cnicController.text.length >= 10;
-
-        notifyListeners();
-      },
-    );
+    _plateProvince = value;
+    checkVehicleBasicFormValidity();
   }
 
-  void checkDrivingLicenseFormValidity() {
-    if (_debounce?.isActive ?? false) {
-      _debounce!.cancel();
+  void setPlateCategory(String value) {
+    if (_plateCategory == value) {
+      return;
     }
 
-    _debounce = Timer(
-      const Duration(milliseconds: 300),
-      () {
-        _isFormValidDrivingLicense =
-            _drivingLicenseFrontImage != null &&
-                _drivingLicenseBackImage != null &&
-                drivingLicenseController.text.isNotEmpty;
-
-        notifyListeners();
-      },
-    );
+    _plateCategory = value;
+    checkVehicleBasicFormValidity();
   }
 
-  void checkVehicleBasicFormValidity() {
-    if (_debounce?.isActive ?? false) {
-      _debounce!.cancel();
+  void setPlateType(String value) {
+    if (_plateType == value) {
+      return;
     }
 
-    _debounce = Timer(
-      const Duration(milliseconds: 300),
-      () {
-        _isVehicleBasicFormValid =
-            _selectedVehicle != null &&
-                brandController.text.isNotEmpty &&
-                colorController.text.isNotEmpty &&
-                numberPlateController.text.isNotEmpty &&
-                productionYearController.text.isNotEmpty &&
-                _plateProvince.isNotEmpty &&
-                _plateCategory.isNotEmpty &&
-                _plateType.isNotEmpty;
-
-        notifyListeners();
-      },
-    );
+    _plateType = value;
+    checkVehicleBasicFormValidity();
   }
 
   void setSelectedVehicle(String vehicle) {
+    if (_selectedVehicle == vehicle) {
+      return;
+    }
+
     _selectedVehicle = vehicle;
     checkVehicleBasicFormValidity();
-    notifyListeners();
   }
 
   @override
@@ -369,9 +407,10 @@ class RegistrationProvider extends ChangeNotifier {
     firstNameController.dispose();
     lastNameController.dispose();
     dobController.dispose();
-    cnicController.dispose();
+    addressController.dispose();
     emailController.dispose();
     phoneController.dispose();
+    cnicController.dispose();
     drivingLicenseController.dispose();
     brandController.dispose();
     colorController.dispose();
@@ -388,13 +427,15 @@ class RegistrationProvider extends ChangeNotifier {
       source: ImageSource.gallery,
     );
 
-    if (image != null) {
-      _profilePhoto = image;
-      _isPhotoAdded = true;
-
-      checkBasicFormValidity();
-      notifyListeners();
+    if (image == null) {
+      return;
     }
+
+    _profilePhoto = image;
+    _isPhotoAdded = true;
+
+    checkBasicFormValidity();
+    notifyListeners();
   }
 
   Future<void> pickVehicleImageFromCamera() async {
@@ -404,11 +445,13 @@ class RegistrationProvider extends ChangeNotifier {
       source: ImageSource.camera,
     );
 
-    if (image != null) {
-      _vehicleImage = image;
-      _isVehiclePhotoAdded = true;
-      notifyListeners();
+    if (image == null) {
+      return;
     }
+
+    _vehicleImage = image;
+    _isVehiclePhotoAdded = true;
+    notifyListeners();
   }
 
   Future<void> pickAndCropCnincImage(
@@ -428,15 +471,18 @@ class RegistrationProvider extends ChangeNotifier {
       imageSource: ImageSource.camera,
     );
 
-    if (pickedFile != null) {
-      if (isFrontImage) {
-        _cnicFrontImage = pickedFile;
-      } else {
-        _cnicBackImage = pickedFile;
-      }
-
-      checkCNICFormValidity();
+    if (pickedFile == null) {
+      return;
     }
+
+    if (isFrontImage) {
+      _cnicFrontImage = pickedFile;
+    } else {
+      _cnicBackImage = pickedFile;
+    }
+
+    checkCNICFormValidity();
+    notifyListeners();
   }
 
   Future<void> pickAndCropVehicleRegistrationImages(
@@ -456,14 +502,14 @@ class RegistrationProvider extends ChangeNotifier {
       imageSource: ImageSource.camera,
     );
 
-    if (pickedFile != null) {
-      if (isFrontImage) {
-        _vehicleRegistrationFrontImage =
-            pickedFile;
-      } else {
-        _vehicleRegistrationBackImage =
-            pickedFile;
-      }
+    if (pickedFile == null) {
+      return;
+    }
+
+    if (isFrontImage) {
+      _vehicleRegistrationFrontImage = pickedFile;
+    } else {
+      _vehicleRegistrationBackImage = pickedFile;
     }
 
     notifyListeners();
@@ -486,15 +532,18 @@ class RegistrationProvider extends ChangeNotifier {
       imageSource: ImageSource.camera,
     );
 
-    if (pickedFile != null) {
-      if (isFrontImage) {
-        _drivingLicenseFrontImage = pickedFile;
-      } else {
-        _drivingLicenseBackImage = pickedFile;
-      }
-
-      checkDrivingLicenseFormValidity();
+    if (pickedFile == null) {
+      return;
     }
+
+    if (isFrontImage) {
+      _drivingLicenseFrontImage = pickedFile;
+    } else {
+      _drivingLicenseBackImage = pickedFile;
+    }
+
+    checkDrivingLicenseFormValidity();
+    notifyListeners();
   }
 
   Future<void> pickCnincImageWithSelfie(
@@ -513,10 +562,11 @@ class RegistrationProvider extends ChangeNotifier {
       imageSource: ImageSource.camera,
     );
 
-    if (pickedFile != null) {
-      _cnicWithSelfieImage = pickedFile;
+    if (pickedFile == null) {
+      return;
     }
 
+    _cnicWithSelfieImage = pickedFile;
     notifyListeners();
   }
 
@@ -539,52 +589,41 @@ class RegistrationProvider extends ChangeNotifier {
     const String uploadPreset = 'safir_preset';
 
     final Uri url = Uri.parse(
-      'https://api.cloudinary.com/v1_1/'
-      '$cloudName/image/upload',
+      'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
     );
 
     try {
       final http.MultipartRequest request =
-          http.MultipartRequest(
-        'POST',
-        url,
+          http.MultipartRequest('POST', url);
+
+      request.fields['upload_preset'] = uploadPreset;
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          photo.path,
+        ),
       );
-
-      request.fields['upload_preset'] =
-          uploadPreset;
-
-      final http.MultipartFile multipartFile =
-          await http.MultipartFile.fromPath(
-        'file',
-        photo.path,
-      );
-
-      request.files.add(multipartFile);
 
       final http.StreamedResponse streamedResponse =
           await request.send();
 
       final http.Response response =
-          await http.Response.fromStream(
-        streamedResponse,
-      );
+          await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 ||
           response.statusCode == 201) {
         final Map<String, dynamic> responseData =
-            jsonDecode(response.body);
+            jsonDecode(response.body) as Map<String, dynamic>;
 
-        return responseData['secure_url']
-            .toString();
+        return responseData['secure_url'].toString();
       }
 
       throw Exception(
         'Upload failed: ${response.statusCode}',
       );
     } catch (error) {
-      debugPrint(
-        'Cloudinary Upload Error: $error',
-      );
+      debugPrint('Cloudinary Upload Error: $error');
       rethrow;
     }
   }
@@ -603,14 +642,10 @@ class RegistrationProvider extends ChangeNotifier {
       return;
     }
 
-    final User? currentUser =
-        _auth.currentUser;
+    final User? currentUser = _auth.currentUser;
 
     if (currentUser == null) {
-      debugPrint(
-        'Error saving driver data: '
-        'user is not signed in.',
-      );
+      debugPrint('Error saving driver data: user is not signed in.');
       return;
     }
 
@@ -683,18 +718,18 @@ class RegistrationProvider extends ChangeNotifier {
       final Driver driver = Driver(
         id: currentUser.uid,
         profilePicture: profilePictureUrl,
-        firstName: firstNameController.text,
-        secondName: lastNameController.text,
-        phoneNumber: phoneController.text,
-        address: addressController.text,
-        dob: dobController.text,
-        email: emailController.text,
-        cnicNumber: cnicController.text,
+        firstName: firstNameController.text.trim(),
+        secondName: lastNameController.text.trim(),
+        phoneNumber: phoneController.text.trim(),
+        address: addressController.text.trim(),
+        dob: dobController.text.trim(),
+        email: emailController.text.trim(),
+        cnicNumber: cnicController.text.trim(),
         cnicFrontImage: frontCnincImageUrl,
         cnicBackImage: backCnincImageUrl,
         driverFaceWithCnic: faceWithCnincImageUrl,
         drivingLicenseNumber:
-            drivingLicenseController.text,
+            drivingLicenseController.text.trim(),
         drivingLicenseFrontImage:
             drivingLicenseFrontImageUrl,
         drivingLicenseBackImage:
@@ -704,14 +739,14 @@ class RegistrationProvider extends ChangeNotifier {
         earnings: '0',
         driverRatings: '0',
         vehicleInfo: VehicleInfo(
-          type: selectedVehicle.toString(),
-          brand: brandController.text,
-          color: colorController.text,
+          type: selectedVehicle ?? '',
+          brand: brandController.text.trim(),
+          color: colorController.text.trim(),
           vehiclePicture: vehicleImageUrl,
           productionYear:
-              productionYearController.text,
+              productionYearController.text.trim(),
           registrationPlateNumber:
-              numberPlateController.text,
+              numberPlateController.text.trim(),
           plateProvince: _plateProvince,
           plateCategory: _plateCategory,
           plateType: _plateType,
@@ -722,33 +757,27 @@ class RegistrationProvider extends ChangeNotifier {
         ),
       );
 
-      final DocumentReference<Map<String, dynamic>>
-          driverRef = _firestore
-              .collection('drivers')
-              .doc(currentUser.uid);
+      final DocumentReference<Map<String, dynamic>> driverRef =
+          _firestore.collection('drivers').doc(currentUser.uid);
 
       await driverRef.set(
         driver.toMap(),
         SetOptions(merge: true),
       );
 
-      final DocumentSnapshot<Map<String, dynamic>>
-          currentDriverSnapshot =
+      final DocumentSnapshot<Map<String, dynamic>> currentDriverSnapshot =
           await driverRef.get();
 
       final Map<String, dynamic> currentDriverData =
-          currentDriverSnapshot.data() ??
-              <String, dynamic>{};
+          currentDriverSnapshot.data() ?? <String, dynamic>{};
 
       final bool hasEarnings =
           currentDriverData.containsKey('earnings') ||
-              currentDriverData.containsKey(
-                'totalEarnings',
-              );
+              currentDriverData.containsKey('totalEarnings');
 
       if (!hasEarnings) {
         await driverRef.set(
-          {
+          <String, dynamic>{
             'earnings': 0.0,
             'totalEarnings': 0.0,
           },
@@ -759,203 +788,176 @@ class RegistrationProvider extends ChangeNotifier {
       await retrieveCurrentDriverInfo();
       await fetchDriverEarnings();
     } catch (error, stackTrace) {
-      debugPrint(
-        'Error saving driver data: $error',
-      );
-
-      debugPrintStack(
-        stackTrace: stackTrace,
-      );
+      debugPrint('Error saving driver data: $error');
+      debugPrintStack(stackTrace: stackTrace);
     } finally {
       stopLoading();
     }
   }
 
   Future<void> fetchUserData() async {
-    if (_isDataFetched ||
-        _auth.currentUser == null) {
+    if (_isDataFetched || _auth.currentUser == null) {
       return;
     }
 
     try {
       startFetchLoading();
 
-      final DocumentSnapshot<Map<String, dynamic>>
-          doc = await _firestore
+      final DocumentSnapshot<Map<String, dynamic>> doc =
+          await _firestore
               .collection('drivers')
               .doc(_auth.currentUser!.uid)
               .get();
 
-      if (doc.exists && doc.data() != null) {
-        final Map<String, dynamic> data =
-            doc.data()!;
-
-        firstNameController.text =
-            data['firstName']?.toString() ?? '';
-
-        lastNameController.text =
-            data['secondName']?.toString() ?? '';
-
-        phoneController.text =
-            data['phoneNumber']?.toString() ?? '';
-
-        addressController.text =
-            data['address']?.toString() ?? '';
-
-        dobController.text =
-            data['dob']?.toString() ?? '';
-
-        emailController.text =
-            data['email']?.toString() ?? '';
-
-        cnicController.text =
-            data['cnicNumber']?.toString() ?? '';
-
-        drivingLicenseController.text =
-            data['drivingLicenseNumber']?.toString() ??
-                '';
-
-        final Map<String, dynamic> vehicleData =
-            data['vehicleInfo'] is Map
-                ? Map<String, dynamic>.from(
-                    data['vehicleInfo'] as Map,
-                  )
-                : <String, dynamic>{};
-
-        _selectedVehicle =
-            vehicleData['type']?.toString() ?? '';
-
-        brandController.text =
-            vehicleData['brand']?.toString() ?? '';
-
-        colorController.text =
-            vehicleData['color']?.toString() ?? '';
-
-        numberPlateController.text =
-            vehicleData['registrationPlateNumber']
-                    ?.toString() ??
-                '';
-
-        _plateProvince =
-            vehicleData['plateProvince']?.toString() ??
-                'کابل';
-
-        _plateCategory =
-            vehicleData['plateCategory']?.toString() ??
-                'ش';
-
-        _plateType =
-            vehicleData['plateType']?.toString() ??
-                'شخصی';
-
-        productionYearController.text =
-            vehicleData['productionYear']?.toString() ??
-                '';
-
-        _profilePhoto = await _fetchImageFromUrl(
-          data['profilePicture']?.toString() ?? '',
-        );
-
-        _cnicFrontImage = await _fetchImageFromUrl(
-          data['cnicFrontImage']?.toString() ?? '',
-        );
-
-        _cnicBackImage = await _fetchImageFromUrl(
-          data['cnicBackImage']?.toString() ?? '',
-        );
-
-        _cnicWithSelfieImage =
-            await _fetchImageFromUrl(
-          data['driverFaceWithCnic']?.toString() ??
-              '',
-        );
-
-        _drivingLicenseFrontImage =
-            await _fetchImageFromUrl(
-          data['drivingLicenseFrontImage']
-                  ?.toString() ??
-              '',
-        );
-
-        _drivingLicenseBackImage =
-            await _fetchImageFromUrl(
-          data['drivingLicenseBackImage']
-                  ?.toString() ??
-              '',
-        );
-
-        _vehicleImage = await _fetchImageFromUrl(
-          vehicleData['vehiclePicture']?.toString() ??
-              '',
-        );
-
-        _vehicleRegistrationFrontImage =
-            await _fetchImageFromUrl(
-          vehicleData[
-                      'registrationCertificateFrontImage']
-                  ?.toString() ??
-              '',
-        );
-
-        _vehicleRegistrationBackImage =
-            await _fetchImageFromUrl(
-          vehicleData[
-                      'registrationCertificateBackImage']
-                  ?.toString() ??
-              '',
-        );
-
-        _isDataFetched = true;
+      if (!doc.exists || doc.data() == null) {
         stopFetchLoading();
-        notifyListeners();
-      } else {
-        stopFetchLoading();
+        return;
       }
+
+      final Map<String, dynamic> data = doc.data()!;
+
+      firstNameController.text = data['firstName']?.toString() ?? '';
+      lastNameController.text = data['secondName']?.toString() ?? '';
+      phoneController.text = data['phoneNumber']?.toString() ?? '';
+      addressController.text = data['address']?.toString() ?? '';
+      dobController.text = data['dob']?.toString() ?? '';
+      emailController.text = data['email']?.toString() ?? '';
+      cnicController.text = data['cnicNumber']?.toString() ?? '';
+      drivingLicenseController.text =
+          data['drivingLicenseNumber']?.toString() ?? '';
+
+      final Map<String, dynamic> vehicleData =
+          data['vehicleInfo'] is Map
+              ? Map<String, dynamic>.from(data['vehicleInfo'] as Map)
+              : <String, dynamic>{};
+
+      _selectedVehicle = vehicleData['type']?.toString() ?? '';
+      brandController.text = vehicleData['brand']?.toString() ?? '';
+      colorController.text = vehicleData['color']?.toString() ?? '';
+      numberPlateController.text =
+          vehicleData['registrationPlateNumber']?.toString() ?? '';
+      productionYearController.text =
+          vehicleData['productionYear']?.toString() ?? '';
+
+      _plateProvince =
+          vehicleData['plateProvince']?.toString() ?? 'کابل';
+      _plateCategory =
+          vehicleData['plateCategory']?.toString() ?? 'ش';
+      _plateType =
+          vehicleData['plateType']?.toString() ?? 'شخصی';
+
+      _profilePhoto = await _fetchImageFromUrl(
+        data['profilePicture']?.toString() ?? '',
+      );
+
+      _cnicFrontImage = await _fetchImageFromUrl(
+        data['cnicFrontImage']?.toString() ?? '',
+      );
+
+      _cnicBackImage = await _fetchImageFromUrl(
+        data['cnicBackImage']?.toString() ?? '',
+      );
+
+      _cnicWithSelfieImage = await _fetchImageFromUrl(
+        data['driverFaceWithCnic']?.toString() ?? '',
+      );
+
+      _drivingLicenseFrontImage = await _fetchImageFromUrl(
+        data['drivingLicenseFrontImage']?.toString() ?? '',
+      );
+
+      _drivingLicenseBackImage = await _fetchImageFromUrl(
+        data['drivingLicenseBackImage']?.toString() ?? '',
+      );
+
+      _vehicleImage = await _fetchImageFromUrl(
+        vehicleData['vehiclePicture']?.toString() ?? '',
+      );
+
+      _vehicleRegistrationFrontImage = await _fetchImageFromUrl(
+        vehicleData['registrationCertificateFrontImage']
+                ?.toString() ??
+            '',
+      );
+
+      _vehicleRegistrationBackImage = await _fetchImageFromUrl(
+        vehicleData['registrationCertificateBackImage']
+                ?.toString() ??
+            '',
+      );
+
+      _isPhotoAdded = _profilePhoto != null;
+      _isVehiclePhotoAdded = _vehicleImage != null;
+      _isDataFetched = true;
+
+      _updateAllFormValidities();
+
+      stopFetchLoading();
+      notifyListeners();
     } catch (error, stackTrace) {
-      debugPrint(
-        'Error loading driver data: $error',
-      );
-
-      debugPrintStack(
-        stackTrace: stackTrace,
-      );
-
+      debugPrint('Error loading driver data: $error');
+      debugPrintStack(stackTrace: stackTrace);
       stopFetchLoading();
     }
   }
 
-  Future<XFile?> _fetchImageFromUrl(
-    String url,
-  ) async {
+  void _updateAllFormValidities() {
+    final String email = emailController.text.trim();
+
+    _isFormValidBasic =
+        firstNameController.text.trim().isNotEmpty &&
+            lastNameController.text.trim().isNotEmpty &&
+            email.isNotEmpty &&
+            email.contains('@') &&
+            addressController.text.trim().length >= 5 &&
+            phoneController.text.trim().length >= 9 &&
+            dobController.text.trim().isNotEmpty;
+
+    _isFormValidCninc =
+        _cnicFrontImage != null &&
+            _cnicBackImage != null &&
+            cnicController.text.trim().length >= 10;
+
+    _isFormValidDrivingLicense =
+        _drivingLicenseFrontImage != null &&
+            _drivingLicenseBackImage != null &&
+            drivingLicenseController.text.trim().isNotEmpty;
+
+    _isVehicleBasicFormValid =
+        _selectedVehicle != null &&
+            _selectedVehicle!.trim().isNotEmpty &&
+            brandController.text.trim().isNotEmpty &&
+            colorController.text.trim().isNotEmpty &&
+            numberPlateController.text.trim().isNotEmpty &&
+            productionYearController.text.trim().isNotEmpty &&
+            _plateProvince.isNotEmpty &&
+            _plateCategory.isNotEmpty &&
+            _plateType.isNotEmpty;
+  }
+
+  Future<XFile?> _fetchImageFromUrl(String url) async {
     if (url.isEmpty) {
       return null;
     }
 
     try {
-      final http.Response response =
-          await http.get(Uri.parse(url));
+      final http.Response response = await http.get(Uri.parse(url));
 
       if (response.statusCode != 200) {
         return null;
       }
 
-      final Directory directory =
-          await getTemporaryDirectory();
+      final Directory directory = await getTemporaryDirectory();
 
       final String filePath =
-          '${directory.path}/'
-          '${DateTime.now().millisecondsSinceEpoch}.jpg';
+          '${directory.path}/${DateTime.now().microsecondsSinceEpoch}.jpg';
 
       final File file = File(filePath);
-
       await file.writeAsBytes(response.bodyBytes);
 
       return XFile(file.path);
     } catch (error) {
-      debugPrint(
-        'Error fetching image: $error',
-      );
-
+      debugPrint('Error fetching image: $error');
       return null;
     }
   }
@@ -982,9 +984,7 @@ class RegistrationProvider extends ChangeNotifier {
     return 0.0;
   }
 
-  Object? _getEarningsValue(
-    Map<String, dynamic> data,
-  ) {
+  Object? _getEarningsValue(Map<String, dynamic> data) {
     return data['earnings'] ??
         data['totalEarnings'] ??
         data['totalEarning'] ??
@@ -1005,44 +1005,19 @@ class RegistrationProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final DocumentSnapshot<Map<String, dynamic>>
-          doc = await _firestore
-              .collection('drivers')
-              .doc(uid)
-              .get();
+      final DocumentSnapshot<Map<String, dynamic>> doc =
+          await _firestore.collection('drivers').doc(uid).get();
 
       if (!doc.exists || doc.data() == null) {
         _driverEarnings = 0.0;
-
-        debugPrint(
-          'EARNINGS: driver document not found',
-        );
-
         return;
       }
 
-      final Map<String, dynamic> data =
-          doc.data()!;
-
-      final Object? rawValue =
-          _getEarningsValue(data);
-
-      _driverEarnings =
-          _parseMoney(rawValue);
-
-      debugPrint(
-        'EARNINGS: $_driverEarnings | '
-        'RAW VALUE: $rawValue',
-      );
+      final Map<String, dynamic> data = doc.data()!;
+      _driverEarnings = _parseMoney(_getEarningsValue(data));
     } catch (error, stackTrace) {
-      debugPrint(
-        'EARNINGS ERROR: $error',
-      );
-
-      debugPrintStack(
-        stackTrace: stackTrace,
-      );
-
+      debugPrint('EARNINGS ERROR: $error');
+      debugPrintStack(stackTrace: stackTrace);
       _driverEarnings = 0.0;
     } finally {
       _isFetchLoading = false;
@@ -1057,67 +1032,50 @@ class RegistrationProvider extends ChangeNotifier {
     final String? uid = _auth.currentUser?.uid;
 
     if (uid == null || uid.isEmpty) {
-      throw Exception(
-        'Driver is not signed in.',
-      );
+      throw Exception('Driver is not signed in.');
     }
 
-    final double amountToAdd =
-        _parseMoney(amount);
+    final double amountToAdd = _parseMoney(amount);
 
     if (amountToAdd <= 0) {
-      debugPrint(
-        'EARNINGS: invalid amount: $amount',
-      );
+      debugPrint('EARNINGS: invalid amount: $amount');
       return;
     }
 
-    final DocumentReference<Map<String, dynamic>>
-        driverRef = _firestore
-            .collection('drivers')
-            .doc(uid);
+    final DocumentReference<Map<String, dynamic>> driverRef =
+        _firestore.collection('drivers').doc(uid);
 
     bool alreadyAdded = false;
 
     await _firestore.runTransaction(
       (transaction) async {
-        final DocumentSnapshot<
-            Map<String, dynamic>> snapshot =
+        final DocumentSnapshot<Map<String, dynamic>> snapshot =
             await transaction.get(driverRef);
 
         final Map<String, dynamic> data =
-            snapshot.data() ??
-                <String, dynamic>{};
+            snapshot.data() ?? <String, dynamic>{};
 
-        final String cleanTripId =
-            tripId?.trim() ?? '';
+        final String cleanTripId = tripId?.trim() ?? '';
 
         if (cleanTripId.isNotEmpty &&
-            data['lastEarningTripId'] ==
-                cleanTripId) {
+            data['lastEarningTripId'] == cleanTripId) {
           alreadyAdded = true;
           return;
         }
 
         final double oldEarnings =
-            _parseMoney(
-          _getEarningsValue(data),
-        );
+            _parseMoney(_getEarningsValue(data));
 
-        final double newEarnings =
-            oldEarnings + amountToAdd;
+        final double newEarnings = oldEarnings + amountToAdd;
 
-        final Map<String, dynamic> updateData =
-            <String, dynamic>{
+        final Map<String, dynamic> updateData = <String, dynamic>{
           'earnings': newEarnings,
           'totalEarnings': newEarnings,
-          'updatedAt':
-              FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
         };
 
         if (cleanTripId.isNotEmpty) {
-          updateData['lastEarningTripId'] =
-              cleanTripId;
+          updateData['lastEarningTripId'] = cleanTripId;
         }
 
         transaction.set(
@@ -1138,95 +1096,66 @@ class RegistrationProvider extends ChangeNotifier {
 
   Future<void> retrieveCurrentDriverInfo() async {
     try {
-      if (_auth.currentUser == null) {
+      final User? currentUser = _auth.currentUser;
+
+      if (currentUser == null) {
         return;
       }
 
-      final DocumentSnapshot<Map<String, dynamic>>
-          doc = await _firestore
+      final DocumentSnapshot<Map<String, dynamic>> doc =
+          await _firestore
               .collection('drivers')
-              .doc(_auth.currentUser!.uid)
+              .doc(currentUser.uid)
               .get();
 
-      if (doc.exists && doc.data() != null) {
-        final Map<String, dynamic> data =
-            doc.data()!;
-
-        driverName =
-            data['firstName']?.toString() ?? '';
-
-        driverSecondName =
-            data['secondName']?.toString() ?? '';
-
-        driverPhone =
-            data['phoneNumber']?.toString() ?? '';
-
-        driverEmail =
-            data['email']?.toString() ?? '';
-
-        address =
-            data['address']?.toString() ?? '';
-
-        rating =
-            data['driverRatings']?.toString() ??
-                data['driverRattings']?.toString() ??
-                '';
-
-        driverPhoto =
-            data['profilePicture']?.toString() ?? '';
-
-        final Map<String, dynamic> vehicleData =
-            data['vehicleInfo'] is Map
-                ? Map<String, dynamic>.from(
-                    data['vehicleInfo'] as Map,
-                  )
-                : <String, dynamic>{};
-
-        carModel =
-            vehicleData['brand']?.toString() ?? '';
-
-        carColor =
-            vehicleData['color']?.toString() ?? '';
-
-        final String rawNumber =
-            vehicleData['registrationPlateNumber']
-                    ?.toString() ??
-                '';
-
-        final String province =
-            vehicleData['plateProvince']
-                    ?.toString() ??
-                '';
-
-        final String category =
-            vehicleData['plateCategory']
-                    ?.toString() ??
-                '';
-
-        final String type =
-            vehicleData['plateType']?.toString() ??
-                '';
-
-        if (province.isNotEmpty &&
-            rawNumber.isNotEmpty) {
-          carNumber =
-              '$province - $category '
-              '$rawNumber ($type)';
-        } else {
-          carNumber = rawNumber;
-        }
-
-        notifyListeners();
+      if (!doc.exists || doc.data() == null) {
+        return;
       }
+
+      final Map<String, dynamic> data = doc.data()!;
+
+      driverName = data['firstName']?.toString() ?? '';
+      driverSecondName = data['secondName']?.toString() ?? '';
+      driverPhone = data['phoneNumber']?.toString() ?? '';
+      driverEmail = data['email']?.toString() ?? '';
+      address = data['address']?.toString() ?? '';
+
+      rating = data['driverRatings']?.toString() ??
+          data['driverRattings']?.toString() ??
+          '';
+
+      driverPhoto = data['profilePicture']?.toString() ?? '';
+
+      final Map<String, dynamic> vehicleData =
+          data['vehicleInfo'] is Map
+              ? Map<String, dynamic>.from(data['vehicleInfo'] as Map)
+              : <String, dynamic>{};
+
+      carModel = vehicleData['brand']?.toString() ?? '';
+      carColor = vehicleData['color']?.toString() ?? '';
+
+      final String rawNumber =
+          vehicleData['registrationPlateNumber']?.toString() ?? '';
+
+      final String province =
+          vehicleData['plateProvince']?.toString() ?? '';
+
+      final String category =
+          vehicleData['plateCategory']?.toString() ?? '';
+
+      final String type =
+          vehicleData['plateType']?.toString() ?? '';
+
+      carNumber = province.isNotEmpty && rawNumber.isNotEmpty
+          ? '$province - $category $rawNumber ($type)'
+          : rawNumber;
+
+      notifyListeners();
     } catch (error, stackTrace) {
       debugPrint(
-        'Error retrieving current driver profile: '
-        '$error',
+        'Error retrieving current driver profile: $error',
       );
-
-      debugPrintStack(
-        stackTrace: stackTrace,
-      );
+      debugPrintStack(stackTrace: stackTrace);
     }
   }
 
@@ -1234,8 +1163,7 @@ class RegistrationProvider extends ChangeNotifier {
     BuildContext context,
   ) async {
     try {
-      _isLoading = true;
-      notifyListeners();
+      startLoading();
 
       final String newProfilePicture =
           await uploadImageToFirebaseStorage(
@@ -1244,14 +1172,13 @@ class RegistrationProvider extends ChangeNotifier {
         context,
       );
 
-      final Map<String, dynamic> driverData =
-          <String, dynamic>{
-        'firstName': firstNameController.text,
-        'secondName': lastNameController.text,
-        'email': emailController.text,
-        'address': addressController.text,
-        'phoneNumber': phoneController.text,
-        'dob': dobController.text,
+      final Map<String, dynamic> driverData = <String, dynamic>{
+        'firstName': firstNameController.text.trim(),
+        'secondName': lastNameController.text.trim(),
+        'email': emailController.text.trim(),
+        'address': addressController.text.trim(),
+        'phoneNumber': phoneController.text.trim(),
+        'dob': dobController.text.trim(),
         'profilePicture': newProfilePicture,
       };
 
@@ -1265,12 +1192,9 @@ class RegistrationProvider extends ChangeNotifier {
 
       await retrieveCurrentDriverInfo();
     } catch (error) {
-      debugPrint(
-        'Error updating basic driver info: $error',
-      );
+      debugPrint('Error updating basic driver info: $error');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      stopLoading();
     }
   }
 
@@ -1278,8 +1202,7 @@ class RegistrationProvider extends ChangeNotifier {
     BuildContext context,
   ) async {
     try {
-      _isLoading = true;
-      notifyListeners();
+      startLoading();
 
       final String frontCnincImageUrl =
           await uploadImageToFirebaseStorage(
@@ -1295,30 +1218,21 @@ class RegistrationProvider extends ChangeNotifier {
         context,
       );
 
-      final Map<String, dynamic> driverData =
-          <String, dynamic>{
-        'cnicFrontImage':
-            frontCnincImageUrl,
-        'cnicBackImage':
-            backCnincImageUrl,
-        'cnicNumber':
-            cnicController.text,
-      };
-
       await _firestore
           .collection('drivers')
           .doc(_auth.currentUser!.uid)
           .set(
-        driverData,
+        <String, dynamic>{
+          'cnicFrontImage': frontCnincImageUrl,
+          'cnicBackImage': backCnincImageUrl,
+          'cnicNumber': cnicController.text.trim(),
+        },
         SetOptions(merge: true),
       );
     } catch (error) {
-      debugPrint(
-        'Error updating CNIC info: $error',
-      );
+      debugPrint('Error updating CNIC info: $error');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      stopLoading();
     }
   }
 
@@ -1326,8 +1240,7 @@ class RegistrationProvider extends ChangeNotifier {
     BuildContext context,
   ) async {
     try {
-      _isLoading = true;
-      notifyListeners();
+      startLoading();
 
       final String faceWithCnincImageUrl =
           await uploadImageToFirebaseStorage(
@@ -1336,26 +1249,19 @@ class RegistrationProvider extends ChangeNotifier {
         context,
       );
 
-      final Map<String, dynamic> driverData =
-          <String, dynamic>{
-        'driverFaceWithCnic':
-            faceWithCnincImageUrl,
-      };
-
       await _firestore
           .collection('drivers')
           .doc(_auth.currentUser!.uid)
           .set(
-        driverData,
+        <String, dynamic>{
+          'driverFaceWithCnic': faceWithCnincImageUrl,
+        },
         SetOptions(merge: true),
       );
     } catch (error) {
-      debugPrint(
-        'Error updating selfie with CNIC: $error',
-      );
+      debugPrint('Error updating selfie with CNIC: $error');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      stopLoading();
     }
   }
 
@@ -1363,8 +1269,7 @@ class RegistrationProvider extends ChangeNotifier {
     BuildContext context,
   ) async {
     try {
-      _isLoading = true;
-      notifyListeners();
+      startLoading();
 
       final String drivingLicenseFrontImageUrl =
           await uploadImageToFirebaseStorage(
@@ -1380,30 +1285,24 @@ class RegistrationProvider extends ChangeNotifier {
         context,
       );
 
-      final Map<String, dynamic> driverData =
-          <String, dynamic>{
-        'drivingLicenseFrontImage':
-            drivingLicenseFrontImageUrl,
-        'drivingLicenseBackImage':
-            drivingLicenseBackImageUrl,
-        'drivingLicenseNumber':
-            drivingLicenseController.text,
-      };
-
       await _firestore
           .collection('drivers')
           .doc(_auth.currentUser!.uid)
           .set(
-        driverData,
+        <String, dynamic>{
+          'drivingLicenseFrontImage':
+              drivingLicenseFrontImageUrl,
+          'drivingLicenseBackImage':
+              drivingLicenseBackImageUrl,
+          'drivingLicenseNumber':
+              drivingLicenseController.text.trim(),
+        },
         SetOptions(merge: true),
       );
     } catch (error) {
-      debugPrint(
-        'Error updating driver license info: $error',
-      );
+      debugPrint('Error updating driver license info: $error');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      stopLoading();
     }
   }
 
@@ -1411,56 +1310,40 @@ class RegistrationProvider extends ChangeNotifier {
     BuildContext context,
   ) async {
     try {
-      _isLoading = true;
-      notifyListeners();
+      startLoading();
 
-      final String uid =
-          _auth.currentUser?.uid ?? '';
+      final String uid = _auth.currentUser?.uid ?? '';
 
       if (uid.isEmpty) {
-        throw Exception(
-          'Driver is not signed in.',
-        );
+        throw Exception('Driver is not signed in.');
       }
 
-      await _firestore
-          .collection('drivers')
-          .doc(uid)
-          .set(
-        {
-          'vehicleInfo.type':
-              selectedVehicle ?? '',
-          'vehicleInfo.brand':
-              brandController.text.trim(),
-          'vehicleInfo.color':
-              colorController.text.trim(),
+      await _firestore.collection('drivers').doc(uid).set(
+        <String, dynamic>{
+          'vehicleInfo.type': selectedVehicle ?? '',
+          'vehicleInfo.brand': brandController.text.trim(),
+          'vehicleInfo.color': colorController.text.trim(),
           'vehicleInfo.productionYear':
               productionYearController.text.trim(),
           'vehicleInfo.registrationPlateNumber':
               numberPlateController.text.trim(),
-          'vehicleInfo.plateProvince':
-              _plateProvince,
-          'vehicleInfo.plateCategory':
-              _plateCategory,
-          'vehicleInfo.plateType':
-              _plateType,
+          'vehicleInfo.plateProvince': _plateProvince,
+          'vehicleInfo.plateCategory': _plateCategory,
+          'vehicleInfo.plateType': _plateType,
         },
         SetOptions(merge: true),
       );
 
       await retrieveCurrentDriverInfo();
     } catch (error) {
-      debugPrint(
-        'Error updating vehicle basic info: $error',
-      );
+      debugPrint('Error updating vehicle basic info: $error');
 
       commonMethods.displaySnackBar(
         'خطا در ذخیره اطلاعات وسیله',
         context,
       );
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      stopLoading();
     }
   }
 
@@ -1468,22 +1351,16 @@ class RegistrationProvider extends ChangeNotifier {
     BuildContext context,
   ) async {
     try {
-      _isLoading = true;
-      notifyListeners();
+      startLoading();
 
-      final String uid =
-          _auth.currentUser?.uid ?? '';
+      final String uid = _auth.currentUser?.uid ?? '';
 
       if (uid.isEmpty) {
-        throw Exception(
-          'Driver is not signed in.',
-        );
+        throw Exception('Driver is not signed in.');
       }
 
       if (_vehicleImage == null) {
-        throw Exception(
-          'Vehicle image is not selected.',
-        );
+        throw Exception('Vehicle image is not selected.');
       }
 
       final String vehicleImageUrl =
@@ -1493,30 +1370,23 @@ class RegistrationProvider extends ChangeNotifier {
         context,
       );
 
-      await _firestore
-          .collection('drivers')
-          .doc(uid)
-          .set(
-        {
-          'vehicleInfo.vehiclePicture':
-              vehicleImageUrl,
+      await _firestore.collection('drivers').doc(uid).set(
+        <String, dynamic>{
+          'vehicleInfo.vehiclePicture': vehicleImageUrl,
         },
         SetOptions(merge: true),
       );
 
       await retrieveCurrentDriverInfo();
     } catch (error) {
-      debugPrint(
-        'Error updating vehicle image: $error',
-      );
+      debugPrint('Error updating vehicle image: $error');
 
       commonMethods.displaySnackBar(
         'خطا در آپلود عکس وسیله',
         context,
       );
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      stopLoading();
     }
   }
 
@@ -1524,25 +1394,18 @@ class RegistrationProvider extends ChangeNotifier {
     BuildContext context,
   ) async {
     try {
-      _isLoading = true;
-      notifyListeners();
+      startLoading();
 
-      final String uid =
-          _auth.currentUser?.uid ?? '';
+      final String uid = _auth.currentUser?.uid ?? '';
 
       if (uid.isEmpty) {
-        throw Exception(
-          'Driver is not signed in.',
-        );
+        throw Exception('Driver is not signed in.');
       }
 
-      if (_vehicleRegistrationFrontImage ==
-              null ||
-          _vehicleRegistrationBackImage ==
-              null) {
+      if (_vehicleRegistrationFrontImage == null ||
+          _vehicleRegistrationBackImage == null) {
         throw Exception(
-          'Vehicle registration images '
-          'are not selected.',
+          'Vehicle registration images are not selected.',
         );
       }
 
@@ -1560,11 +1423,8 @@ class RegistrationProvider extends ChangeNotifier {
         context,
       );
 
-      await _firestore
-          .collection('drivers')
-          .doc(uid)
-          .set(
-        {
+      await _firestore.collection('drivers').doc(uid).set(
+        <String, dynamic>{
           'vehicleInfo.registrationCertificateFrontImage':
               frontImageUrl,
           'vehicleInfo.registrationCertificateBackImage':
@@ -1576,8 +1436,7 @@ class RegistrationProvider extends ChangeNotifier {
       await retrieveCurrentDriverInfo();
     } catch (error) {
       debugPrint(
-        'Error updating vehicle registration images: '
-        '$error',
+        'Error updating vehicle registration images: $error',
       );
 
       commonMethods.displaySnackBar(
@@ -1585,8 +1444,7 @@ class RegistrationProvider extends ChangeNotifier {
         context,
       );
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      stopLoading();
     }
   }
 }
