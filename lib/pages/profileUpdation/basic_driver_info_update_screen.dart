@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:persian_datetime_picker/persian_datetime_picker.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 import 'package:provider/provider.dart';
 import 'package:safir_drivers/methods/common_method.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
