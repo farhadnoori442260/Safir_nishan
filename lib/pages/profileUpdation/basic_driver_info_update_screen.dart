@@ -2,8 +2,9 @@ import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:shamsi_date/shamsi_date.dart';
 import 'package:provider/provider.dart';
+import 'package:shamsi_date/shamsi_date.dart';
+
 import 'package:safir_drivers/methods/common_method.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
@@ -20,46 +21,327 @@ class _BasicDriverInfoUpdateScreenState
     extends State<BasicDriverInfoUpdateScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  Jalali _getInitialJalaliDate(String dateText) {
+  static const List<String> _afghanMonths = <String>[
+    'حمل',
+    'ثور',
+    'جوزا',
+    'سرطان',
+    'اسد',
+    'سنبله',
+    'میزان',
+    'عقرب',
+    'قوس',
+    'جدی',
+    'دلو',
+    'حوت',
+  ];
+
+  String _toAfghanDigits(String value) {
+    const List<String> english = <String>[
+      '0',
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+    ];
+
+    const List<String> farsi = <String>[
+      '۰',
+      '۱',
+      '۲',
+      '۳',
+      '۴',
+      '۵',
+      '۶',
+      '۷',
+      '۸',
+      '۹',
+    ];
+
+    for (int index = 0; index < 10; index++) {
+      value = value.replaceAll(english[index], farsi[index]);
+    }
+
+    return value;
+  }
+
+  String _formatJalaliDate(Jalali date) {
+    final String day = date.day.toString().padLeft(2, '0');
+    final String year = date.year.toString();
+
+    return '${_toAfghanDigits(day)} '
+        '${_afghanMonths[date.month - 1]} '
+        '${_toAfghanDigits(year)}';
+  }
+
+  String _formatJalaliStorage(Jalali date) {
+    final String year = date.year.toString().padLeft(4, '0');
+    final String month = date.month.toString().padLeft(2, '0');
+    final String day = date.day.toString().padLeft(2, '0');
+
+    return '$year/$month/$day';
+  }
+
+  Jalali _getInitialJalaliDate(String savedDate) {
     try {
-      final List<String> parts = dateText.trim().split('/');
+      final List<String> parts = savedDate.trim().split('/');
 
       if (parts.length == 3) {
         final int year = int.parse(parts[0]);
         final int month = int.parse(parts[1]);
         final int day = int.parse(parts[2]);
 
-        return Jalali(year, month, day);
+        if (year >= 1300 &&
+            year <= Jalali.now().year &&
+            month >= 1 &&
+            month <= 12) {
+          return Jalali(year, month, day);
+        }
       }
     } catch (_) {}
 
-    return Jalali.now();
+    return Jalali(1379, 1, 1);
   }
 
-  Future<void> _selectJalaliDate(
-    BuildContext context,
+  Future<void> _showAfghanDatePicker(
     RegistrationProvider registrationProvider,
   ) async {
-    final Jalali? selectedDate = await showPersianDatePicker(
-      context: context,
-      initialDate: _getInitialJalaliDate(
-        registrationProvider.dobController.text,
-      ),
-      firstDate: Jalali(1300, 1, 1),
-      lastDate: Jalali.now(),
-      initialEntryMode: PersianDatePickerEntryMode.calendarOnly,
-      initialDatePickerMode: PersianDatePickerMode.year,
+    Jalali selectedDate = _getInitialJalaliDate(
+      registrationProvider.dobController.text,
     );
 
-    if (selectedDate == null) {
+    final Jalali? result = await showDialog<Jalali>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (
+            BuildContext context,
+            StateSetter setDialogState,
+          ) {
+            final int currentJalaliYear = Jalali.now().year;
+
+            return AlertDialog(
+              titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+              contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+              actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              title: const Text(
+                'انتخاب تاریخ تولد',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              content: SizedBox(
+                width: 330,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBrand.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _formatJalaliDate(selectedDate),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          color: AppColors.primaryBrand,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          flex: 4,
+                          child: DropdownButtonFormField<int>(
+                            value: selectedDate.year,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: 'سال',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 10,
+                              ),
+                            ),
+                            items: List<DropdownMenuItem<int>>.generate(
+                              currentJalaliYear - 1315 + 1,
+                              (int index) {
+                                final int year = 1315 + index;
+
+                                return DropdownMenuItem<int>(
+                                  value: year,
+                                  child: Text(
+                                    _toAfghanDigits(year.toString()),
+                                  ),
+                                );
+                              },
+                            ),
+                            onChanged: (int? year) {
+                              if (year == null) {
+                                return;
+                              }
+
+                              final int maxDay = Jalali(
+                                year,
+                                selectedDate.month,
+                                1,
+                              ).monthLength;
+
+                              setDialogState(() {
+                                selectedDate = Jalali(
+                                  year,
+                                  selectedDate.month,
+                                  selectedDate.day > maxDay
+                                      ? maxDay
+                                      : selectedDate.day,
+                                );
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 5,
+                          child: DropdownButtonFormField<int>(
+                            value: selectedDate.month,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: 'ماه',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 10,
+                              ),
+                            ),
+                            items: List<DropdownMenuItem<int>>.generate(
+                              12,
+                              (int index) {
+                                return DropdownMenuItem<int>(
+                                  value: index + 1,
+                                  child: Text(_afghanMonths[index]),
+                                );
+                              },
+                            ),
+                            onChanged: (int? month) {
+                              if (month == null) {
+                                return;
+                              }
+
+                              final int maxDay = Jalali(
+                                selectedDate.year,
+                                month,
+                                1,
+                              ).monthLength;
+
+                              setDialogState(() {
+                                selectedDate = Jalali(
+                                  selectedDate.year,
+                                  month,
+                                  selectedDate.day > maxDay
+                                      ? maxDay
+                                      : selectedDate.day,
+                                );
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      value: selectedDate.day,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'روز',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                      ),
+                      items: List<DropdownMenuItem<int>>.generate(
+                        selectedDate.monthLength,
+                        (int index) {
+                          final int day = index + 1;
+
+                          return DropdownMenuItem<int>(
+                            value: day,
+                            child: Text(
+                              _toAfghanDigits(day.toString()),
+                            ),
+                          );
+                        },
+                      ),
+                      onChanged: (int? day) {
+                        if (day == null) {
+                          return;
+                        }
+
+                        setDialogState(() {
+                          selectedDate = Jalali(
+                            selectedDate.year,
+                            selectedDate.month,
+                            day,
+                          );
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('لغو'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(
+                      dialogContext,
+                      selectedDate,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBrand,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('تأیید'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) {
       return;
     }
 
-    final String month = selectedDate.month.toString().padLeft(2, '0');
-    final String day = selectedDate.day.toString().padLeft(2, '0');
-
     registrationProvider.dobController.text =
-        '${selectedDate.year}/$month/$day';
+        _formatJalaliStorage(result);
 
     registrationProvider.checkBasicFormValidity();
   }
@@ -69,7 +351,11 @@ class _BasicDriverInfoUpdateScreenState
     final CommonMethods commonMethods = CommonMethods();
 
     return Consumer<RegistrationProvider>(
-      builder: (context, registrationProvider, child) {
+      builder: (
+        BuildContext context,
+        RegistrationProvider registrationProvider,
+        Widget? child,
+      ) {
         return Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
@@ -101,16 +387,15 @@ class _BasicDriverInfoUpdateScreenState
             child: SingleChildScrollView(
               child: Form(
                 key: _formKey,
-                onChanged: registrationProvider.checkBasicFormValidity,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
+                  children: <Widget>[
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                         color: AppColors.cardBackground,
-                        boxShadow: const [
+                        boxShadow: const <BoxShadow>[
                           BoxShadow(
                             color: Colors.black12,
                             offset: Offset(0, 2),
@@ -119,10 +404,11 @@ class _BasicDriverInfoUpdateScreenState
                         ],
                       ),
                       child: Column(
-                        children: [
+                        children: <Widget>[
                           const SizedBox(height: 16),
                           CircleAvatar(
                             radius: 55,
+                            backgroundColor: Colors.grey.shade200,
                             backgroundImage:
                                 registrationProvider.profilePhoto != null
                                     ? FileImage(
@@ -135,7 +421,6 @@ class _BasicDriverInfoUpdateScreenState
                                     : const AssetImage(
                                         'assets/auth/user.jpg',
                                       ) as ImageProvider,
-                            backgroundColor: Colors.grey.shade200,
                           ),
                           const SizedBox(height: 12),
                           Container(
@@ -147,10 +432,8 @@ class _BasicDriverInfoUpdateScreenState
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: TextButton.icon(
-                              onPressed: () {
-                                registrationProvider
-                                    .pickProfileImageFromGallary();
-                              },
+                              onPressed: registrationProvider
+                                  .pickProfileImageFromGallary,
                               icon: const Icon(
                                 Icons.add_a_photo_outlined,
                                 color: AppColors.primaryBrand,
@@ -175,7 +458,7 @@ class _BasicDriverInfoUpdateScreenState
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                         color: AppColors.cardBackground,
-                        boxShadow: const [
+                        boxShadow: const <BoxShadow>[
                           BoxShadow(
                             color: Colors.black12,
                             offset: Offset(0, 2),
@@ -186,8 +469,7 @@ class _BasicDriverInfoUpdateScreenState
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
+                          children: <Widget>[
                             TextFormField(
                               controller:
                                   registrationProvider.firstNameController,
@@ -205,10 +487,11 @@ class _BasicDriverInfoUpdateScreenState
                                   vertical: 10,
                                 ),
                               ),
-                              validator: (value) {
+                              validator: (String? value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'err_first_name'.tr();
                                 }
+
                                 return null;
                               },
                               onChanged: (_) {
@@ -234,10 +517,11 @@ class _BasicDriverInfoUpdateScreenState
                                   vertical: 10,
                                 ),
                               ),
-                              validator: (value) {
+                              validator: (String? value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'err_last_name'.tr();
                                 }
+
                                 return null;
                               },
                               onChanged: (_) {
@@ -264,7 +548,7 @@ class _BasicDriverInfoUpdateScreenState
                                   vertical: 10,
                                 ),
                               ),
-                              validator: (value) {
+                              validator: (String? value) {
                                 final String email = value?.trim() ?? '';
 
                                 if (email.isEmpty || !email.contains('@')) {
@@ -296,7 +580,7 @@ class _BasicDriverInfoUpdateScreenState
                                   vertical: 10,
                                 ),
                               ),
-                              validator: (value) {
+                              validator: (String? value) {
                                 if (value == null ||
                                     value.trim().length < 5) {
                                   return 'err_address'.tr();
@@ -335,7 +619,8 @@ class _BasicDriverInfoUpdateScreenState
                               controller: registrationProvider.dobController,
                               readOnly: true,
                               decoration: InputDecoration(
-                                labelText: 'dob'.tr(),
+                                labelText: 'تاریخ تولد (هجری شمسی)',
+                                hintText: 'مثلاً 1379/02/22',
                                 labelStyle: const TextStyle(fontSize: 13),
                                 border: const OutlineInputBorder(
                                   borderRadius: BorderRadius.all(
@@ -350,18 +635,18 @@ class _BasicDriverInfoUpdateScreenState
                                 suffixIcon: const Icon(
                                   Icons.calendar_month,
                                   size: 18,
+                                  color: AppColors.primaryBrand,
                                 ),
                               ),
-                              validator: (value) {
+                              validator: (String? value) {
                                 if (value == null || value.trim().isEmpty) {
-                                  return 'dob'.tr();
+                                  return 'تاریخ تولد را انتخاب کنید';
                                 }
 
                                 return null;
                               },
                               onTap: () {
-                                _selectJalaliDate(
-                                  context,
+                                _showAfghanDatePicker(
                                   registrationProvider,
                                 );
                               },
