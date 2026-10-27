@@ -454,5 +454,12 @@
   "driver_earnings_label": "ستاسو عاید",
   "commission_label": "کمېشن",
   "commission_settled": "تصفیه شوی",
-  "commission_unpaid": "نه دی ورکړل شوی"
+  "commission_unpaid": "نه دی ورکړل شوی",
+  "dob_picker_title": "د زیږون نیټې ټاکل",
+  "dob_year_label": "کال",
+  "dob_month_label": "میاشت",
+  "dob_day_label": "ورځ",
+  "dob_jalali_label": "د زیږون نیټه (لمریز هجري)",
+  "dob_jalali_hint": "مثلاً 1379/02/22",
+  "err_dob_required": "مهرباني وکړئ د زیږون نیټه وټاکئ"
 }
