@@ -21,19 +21,20 @@ class _BasicDriverInfoUpdateScreenState
     extends State<BasicDriverInfoUpdateScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  static const List<String> _afghanMonthKeys = <String>[
-    'jalali_month_hamal',
-    'jalali_month_sawr',
-    'jalali_month_jawza',
-    'jalali_month_saratan',
-    'jalali_month_asad',
-    'jalali_month_sunbula',
-    'jalali_month_mizan',
-    'jalali_month_aqrab',
-    'jalali_month_qaws',
-    'jalali_month_jadi',
-    'jalali_month_dalw',
-    'jalali_month_hut',
+  // ماه‌ها عمداً ثابت و فارسی هستند و به JSON ترجمه نیاز ندارند.
+  static const List<String> _afghanMonths = <String>[
+    'حمل',
+    'ثور',
+    'جوزا',
+    'سرطان',
+    'اسد',
+    'سنبله',
+    'میزان',
+    'عقرب',
+    'قوس',
+    'جدی',
+    'دلو',
+    'حوت',
   ];
 
   String _toAfghanDigits(String value) {
@@ -70,16 +71,12 @@ class _BasicDriverInfoUpdateScreenState
     return value;
   }
 
-  String _monthName(BuildContext context, int month) {
-    return _afghanMonthKeys[month - 1].tr();
-  }
-
-  String _formatJalaliDate(BuildContext context, Jalali date) {
+  String _formatJalaliDate(Jalali date) {
     final String day = date.day.toString().padLeft(2, '0');
     final String year = date.year.toString();
 
     return '${_toAfghanDigits(day)} '
-        '${_monthName(context, date.month)} '
+        '${_afghanMonths[date.month - 1]} '
         '${_toAfghanDigits(year)}';
   }
 
@@ -91,12 +88,8 @@ class _BasicDriverInfoUpdateScreenState
     return '$year/$month/$day';
   }
 
-  Jalali _currentJalaliDate() {
-    return Jalali.now();
-  }
-
   Jalali _getInitialJalaliDate(String savedDate) {
-    final Jalali today = _currentJalaliDate();
+    final Jalali today = Jalali.now();
 
     try {
       final List<String> parts = savedDate.trim().split('/');
@@ -136,223 +129,353 @@ class _BasicDriverInfoUpdateScreenState
       registrationProvider.dobController.text,
     );
 
-    final Jalali? result = await showDialog<Jalali>(
+    final Jalali? result = await showModalBottomSheet<Jalali>(
       context: context,
-      builder: (BuildContext dialogContext) {
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext sheetContext) {
         return StatefulBuilder(
           builder: (
             BuildContext context,
-            StateSetter setDialogState,
+            StateSetter setSheetState,
           ) {
-            final Jalali today = _currentJalaliDate();
-            final int currentJalaliYear = today.year;
+            final int currentJalaliYear = Jalali.now().year;
 
-            return AlertDialog(
-              titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-              contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-              actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              title: Text(
-                'dob_picker_title'.tr(),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              content: SizedBox(
-                width: 330,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 14,
-                      ),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                16,
+                20,
+                MediaQuery.viewInsetsOf(context).bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  // هندل بالای مودال برای زیبایی (استایل اسنپ/مدرن)
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryBrand.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _formatJalaliDate(context, selectedDate),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          color: AppColors.primaryBrand,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          flex: 4,
-                          child: DropdownButtonFormField<int>(
-                            value: selectedDate.year,
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: 'dob_year_label'.tr(),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 10,
-                              ),
-                            ),
-                            items: List<DropdownMenuItem<int>>.generate(
-                              currentJalaliYear,
-                              (int index) {
-                                final int year = index + 1;
-
-                                return DropdownMenuItem<int>(
-                                  value: year,
-                                  child: Text(
-                                    _toAfghanDigits(year.toString()),
-                                  ),
-                                );
-                              },
-                            ),
-                            onChanged: (int? year) {
-                              if (year == null) {
-                                return;
-                              }
-
-                              final int maxDay = Jalali(
-                                year,
-                                selectedDate.month,
-                                1,
-                              ).monthLength;
-
-                              setDialogState(() {
-                                selectedDate = Jalali(
-                                  year,
-                                  selectedDate.month,
-                                  selectedDate.day > maxDay
-                                      ? maxDay
-                                      : selectedDate.day,
-                                );
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          flex: 5,
-                          child: DropdownButtonFormField<int>(
-                            value: selectedDate.month,
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: 'dob_month_label'.tr(),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 10,
-                              ),
-                            ),
-                            items: List<DropdownMenuItem<int>>.generate(
-                              12,
-                              (int index) {
-                                final int month = index + 1;
-
-                                return DropdownMenuItem<int>(
-                                  value: month,
-                                  child: Text(
-                                    _monthName(context, month),
-                                  ),
-                                );
-                              },
-                            ),
-                            onChanged: (int? month) {
-                              if (month == null) {
-                                return;
-                              }
-
-                              final int maxDay = Jalali(
-                                selectedDate.year,
-                                month,
-                                1,
-                              ).monthLength;
-
-                              setDialogState(() {
-                                selectedDate = Jalali(
-                                  selectedDate.year,
-                                  month,
-                                  selectedDate.day > maxDay
-                                      ? maxDay
-                                      : selectedDate.day,
-                                );
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<int>(
-                      value: selectedDate.day,
-                      isExpanded: true,
-                      decoration: InputDecoration(
-                        labelText: 'dob_day_label'.tr(),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 10,
-                        ),
-                      ),
-                      items: List<DropdownMenuItem<int>>.generate(
-                        selectedDate.monthLength,
-                        (int index) {
-                          final int day = index + 1;
-
-                          return DropdownMenuItem<int>(
-                            value: day,
-                            child: Text(
-                              _toAfghanDigits(day.toString()),
-                            ),
-                          );
-                        },
-                      ),
-                      onChanged: (int? day) {
-                        if (day == null) {
-                          return;
-                        }
-
-                        setDialogState(() {
-                          selectedDate = Jalali(
-                            selectedDate.year,
-                            selectedDate.month,
-                            day,
-                          );
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(dialogContext);
-                  },
-                  child: Text('cancel'.tr()),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(dialogContext, selectedDate);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBrand,
-                    foregroundColor: Colors.white,
                   ),
-                  child: Text('confirm'.tr()),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Text(
+                    'dob_picker_title'.tr(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBrand.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      _formatJalaliDate(selectedDate),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: AppColors.primaryBrand,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // انتخابگرهای سال، ماه و روز به سبک مدرن و اسکرولی چرخشی
+                  Row(
+                    children: <Widget>[
+                      // سال
+                      Expanded(
+                        flex: 4,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'dob_year_label'.tr(),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              height: 160,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.grey.shade50,
+                              ),
+                              child: ListWheelScrollView.useDelegate(
+                                controller: FixedExtentScrollController(
+                                  initialItem: selectedDate.year - 1300,
+                                ),
+                                itemExtent: 40,
+                                perspective: 0.005,
+                                diameterRatio: 1.2,
+                                physics: const FixedExtentScrollPhysics(),
+                                onSelectedItemChanged: (int index) {
+                                  final int year = 1300 + index;
+                                  final int maxDay = Jalali(
+                                    year,
+                                    selectedDate.month,
+                                    1,
+                                  ).monthLength;
+
+                                  setSheetState(() {
+                                    selectedDate = Jalali(
+                                      year,
+                                      selectedDate.month,
+                                      selectedDate.day > maxDay
+                                          ? maxDay
+                                          : selectedDate.day,
+                                    );
+                                  });
+                                },
+                                childDelegate: ListWheelChildBuilderDelegate(
+                                  builder: (BuildContext context, int index) {
+                                    if (index < 0 ||
+                                        index >
+                                            (currentJalaliYear - 1300)) {
+                                      return null;
+                                    }
+                                    final int year = 1300 + index;
+                                    final bool isSelected =
+                                        year == selectedDate.year;
+
+                                    return Center(
+                                      child: Text(
+                                        _toAfghanDigits(year.toString()),
+                                        style: TextStyle(
+                                          fontSize: isSelected ? 16 : 14,
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: isSelected
+                                              ? AppColors.primaryBrand
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  childCount:
+                                      currentJalaliYear - 1300 + 1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // ماه
+                      Expanded(
+                        flex: 5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'dob_month_label'.tr(),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              height: 160,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.grey.shade50,
+                              ),
+                              child: ListWheelScrollView.useDelegate(
+                                controller: FixedExtentScrollController(
+                                  initialItem: selectedDate.month - 1,
+                                ),
+                                itemExtent: 40,
+                                perspective: 0.005,
+                                diameterRatio: 1.2,
+                                physics: const FixedExtentScrollPhysics(),
+                                onSelectedItemChanged: (int index) {
+                                  final int month = index + 1;
+                                  final int maxDay = Jalali(
+                                    selectedDate.year,
+                                    month,
+                                    1,
+                                  ).monthLength;
+
+                                  setSheetState(() {
+                                    selectedDate = Jalali(
+                                      selectedDate.year,
+                                      month,
+                                      selectedDate.day > maxDay
+                                          ? maxDay
+                                          : selectedDate.day,
+                                    );
+                                  });
+                                },
+                                childDelegate: ListWheelChildBuilderDelegate(
+                                  builder: (BuildContext context, int index) {
+                                    if (index < 0 || index > 11) {
+                                      return null;
+                                    }
+                                    final int month = index + 1;
+                                    final bool isSelected =
+                                        month == selectedDate.month;
+
+                                    return Center(
+                                      child: Text(
+                                        _afghanMonths[index],
+                                        style: TextStyle(
+                                          fontSize: isSelected ? 16 : 14,
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: isSelected
+                                              ? AppColors.primaryBrand
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  childCount: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // روز
+                      Expanded(
+                        flex: 4,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'dob_day_label'.tr(),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              height: 160,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.grey.shade50,
+                              ),
+                              child: ListWheelScrollView.useDelegate(
+                                controller: FixedExtentScrollController(
+                                  initialItem: selectedDate.day - 1,
+                                ),
+                                itemExtent: 40,
+                                perspective: 0.005,
+                                diameterRatio: 1.2,
+                                physics: const FixedExtentScrollPhysics(),
+                                onSelectedItemChanged: (int index) {
+                                  final int day = index + 1;
+                                  setSheetState(() {
+                                    selectedDate = Jalali(
+                                      selectedDate.year,
+                                      selectedDate.month,
+                                      day,
+                                    );
+                                  });
+                                },
+                                childDelegate: ListWheelChildBuilderDelegate(
+                                  builder: (BuildContext context, int index) {
+                                    final int maxDays =
+                                        selectedDate.monthLength;
+                                    if (index < 0 || index >= maxDays) {
+                                      return null;
+                                    }
+                                    final int day = index + 1;
+                                    final bool isSelected =
+                                        day == selectedDate.day;
+
+                                    return Center(
+                                      child: Text(
+                                        _toAfghanDigits(day.toString()),
+                                        style: TextStyle(
+                                          fontSize: isSelected ? 16 : 14,
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: isSelected
+                                              ? AppColors.primaryBrand
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  childCount: selectedDate.monthLength,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // دکمه‌های تأیید و انصراف در پایین مودال
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text('cancel'.tr()),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(sheetContext, selectedDate);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryBrand,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text('confirm'.tr()),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -367,9 +490,63 @@ class _BasicDriverInfoUpdateScreenState
     registrationProvider.checkBasicFormValidity();
   }
 
+  InputDecoration _inputDecoration({
+    required String labelText,
+    String? hintText,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hintText,
+      labelStyle: const TextStyle(fontSize: 13),
+      border: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 10,
+      ),
+      suffixIcon: suffixIcon,
+    );
+  }
+
+  Future<void> _saveBasicInfo(
+    RegistrationProvider registrationProvider,
+    CommonMethods commonMethods,
+  ) async {
+    FocusScope.of(context).unfocus();
+
+    if (_formKey.currentState?.validate() != true) {
+      return;
+    }
+
+    registrationProvider.checkBasicFormValidity();
+
+    if (!registrationProvider.isFormValidBasic) {
+      return;
+    }
+
+    try {
+      await registrationProvider.updateBasicDriverInfo(context);
+
+      if (!mounted) {
+        return;
+      }
+
+      commonMethods.displaySnackBar(
+        'driver_info_update_success'.tr(),
+        context,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Error while saving driver data: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final CommonMethods commonMethods = CommonMethods();
+    final double keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
 
     return Consumer<RegistrationProvider>(
       builder: (
@@ -378,6 +555,7 @@ class _BasicDriverInfoUpdateScreenState
         Widget? child,
       ) {
         return Scaffold(
+          resizeToAvoidBottomInset: false,
           backgroundColor: AppColors.background,
           appBar: AppBar(
             backgroundColor: AppColors.cardBackground,
@@ -403,331 +581,294 @@ class _BasicDriverInfoUpdateScreenState
             ),
             leadingWidth: 70,
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(16),
-            child: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: <Widget>[
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: AppColors.cardBackground,
-                        boxShadow: const <BoxShadow>[
-                          BoxShadow(
-                            color: Colors.black12,
-                            offset: Offset(0, 2),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: <Widget>[
-                          const SizedBox(height: 16),
-                          CircleAvatar(
-                            radius: 55,
-                            backgroundColor: Colors.grey.shade200,
-                            backgroundImage:
-                                registrationProvider.profilePhoto != null
-                                    ? FileImage(
-                                        File(
-                                          registrationProvider
-                                              .profilePhoto!
-                                              .path,
+          body: AnimatedPadding(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            padding: EdgeInsets.only(bottom: keyboardHeight),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: <Widget>[
+                      Expanded(
+                        child: SingleChildScrollView(
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: <Widget>[
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  color: AppColors.cardBackground,
+                                  boxShadow: const <BoxShadow>[
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      offset: Offset(0, 2),
+                                      blurRadius: 6,
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: <Widget>[
+                                    const SizedBox(height: 16),
+                                    CircleAvatar(
+                                      radius: 55,
+                                      backgroundColor: Colors.grey.shade200,
+                                      backgroundImage: registrationProvider
+                                                  .profilePhoto !=
+                                              null
+                                          ? FileImage(
+                                              File(
+                                                registrationProvider
+                                                    .profilePhoto!.path,
+                                              ),
+                                            )
+                                          : const AssetImage(
+                                              'assets/auth/user.jpg',
+                                            ) as ImageProvider,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: AppColors.primaryBrand,
                                         ),
-                                      )
-                                    : const AssetImage(
-                                        'assets/auth/user.jpg',
-                                      ) as ImageProvider,
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                      ),
+                                      child: TextButton.icon(
+                                        onPressed: registrationProvider
+                                            .pickProfileImageFromGallary,
+                                        icon: const Icon(
+                                          Icons.add_a_photo_outlined,
+                                          color: AppColors.primaryBrand,
+                                          size: 16,
+                                        ),
+                                        label: Text(
+                                          'add_profile_photo'.tr(),
+                                          style: const TextStyle(
+                                            color: AppColors.primaryBrand,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  color: AppColors.cardBackground,
+                                  boxShadow: const <BoxShadow>[
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      offset: Offset(0, 2),
+                                      blurRadius: 6,
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    children: <Widget>[
+                                      TextFormField(
+                                        controller: registrationProvider
+                                            .firstNameController,
+                                        textInputAction:
+                                            TextInputAction.next,
+                                        decoration: _inputDecoration(
+                                          labelText: 'first_name'.tr(),
+                                        ),
+                                        validator: (String? value) {
+                                          if (value == null ||
+                                              value.trim().isEmpty) {
+                                            return 'err_first_name'.tr();
+                                          }
+
+                                          return null;
+                                        },
+                                        onChanged: (_) {
+                                          registrationProvider
+                                              .checkBasicFormValidity();
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+                                      TextFormField(
+                                        controller: registrationProvider
+                                            .lastNameController,
+                                        textInputAction:
+                                            TextInputAction.next,
+                                        decoration: _inputDecoration(
+                                          labelText: 'last_name'.tr(),
+                                        ),
+                                        validator: (String? value) {
+                                          if (value == null ||
+                                              value.trim().isEmpty) {
+                                            return 'err_last_name'.tr();
+                                          }
+
+                                          return null;
+                                        },
+                                        onChanged: (_) {
+                                          registrationProvider
+                                              .checkBasicFormValidity();
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+                                      TextFormField(
+                                        controller: registrationProvider
+                                            .emailController,
+                                        keyboardType:
+                                            TextInputType.emailAddress,
+                                        textInputAction:
+                                            TextInputAction.next,
+                                        decoration: _inputDecoration(
+                                          labelText: 'email'.tr(),
+                                        ),
+                                        validator: (String? value) {
+                                          final String email =
+                                              value?.trim() ?? '';
+
+                                          if (email.isEmpty ||
+                                              !email.contains('@')) {
+                                            return 'invalid_email_error'.tr();
+                                          }
+
+                                          return null;
+                                        },
+                                        onChanged: (_) {
+                                          registrationProvider
+                                              .checkBasicFormValidity();
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+                                      TextFormField(
+                                        controller: registrationProvider
+                                            .addressController,
+                                        textInputAction:
+                                            TextInputAction.next,
+                                        maxLines: 2,
+                                        minLines: 1,
+                                        decoration: _inputDecoration(
+                                          labelText: 'home_address'.tr(),
+                                        ),
+                                        validator: (String? value) {
+                                          if (value == null ||
+                                              value.trim().length < 5) {
+                                            return 'err_address'.tr();
+                                          }
+
+                                          return null;
+                                        },
+                                        onChanged: (_) {
+                                          registrationProvider
+                                              .checkBasicFormValidity();
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+                                      TextFormField(
+                                        controller: registrationProvider
+                                            .phoneController,
+                                        enabled: false,
+                                        decoration: _inputDecoration(
+                                          labelText:
+                                              '${'phone'.tr()} (${'not_registered'.tr()})',
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      TextFormField(
+                                        controller:
+                                            registrationProvider.dobController,
+                                        readOnly: true,
+                                        showCursor: false,
+                                        decoration: _inputDecoration(
+                                          labelText:
+                                              'dob_jalali_label'.tr(),
+                                          hintText: 'dob_jalali_hint'.tr(),
+                                          suffixIcon: const Icon(
+                                            Icons.calendar_month,
+                                            size: 18,
+                                            color: AppColors.primaryBrand,
+                                          ),
+                                        ),
+                                        validator: (String? value) {
+                                          if (value == null ||
+                                              value.trim().isEmpty) {
+                                            return 'err_dob_required'.tr();
+                                          }
+
+                                          return null;
+                                        },
+                                        onTap: () {
+                                          FocusScope.of(context).unfocus();
+                                          _showAfghanDatePicker(
+                                            registrationProvider,
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                          Container(
-                            height: 40,
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: AppColors.primaryBrand,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: TextButton.icon(
-                              onPressed: registrationProvider
-                                  .pickProfileImageFromGallary,
-                              icon: const Icon(
-                                Icons.add_a_photo_outlined,
-                                color: AppColors.primaryBrand,
-                                size: 16,
-                              ),
-                              label: Text(
-                                'add_profile_photo'.tr(),
-                                style: const TextStyle(
-                                  color: AppColors.primaryBrand,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: AppColors.cardBackground,
-                        boxShadow: const <BoxShadow>[
-                          BoxShadow(
-                            color: Colors.black12,
-                            offset: Offset(0, 2),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: <Widget>[
-                            TextFormField(
-                              controller:
-                                  registrationProvider.firstNameController,
-                              decoration: InputDecoration(
-                                labelText: 'first_name'.tr(),
-                                labelStyle: const TextStyle(fontSize: 13),
-                                border: const OutlineInputBorder(
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(12),
-                                  ),
-                                ),
-                                contentPadding:
-                                    const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                              ),
-                              validator: (String? value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'err_first_name'.tr();
-                                }
-
-                                return null;
-                              },
-                              onChanged: (_) {
-                                registrationProvider.checkBasicFormValidity();
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller:
-                                  registrationProvider.lastNameController,
-                              decoration: InputDecoration(
-                                labelText: 'last_name'.tr(),
-                                labelStyle: const TextStyle(fontSize: 13),
-                                border: const OutlineInputBorder(
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(12),
-                                  ),
-                                ),
-                                contentPadding:
-                                    const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                              ),
-                              validator: (String? value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'err_last_name'.tr();
-                                }
-
-                                return null;
-                              },
-                              onChanged: (_) {
-                                registrationProvider.checkBasicFormValidity();
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller:
-                                  registrationProvider.emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              decoration: InputDecoration(
-                                labelText: 'email'.tr(),
-                                labelStyle: const TextStyle(fontSize: 13),
-                                border: const OutlineInputBorder(
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(12),
-                                  ),
-                                ),
-                                contentPadding:
-                                    const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                              ),
-                              validator: (String? value) {
-                                final String email = value?.trim() ?? '';
-
-                                if (email.isEmpty || !email.contains('@')) {
-                                  return 'invalid_email_error'.tr();
-                                }
-
-                                return null;
-                              },
-                              onChanged: (_) {
-                                registrationProvider.checkBasicFormValidity();
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller:
-                                  registrationProvider.addressController,
-                              decoration: InputDecoration(
-                                labelText: 'home_address'.tr(),
-                                labelStyle: const TextStyle(fontSize: 13),
-                                border: const OutlineInputBorder(
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(12),
-                                  ),
-                                ),
-                                contentPadding:
-                                    const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                              ),
-                              validator: (String? value) {
-                                if (value == null ||
-                                    value.trim().length < 5) {
-                                  return 'err_address'.tr();
-                                }
-
-                                return null;
-                              },
-                              onChanged: (_) {
-                                registrationProvider.checkBasicFormValidity();
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller:
-                                  registrationProvider.phoneController,
-                              enabled: false,
-                              decoration: InputDecoration(
-                                labelText:
-                                    '${'phone'.tr()} (${'not_registered'.tr()})',
-                                labelStyle: const TextStyle(fontSize: 13),
-                                border: const OutlineInputBorder(
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(12),
-                                  ),
-                                ),
-                                contentPadding:
-                                    const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: registrationProvider.dobController,
-                              readOnly: true,
-                              decoration: InputDecoration(
-                                labelText: 'dob_jalali_label'.tr(),
-                                hintText: 'dob_jalali_hint'.tr(),
-                                labelStyle: const TextStyle(fontSize: 13),
-                                border: const OutlineInputBorder(
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(12),
-                                  ),
-                                ),
-                                contentPadding:
-                                    const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                suffixIcon: const Icon(
-                                  Icons.calendar_month,
-                                  size: 18,
-                                  color: AppColors.primaryBrand,
-                                ),
-                              ),
-                              validator: (String? value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'err_dob_required'.tr();
-                                }
-
-                                return null;
-                              },
-                              onTap: () {
-                                _showAfghanDatePicker(registrationProvider);
-                              },
-                            ),
-                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.93,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: !registrationProvider.isLoading &&
-                                registrationProvider.isFormValidBasic
-                            ? () async {
-                                if (_formKey.currentState?.validate() !=
-                                    true) {
-                                  return;
-                                }
-
-                                try {
-                                  await registrationProvider
-                                      .updateBasicDriverInfo(context);
-
-                                  if (context.mounted) {
-                                    commonMethods.displaySnackBar(
-                                      'driver_info_update_success'.tr(),
-                                      context,
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: !registrationProvider.isLoading &&
+                                    registrationProvider.isFormValidBasic
+                                ? () {
+                                    _saveBasicInfo(
+                                      registrationProvider,
+                                      commonMethods,
                                     );
                                   }
-                                } catch (error, stackTrace) {
-                                  debugPrint(
-                                    'Error while saving driver data: $error',
-                                  );
-                                  debugPrintStack(stackTrace: stackTrace);
-                                }
-                              }
-                            : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryBrand,
-                          disabledBackgroundColor: Colors.grey.shade400,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryBrand,
+                              disabledBackgroundColor: Colors.grey.shade400,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: registrationProvider.isLoading
+                                ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : Text(
+                                    'driver_info_update_btn'.tr(),
+                                    style: const TextStyle(
+                                      color: AppColors.buttonText,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
                           ),
                         ),
-                        child: registrationProvider.isLoading
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                            : Text(
-                                'driver_info_update_btn'.tr(),
-                                style: const TextStyle(
-                                  color: AppColors.buttonText,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
