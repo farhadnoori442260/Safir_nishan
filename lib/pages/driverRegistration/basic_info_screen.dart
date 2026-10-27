@@ -19,7 +19,6 @@ class BasicInfoScreen extends StatefulWidget {
 class _BasicInfoScreenState extends State<BasicInfoScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  // ماه‌ها ثابت و فارسی هستند؛ نیازی به کلید JSON ندارند.
   static const List<String> _afghanMonths = <String>[
     'حمل',
     'ثور',
@@ -56,35 +55,15 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
 
   String _toAfghanDigits(String value) {
     const List<String> english = <String>[
-      '0',
-      '1',
-      '2',
-      '3',
-      '4',
-      '5',
-      '6',
-      '7',
-      '8',
-      '9',
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
     ];
-
     const List<String> farsi = <String>[
-      '۰',
-      '۱',
-      '۲',
-      '۳',
-      '۴',
-      '۵',
-      '۶',
-      '۷',
-      '۸',
-      '۹',
+      '۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹',
     ];
 
     for (int index = 0; index < 10; index++) {
       value = value.replaceAll(english[index], farsi[index]);
     }
-
     return value;
   }
 
@@ -107,13 +86,9 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
 
   Jalali _getInitialJalaliDate(String savedDate) {
     final Jalali today = Jalali.now();
-
     try {
       final List<String> parts = savedDate.trim().split('/');
-
-      if (parts.length != 3) {
-        return today;
-      }
+      if (parts.length != 3) return today;
 
       final int year = int.parse(parts[0]);
       final int month = int.parse(parts[1]);
@@ -128,10 +103,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       }
 
       final int maxDay = Jalali(year, month, 1).monthLength;
-
-      if (day > maxDay) {
-        return today;
-      }
+      if (day > maxDay) return today;
 
       return Jalali(year, month, day);
     } catch (_) {
@@ -152,10 +124,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       backgroundColor: Colors.transparent,
       builder: (BuildContext sheetContext) {
         return StatefulBuilder(
-          builder: (
-            BuildContext context,
-            StateSetter setSheetState,
-          ) {
+          builder: (BuildContext context, StateSetter setSheetState) {
             final int currentJalaliYear = Jalali.now().year;
 
             return Container(
@@ -349,9 +318,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                                 },
                                 childDelegate: ListWheelChildBuilderDelegate(
                                   builder: (BuildContext context, int index) {
-                                    if (index < 0 || index > 11) {
-                                      return null;
-                                    }
+                                    if (index < 0 || index > 11) return null;
                                     final int month = index + 1;
                                     final bool isSelected =
                                         month == selectedDate.month;
@@ -496,9 +463,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       },
     );
 
-    if (result == null) {
-      return;
-    }
+    if (result == null) return;
 
     registrationProvider.dobController.text = _formatJalaliStorage(result);
     registrationProvider.checkBasicFormValidity();
@@ -541,23 +506,17 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
   void _submitBasicInfo(RegistrationProvider registrationProvider) {
     FocusScope.of(context).unfocus();
 
-    if (_formKey.currentState?.validate() != true) {
-      return;
-    }
+    if (_formKey.currentState?.validate() != true) return;
 
     registrationProvider.checkBasicFormValidity();
 
-    if (!registrationProvider.isFormValidBasic) {
-      return;
-    }
+    if (!registrationProvider.isFormValidBasic) return;
 
     Navigator.pop(context, true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final double keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
-
     return Consumer<RegistrationProvider>(
       builder: (
         BuildContext context,
@@ -591,311 +550,299 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               ),
             ],
           ),
-          body: AnimatedPadding(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            padding: EdgeInsets.only(bottom: keyboardHeight),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: <Widget>[
-                      Expanded(
-                        child: SingleChildScrollView(
-                          keyboardDismissBehavior:
-                              ScrollViewKeyboardDismissBehavior.onDrag,
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: <Widget>[
-                              Container(
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey.shade200,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                  color: AppColors.cardBackground,
-                                  boxShadow: <BoxShadow>[
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.04),
-                                      offset: const Offset(0, 4),
-                                      blurRadius: 12,
-                                    ),
-                                  ],
+          // استفاده از SafeArea ساده بدون AnimatedPadding تداخل‌آفرین
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: <Widget>[
+                    Expanded(
+                      child: SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: <Widget>[
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey.shade200,
                                 ),
+                                borderRadius: BorderRadius.circular(20),
+                                color: AppColors.cardBackground,
+                                boxShadow: <BoxShadow>[
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    offset: const Offset(0, 4),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                children: <Widget>[
+                                  const SizedBox(height: 16),
+                                  CircleAvatar(
+                                    radius: 55,
+                                    backgroundColor: Colors.grey.shade200,
+                                    backgroundImage: registrationProvider
+                                                .profilePhoto !=
+                                            null
+                                        ? FileImage(
+                                            File(
+                                              registrationProvider
+                                                  .profilePhoto!.path,
+                                            ),
+                                          )
+                                        : null,
+                                    child: registrationProvider
+                                                .profilePhoto ==
+                                            null
+                                        ? Icon(
+                                            Icons.person,
+                                            size: 55,
+                                            color: Colors.grey.shade400,
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: AppColors.primaryBrand,
+                                      ),
+                                      borderRadius:
+                                          BorderRadius.circular(12),
+                                    ),
+                                    child: TextButton.icon(
+                                      onPressed: registrationProvider
+                                          .pickProfileImageFromGallary,
+                                      icon: const Icon(
+                                        Icons.add_a_photo,
+                                        color: AppColors.primaryBrand,
+                                        size: 18,
+                                      ),
+                                      label: Text(
+                                        'add_profile_photo'.tr(),
+                                        style: const TextStyle(
+                                          color: AppColors.primaryBrand,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey.shade200,
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                color: AppColors.cardBackground,
+                                boxShadow: <BoxShadow>[
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    offset: const Offset(0, 4),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
                                 child: Column(
                                   children: <Widget>[
-                                    const SizedBox(height: 16),
-                                    CircleAvatar(
-                                      radius: 55,
-                                      backgroundColor: Colors.grey.shade200,
-                                      backgroundImage: registrationProvider
-                                                  .profilePhoto !=
-                                              null
-                                          ? FileImage(
-                                              File(
-                                                registrationProvider
-                                                    .profilePhoto!.path,
-                                              ),
-                                            )
-                                          : null,
-                                      child: registrationProvider
-                                                  .profilePhoto ==
-                                              null
-                                          ? Icon(
-                                              Icons.person,
-                                              size: 55,
-                                              color: Colors.grey.shade400,
-                                            )
-                                          : null,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: AppColors.primaryBrand,
-                                        ),
-                                        borderRadius:
-                                            BorderRadius.circular(12),
+                                    TextFormField(
+                                      controller: registrationProvider
+                                          .firstNameController,
+                                      textInputAction:
+                                          TextInputAction.next,
+                                      decoration: _inputDecoration(
+                                        labelText: 'first_name'.tr(),
                                       ),
-                                      child: TextButton.icon(
-                                        onPressed: registrationProvider
-                                            .pickProfileImageFromGallary,
-                                        icon: const Icon(
-                                          Icons.add_a_photo,
-                                          color: AppColors.primaryBrand,
-                                          size: 18,
-                                        ),
-                                        label: Text(
-                                          'add_profile_photo'.tr(),
-                                          style: const TextStyle(
-                                            color: AppColors.primaryBrand,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
+                                      validator: (String? value) {
+                                        if (value == null ||
+                                            value.trim().isEmpty) {
+                                          return 'err_first_name'.tr();
+                                        }
+                                        return null;
+                                      },
+                                      onChanged: (_) {
+                                        registrationProvider
+                                            .checkBasicFormValidity();
+                                      },
                                     ),
                                     const SizedBox(height: 16),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey.shade200,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                  color: AppColors.cardBackground,
-                                  boxShadow: <BoxShadow>[
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.04),
-                                      offset: const Offset(0, 4),
-                                      blurRadius: 12,
+                                    TextFormField(
+                                      controller: registrationProvider
+                                          .lastNameController,
+                                      textInputAction:
+                                          TextInputAction.next,
+                                      decoration: _inputDecoration(
+                                        labelText: 'last_name'.tr(),
+                                      ),
+                                      validator: (String? value) {
+                                        if (value == null ||
+                                            value.trim().isEmpty) {
+                                          return 'err_last_name'.tr();
+                                        }
+                                        return null;
+                                      },
+                                      onChanged: (_) {
+                                        registrationProvider
+                                            .checkBasicFormValidity();
+                                      },
                                     ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    children: <Widget>[
-                                      TextFormField(
+                                    const SizedBox(height: 16),
+                                    TextFormField(
+                                      controller: registrationProvider
+                                          .emailController,
+                                      keyboardType:
+                                          TextInputType.emailAddress,
+                                      textInputAction:
+                                          TextInputAction.next,
+                                      decoration: _inputDecoration(
+                                        labelText: 'email'.tr(),
+                                      ),
+                                      validator: (String? value) {
+                                        final String email =
+                                            value?.trim() ?? '';
+                                        if (email.isEmpty ||
+                                            !email.contains('@')) {
+                                          return 'invalid_email_error'.tr();
+                                        }
+                                        return null;
+                                      },
+                                      onChanged: (_) {
+                                        registrationProvider
+                                            .checkBasicFormValidity();
+                                      },
+                                    ),
+                                    const SizedBox(height: 16),
+                                    TextFormField(
+                                      controller: registrationProvider
+                                          .addressController,
+                                      textInputAction:
+                                          TextInputAction.next,
+                                      minLines: 1,
+                                      maxLines: 2,
+                                      decoration: _inputDecoration(
+                                        labelText: 'home_address'.tr(),
+                                      ),
+                                      validator: (String? value) {
+                                        if (value == null ||
+                                            value.trim().length < 5) {
+                                          return 'err_address'.tr();
+                                        }
+                                        return null;
+                                      },
+                                      onChanged: (_) {
+                                        registrationProvider
+                                            .checkBasicFormValidity();
+                                      },
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Directionality(
+                                      textDirection: TextDirection.ltr,
+                                      child: TextFormField(
                                         controller: registrationProvider
-                                            .firstNameController,
+                                            .phoneController,
+                                        keyboardType: TextInputType.phone,
                                         textInputAction:
                                             TextInputAction.next,
-                                        decoration: _inputDecoration(
-                                          labelText: 'first_name'.tr(),
-                                        ),
-                                        validator: (String? value) {
-                                          if (value == null ||
-                                              value.trim().isEmpty) {
-                                            return 'err_first_name'.tr();
-                                          }
-
-                                          return null;
-                                        },
-                                        onChanged: (_) {
-                                          registrationProvider
-                                              .checkBasicFormValidity();
-                                        },
-                                      ),
-                                      const SizedBox(height: 16),
-                                      TextFormField(
-                                        controller: registrationProvider
-                                            .lastNameController,
-                                        textInputAction:
-                                            TextInputAction.next,
-                                        decoration: _inputDecoration(
-                                          labelText: 'last_name'.tr(),
-                                        ),
-                                        validator: (String? value) {
-                                          if (value == null ||
-                                              value.trim().isEmpty) {
-                                            return 'err_last_name'.tr();
-                                          }
-
-                                          return null;
-                                        },
-                                        onChanged: (_) {
-                                          registrationProvider
-                                              .checkBasicFormValidity();
-                                        },
-                                      ),
-                                      const SizedBox(height: 16),
-                                      TextFormField(
-                                        controller: registrationProvider
-                                            .emailController,
-                                        keyboardType:
-                                            TextInputType.emailAddress,
-                                        textInputAction:
-                                            TextInputAction.next,
-                                        decoration: _inputDecoration(
-                                          labelText: 'email'.tr(),
-                                        ),
-                                        validator: (String? value) {
-                                          final String email =
-                                              value?.trim() ?? '';
-
-                                          if (email.isEmpty ||
-                                              !email.contains('@')) {
-                                            return 'invalid_email_error'.tr();
-                                          }
-
-                                          return null;
-                                        },
-                                        onChanged: (_) {
-                                          registrationProvider
-                                              .checkBasicFormValidity();
-                                        },
-                                      ),
-                                      const SizedBox(height: 16),
-                                      TextFormField(
-                                        controller: registrationProvider
-                                            .addressController,
-                                        textInputAction:
-                                            TextInputAction.next,
-                                        minLines: 1,
-                                        maxLines: 2,
-                                        decoration: _inputDecoration(
-                                          labelText: 'home_address'.tr(),
-                                        ),
-                                        validator: (String? value) {
-                                          if (value == null ||
-                                              value.trim().length < 5) {
-                                            return 'err_address'.tr();
-                                          }
-
-                                          return null;
-                                        },
-                                        onChanged: (_) {
-                                          registrationProvider
-                                              .checkBasicFormValidity();
-                                        },
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Directionality(
-                                        textDirection: TextDirection.ltr,
-                                        child: TextFormField(
-                                          controller: registrationProvider
-                                              .phoneController,
-                                          keyboardType: TextInputType.phone,
-                                          textInputAction:
-                                              TextInputAction.next,
-                                          decoration: _inputDecoration(
-                                            labelText:
-                                                'mobile_number'.tr(),
-                                          ),
-                                          validator: (String? value) {
-                                            if (value == null ||
-                                                value.trim().length < 9) {
-                                              return 'err_phone'.tr();
-                                            }
-
-                                            return null;
-                                          },
-                                          onChanged: (_) {
-                                            registrationProvider
-                                                .checkBasicFormValidity();
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      TextFormField(
-                                        controller:
-                                            registrationProvider.dobController,
-                                        readOnly: true,
-                                        showCursor: false,
                                         decoration: _inputDecoration(
                                           labelText:
-                                              'تاریخ تولد (هجری شمسی)',
-                                          hintText: 'مثلاً ۱۳۷۹/۰۲/۲۲',
-                                          suffixIcon: const Icon(
-                                            Icons.calendar_month,
-                                            color: AppColors.primaryBrand,
-                                          ),
+                                              'mobile_number'.tr(),
                                         ),
                                         validator: (String? value) {
                                           if (value == null ||
-                                              value.trim().isEmpty) {
-                                            return 'تاریخ تولد را انتخاب کنید';
+                                              value.trim().length < 9) {
+                                            return 'err_phone'.tr();
                                           }
-
                                           return null;
                                         },
-                                        onTap: () {
-                                          FocusScope.of(context).unfocus();
-                                          _showAfghanDatePicker(
-                                            registrationProvider,
-                                          );
+                                        onChanged: (_) {
+                                          registrationProvider
+                                              .checkBasicFormValidity();
                                         },
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    TextFormField(
+                                      controller:
+                                          registrationProvider.dobController,
+                                      readOnly: true,
+                                      showCursor: false,
+                                      decoration: _inputDecoration(
+                                        labelText:
+                                            'تاریخ تولد (هجری شمسی)',
+                                        hintText: 'مثلاً ۱۳۷۹/۰۲/۲۲',
+                                        suffixIcon: const Icon(
+                                          Icons.calendar_month,
+                                          color: AppColors.primaryBrand,
+                                        ),
+                                      ),
+                                      validator: (String? value) {
+                                        if (value == null ||
+                                            value.trim().isEmpty) {
+                                          return 'تاریخ تولد را انتخاب کنید';
+                                        }
+                                        return null;
+                                      },
+                                      onTap: () {
+                                        FocusScope.of(context).unfocus();
+                                        _showAfghanDatePicker(
+                                          registrationProvider,
+                                        );
+                                      },
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: registrationProvider.isFormValidBasic
+                              ? () => _submitBasicInfo(
+                                    registrationProvider,
+                                  )
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                registrationProvider.isFormValidBasic
+                                    ? AppColors.primaryButton
+                                    : Colors.grey.shade400,
+                            foregroundColor: AppColors.buttonText,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'confirm_and_submit'.tr(),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: registrationProvider.isFormValidBasic
-                                ? () => _submitBasicInfo(
-                                      registrationProvider,
-                                    )
-                                : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  registrationProvider.isFormValidBasic
-                                      ? AppColors.primaryButton
-                                      : Colors.grey.shade400,
-                              foregroundColor: AppColors.buttonText,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text(
-                              'confirm_and_submit'.tr(),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
