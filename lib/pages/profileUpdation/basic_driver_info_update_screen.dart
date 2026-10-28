@@ -592,16 +592,16 @@ class _BasicDriverInfoUpdateScreenState
                                 const SizedBox(height: 16),
                                 Selector<
                                     RegistrationProvider,
-                                    File?>(
+                                    String?>(
                                   selector: (
                                     BuildContext context,
                                     RegistrationProvider provider,
                                   ) {
-                                    return provider.profilePhoto;
+                                    return provider.profilePhoto?.path;
                                   },
                                   builder: (
                                     BuildContext context,
-                                    File? profilePhoto,
+                                    String? profilePhoto,
                                     Widget? child,
                                   ) {
                                     return CircleAvatar(
