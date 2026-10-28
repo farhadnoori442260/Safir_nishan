@@ -144,9 +144,9 @@ class _BasicDriverInfoUpdateScreenState
               top: false,
               child: Container(
                 decoration: const BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.cardBackground,
                   borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(24),
+                    top: Radius.circular(28),
                   ),
                 ),
                 padding: EdgeInsets.fromLTRB(
@@ -164,7 +164,7 @@ class _BasicDriverInfoUpdateScreenState
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
+                          color: AppColors.textSecondary.withOpacity(0.25),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -186,8 +186,8 @@ class _BasicDriverInfoUpdateScreenState
                         vertical: 14,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryBrand.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(14),
+                        color: AppColors.primaryBrand.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         _formatJalaliDate(selectedDate),
@@ -252,7 +252,7 @@ class _BasicDriverInfoUpdateScreenState
                                             : FontWeight.normal,
                                         color: isSelected
                                             ? AppColors.primaryBrand
-                                            : Colors.black87,
+                                            : AppColors.textPrimary.withOpacity(0.55),
                                       ),
                                     ),
                                   );
@@ -312,7 +312,7 @@ class _BasicDriverInfoUpdateScreenState
                                             : FontWeight.normal,
                                         color: isSelected
                                             ? AppColors.primaryBrand
-                                            : Colors.black87,
+                                            : AppColors.textPrimary.withOpacity(0.55),
                                       ),
                                     ),
                                   );
@@ -365,7 +365,7 @@ class _BasicDriverInfoUpdateScreenState
                                             : FontWeight.normal,
                                         color: isSelected
                                             ? AppColors.primaryBrand
-                                            : Colors.black87,
+                                            : AppColors.textPrimary.withOpacity(0.55),
                                       ),
                                     ),
                                   );
@@ -385,11 +385,16 @@ class _BasicDriverInfoUpdateScreenState
                               Navigator.pop(sheetContext);
                             },
                             style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textPrimary,
+                              side: BorderSide(
+                                color: AppColors.textSecondary
+                                    .withOpacity(0.25),
+                              ),
                               padding: const EdgeInsets.symmetric(
-                                vertical: 12,
+                                vertical: 14,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
                             child: Text('cancel'.tr()),
@@ -405,13 +410,14 @@ class _BasicDriverInfoUpdateScreenState
                               );
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryBrand,
-                              foregroundColor: Colors.white,
+                              backgroundColor: AppColors.primaryButton,
+                              foregroundColor: AppColors.buttonText,
+                              elevation: 0,
                               padding: const EdgeInsets.symmetric(
-                                vertical: 12,
+                                vertical: 14,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
                             child: Text('confirm'.tr()),
@@ -447,19 +453,39 @@ class _BasicDriverInfoUpdateScreenState
           label,
           style: const TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
           ),
         ),
         const SizedBox(height: 6),
         Container(
           height: 160,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.grey.shade50,
+            border: Border.all(
+              color: AppColors.textSecondary.withOpacity(0.14),
+            ),
+            borderRadius: BorderRadius.circular(16),
+            color: AppColors.background,
           ),
-          child: child,
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: <Widget>[
+              // نوار ملایم پشت مقدار انتخاب‌شده
+              Center(
+                child: IgnorePointer(
+                  child: Container(
+                    height: 40,
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBrand.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned.fill(child: child),
+            ],
+          ),
         ),
       ],
     );
@@ -467,21 +493,82 @@ class _BasicDriverInfoUpdateScreenState
 
   InputDecoration _inputDecoration({
     required String labelText,
+    IconData? icon,
     String? hintText,
     Widget? suffixIcon,
   }) {
+    final OutlineInputBorder baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(
+        color: AppColors.textSecondary.withOpacity(0.16),
+      ),
+    );
+
+    const Color errorColor = Color(0xFFD64545);
+
     return InputDecoration(
       labelText: labelText,
       hintText: hintText,
-      labelStyle: const TextStyle(fontSize: 13),
-      border: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(12)),
+      filled: true,
+      fillColor: AppColors.background,
+      labelStyle: const TextStyle(
+        fontSize: 14,
+        color: AppColors.textSecondary,
+      ),
+      floatingLabelStyle: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppColors.primaryBrand,
+      ),
+      prefixIcon: icon == null
+          ? null
+          : Icon(
+              icon,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
+      border: baseBorder,
+      enabledBorder: baseBorder,
+      disabledBorder: baseBorder.copyWith(
+        borderSide: BorderSide(
+          color: AppColors.textSecondary.withOpacity(0.10),
+        ),
+      ),
+      focusedBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(
+          color: AppColors.primaryBrand,
+          width: 1.6,
+        ),
+      ),
+      errorBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(color: errorColor),
+      ),
+      focusedErrorBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(color: errorColor, width: 1.6),
       ),
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 10,
+        horizontal: 14,
+        vertical: 15,
       ),
       suffixIcon: suffixIcon,
+    );
+  }
+
+  /// ظاهر مشترک کارت‌ها؛ سایه‌ی سبک تا هنگام باز شدن کیبورد سنگین نشود.
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(
+        color: AppColors.textSecondary.withOpacity(0.10),
+      ),
+      boxShadow: <BoxShadow>[
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          offset: const Offset(0, 3),
+          blurRadius: 10,
+        ),
+      ],
     );
   }
 
@@ -531,11 +618,18 @@ class _BasicDriverInfoUpdateScreenState
       appBar: AppBar(
         backgroundColor: AppColors.cardBackground,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: Border(
+          bottom: BorderSide(
+            color: AppColors.textSecondary.withOpacity(0.10),
+          ),
+        ),
         title: Text(
           'basic_info_title'.tr(),
           style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
@@ -545,8 +639,8 @@ class _BasicDriverInfoUpdateScreenState
           child: Text(
             'close'.tr(),
             style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -572,20 +666,10 @@ class _BasicDriverInfoUpdateScreenState
                         children: <Widget>[
                           Container(
                             width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              color: AppColors.cardBackground,
-                              boxShadow: const <BoxShadow>[
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  offset: Offset(0, 2),
-                                  blurRadius: 6,
-                                ),
-                              ],
-                            ),
+                            decoration: _cardDecoration(),
                             child: Column(
                               children: <Widget>[
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 20),
                                 Selector<
                                     RegistrationProvider,
                                     String?>(
@@ -600,64 +684,62 @@ class _BasicDriverInfoUpdateScreenState
                                     String? profilePhoto,
                                     Widget? child,
                                   ) {
-                                    return CircleAvatar(
-                                      radius: 55,
-                                      backgroundColor:
-                                          Colors.grey.shade200,
-                                      backgroundImage:
-                                          profilePhoto != null
-                                              ? FileImage(File(profilePhoto))
-                                              : const AssetImage(
-                                                  'assets/auth/user.jpg',
-                                                ) as ImageProvider,
+                                    return Container(
+                                      padding: const EdgeInsets.all(3),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.primaryBrand
+                                              .withOpacity(0.35),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: CircleAvatar(
+                                        radius: 52,
+                                        backgroundColor: AppColors.background,
+                                        backgroundImage:
+                                            profilePhoto != null
+                                                ? FileImage(File(profilePhoto))
+                                                : const AssetImage(
+                                                    'assets/auth/user.jpg',
+                                                  ) as ImageProvider,
+                                      ),
                                     );
                                   },
                                 ),
                                 const SizedBox(height: 12),
-                                Container(
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: AppColors.primaryBrand,
+                                TextButton.icon(
+                                  onPressed: registrationProvider
+                                      .pickProfileImageFromGallary,
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: AppColors.primaryBrand
+                                        .withOpacity(0.10),
+                                    foregroundColor: AppColors.primaryBrand,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 10,
                                     ),
-                                    borderRadius:
-                                        BorderRadius.circular(12),
+                                    shape: const StadiumBorder(),
                                   ),
-                                  child: TextButton.icon(
-                                    onPressed: registrationProvider
-                                        .pickProfileImageFromGallary,
-                                    icon: const Icon(
-                                      Icons.add_a_photo_outlined,
-                                      color: AppColors.primaryBrand,
-                                      size: 16,
-                                    ),
-                                    label: Text(
-                                      'add_profile_photo'.tr(),
-                                      style: const TextStyle(
-                                        color: AppColors.primaryBrand,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
+                                  icon: const Icon(
+                                    Icons.add_a_photo_outlined,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    'add_profile_photo'.tr(),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13.5,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 18),
                               ],
                             ),
                           ),
                           const SizedBox(height: 16),
                           Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              color: AppColors.cardBackground,
-                              boxShadow: const <BoxShadow>[
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  offset: Offset(0, 2),
-                                  blurRadius: 6,
-                                ),
-                              ],
-                            ),
+                            decoration: _cardDecoration(),
                             child: Padding(
                               padding: const EdgeInsets.all(16),
                               child: Column(
@@ -669,6 +751,7 @@ class _BasicDriverInfoUpdateScreenState
                                         TextInputAction.next,
                                     decoration: _inputDecoration(
                                       labelText: 'first_name'.tr(),
+                                      icon: Icons.person_outline_rounded,
                                     ),
                                     validator: (String? value) {
                                       if (value == null ||
@@ -691,6 +774,7 @@ class _BasicDriverInfoUpdateScreenState
                                         TextInputAction.next,
                                     decoration: _inputDecoration(
                                       labelText: 'last_name'.tr(),
+                                      icon: Icons.badge_outlined,
                                     ),
                                     validator: (String? value) {
                                       if (value == null ||
@@ -715,6 +799,7 @@ class _BasicDriverInfoUpdateScreenState
                                         TextInputAction.next,
                                     decoration: _inputDecoration(
                                       labelText: 'email'.tr(),
+                                      icon: Icons.mail_outline_rounded,
                                     ),
                                     validator: (String? value) {
                                       final String email =
@@ -742,6 +827,7 @@ class _BasicDriverInfoUpdateScreenState
                                     maxLines: 2,
                                     decoration: _inputDecoration(
                                       labelText: 'home_address'.tr(),
+                                      icon: Icons.home_outlined,
                                     ),
                                     validator: (String? value) {
                                       if (value == null ||
@@ -764,6 +850,7 @@ class _BasicDriverInfoUpdateScreenState
                                     decoration: _inputDecoration(
                                       labelText:
                                           '${'phone'.tr()} (${'not_registered'.tr()})',
+                                      icon: Icons.phone_outlined,
                                     ),
                                   ),
                                   const SizedBox(height: 16),
@@ -777,9 +864,10 @@ class _BasicDriverInfoUpdateScreenState
                                           'dob_jalali_label'.tr(),
                                       hintText:
                                           'dob_jalali_hint'.tr(),
+                                      icon: Icons.cake_outlined,
                                       suffixIcon: const Icon(
-                                        Icons.calendar_month,
-                                        size: 18,
+                                        Icons.calendar_month_outlined,
+                                        size: 20,
                                         color: AppColors.primaryBrand,
                                       ),
                                     ),
@@ -826,7 +914,7 @@ class _BasicDriverInfoUpdateScreenState
                     ) {
                       return SizedBox(
                         width: double.infinity,
-                        height: 52,
+                        height: 54,
                         child: ElevatedButton(
                           onPressed: !state.isLoading && state.isFormValid
                               ? () {
@@ -837,11 +925,16 @@ class _BasicDriverInfoUpdateScreenState
                                 }
                               : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryBrand,
+                            backgroundColor: AppColors.primaryButton,
+                            foregroundColor: AppColors.buttonText,
                             disabledBackgroundColor:
-                                Colors.grey.shade400,
+                                AppColors.textSecondary.withOpacity(0.15),
+                            disabledForegroundColor:
+                                AppColors.textSecondary.withOpacity(0.6),
+                            elevation: 0,
+                            shadowColor: Colors.transparent,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                           child: state.isLoading
@@ -849,7 +942,7 @@ class _BasicDriverInfoUpdateScreenState
                                   height: 24,
                                   width: 24,
                                   child: CircularProgressIndicator(
-                                    color: Colors.white,
+                                    color: AppColors.buttonText,
                                     strokeWidth: 2.5,
                                   ),
                                 )
@@ -890,7 +983,8 @@ class _KeyboardAwareBody extends StatelessWidget {
     final double systemBottom = MediaQuery.paddingOf(context).bottom;
 
     return AnimatedPadding(
-      duration: const Duration(milliseconds: 150),
+      // مدت کوتاه تا دکمه همراه کیبورد سنگین و دیرجنب حرکت نکند.
+      duration: const Duration(milliseconds: 80),
       curve: Curves.easeOut,
       padding: EdgeInsets.only(
         bottom: keyboard > systemBottom ? keyboard - systemBottom : 0,
