@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:safir_drivers/constants/trip_status.dart';
 import 'package:safir_drivers/controllers/navigation_controller.dart';
 import 'package:safir_drivers/pages/chat_page.dart';
+import 'package:safir_drivers/providers/dashboard_provider.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/services/app_config_service.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
@@ -128,8 +129,39 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  // ───────── توقف نقشه وقتی دیده نمی‌شود ─────────
+  // نقشه (PlatformView) داخل IndexedStack همیشه زنده است و حتی وقتی تب دیگری
+  // یا فرمی روی آن باز است به رندر ادامه می‌دهد؛ همین باعث لرزش فرم‌ها هنگام
+  // باز شدن کیبورد می‌شد. پس وقتی دیده نمی‌شود، حلقهٔ رندر آن متوقف می‌شود.
+  bool _isMapPaused = false;
+  bool _mapShouldBeVisible = true;
+
+  void _updateMapVisibility(bool visible) {
+    _mapShouldBeVisible = visible;
+
+    final MapLibreMapController? controller = mapController;
+    if (controller == null) return;
+    if (visible == !_isMapPaused) return;
+
+    _isMapPaused = !visible;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        if (visible) {
+          await controller.resumeMap();
+        } else {
+          await controller.pauseMap();
+        }
+      } catch (e) {
+        debugPrint('Map pause/resume error: $e');
+      }
+    });
+  }
+
   void _onMapCreated(MapLibreMapController controller) {
     mapController = controller;
+    _isMapPaused = false;
+    _updateMapVisibility(_mapShouldBeVisible);
   }
 
   // ════════════════════════════════════════════════════════════
@@ -1871,13 +1903,63 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    // نقشه فقط وقتی تب «خانه» انتخاب است و صفحهٔ دیگری روی داشبورد باز نیست
+    // دیده می‌شود؛ در غیر این صورت متوقف می‌شود.
+    final bool isHomeTab = context.select<DashboardProvider, int>(
+          (DashboardProvider provider) => provider.selectedIndex,
+        ) ==
+        0;
+    final ModalRoute<dynamic>? route = ModalRoute.of(context);
+    final bool isCovered = route != null && !route.isCurrent;
+    _updateMapVisibility(isHomeTab && !isCovered);
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Stack(
           children: [
-            const ColoredBox(color: Colors.grey),
+            RepaintBoundary(
+  child: MapLibreMap(
+    initialCameraPosition: CameraPosition(
+      target: LatLng(
+        currentPositionOfDriver?.latitude ?? 34.5553,
+        currentPositionOfDriver?.longitude ?? 69.2075,
+      ),
+      zoom: 15,
+    ),
+    styleString: 'assets/map/style.json',
+    rotateGesturesEnabled: false,
+    tiltGesturesEnabled: false,
+    myLocationEnabled: !_isNavArrowVisible,
+    myLocationTrackingMode: MyLocationTrackingMode.none,
+    onMapCreated: _onMapCreated,
+    onStyleLoadedCallback: () async {
+      _isMapStyleReady = true;
+      _isDriverArrowImageAdded = false;
+      _driverNavigationSymbol = null;
+      _navRemainingLine = null;
+      _navTraveledLine = null;
+      _navLastRenderedSegment = -1;
+      _navLastRenderedPoint = null;
+
+      await _prepareDriverNavigationArrow();
+
+      if (_navRoutePoints.length >= 2) {
+        await _renderNavLines(
+          traveled: <LatLng>[],
+          remaining: _navRoutePoints,
+        );
+
+        final Position? p = currentPositionOfDriver;
+        if (p != null) {
+          _pendingNavPosition = p;
+          unawaited(_processPendingNavPosition());
+        }
+      }
+    },
+  ),
+),
             Positioned(
               top: 20,
               right: 16,
