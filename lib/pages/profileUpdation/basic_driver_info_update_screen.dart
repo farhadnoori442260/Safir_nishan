@@ -610,7 +610,7 @@ class _BasicDriverInfoUpdateScreenState
                                           Colors.grey.shade200,
                                       backgroundImage:
                                           profilePhoto != null
-                                              ? FileImage(profilePhoto)
+                                              ? FileImage(File(profilePhoto))
                                               : const AssetImage(
                                                   'assets/auth/user.jpg',
                                                 ) as ImageProvider,
