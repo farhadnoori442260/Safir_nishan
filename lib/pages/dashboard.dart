@@ -84,7 +84,11 @@ class _DashboardState extends State<Dashboard> {
       (provider) => provider.selectedIndex,
     );
 
-    return Scaffold(
+    // وقتی صفحهٔ دیگری (مثلاً فرم) روی داشبورد باز است، MediaQuery آن
+    // ثابت می‌ماند تا با هر فریم انیمیشن کیبورد هر ۴ تب (از جمله نقشه) زیر
+    // آن دوباره ساخته نشوند.
+    return _FreezeMediaQueryWhenCovered(
+      child: Scaffold(
       backgroundColor: const Color(0xFFF6F8F7),
       extendBody: true,
       body: IndexedStack(
@@ -149,6 +153,43 @@ class _DashboardState extends State<Dashboard> {
           ),
         ),
       ),
+      ),
+    );
+  }
+}
+
+/// تا وقتی روی این route صفحهٔ دیگری باز است، آخرین [MediaQueryData] را ثابت
+/// نگه می‌دارد. چون IndexedStack هر ۴ تب را زنده نگه می‌دارد، بدون این کار
+/// هر تغییر اندازهٔ کیبورد باعث ساخت دوبارهٔ همهٔ آن‌ها می‌شد.
+class _FreezeMediaQueryWhenCovered extends StatefulWidget {
+  const _FreezeMediaQueryWhenCovered({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_FreezeMediaQueryWhenCovered> createState() =>
+      _FreezeMediaQueryWhenCoveredState();
+}
+
+class _FreezeMediaQueryWhenCoveredState
+    extends State<_FreezeMediaQueryWhenCovered> {
+  MediaQueryData? _frozen;
+
+  @override
+  Widget build(BuildContext context) {
+    final MediaQueryData live = MediaQuery.of(context);
+    final ModalRoute<dynamic>? route = ModalRoute.of(context);
+    final bool covered = route != null && !route.isCurrent;
+
+    if (covered) {
+      _frozen ??= live;
+    } else {
+      _frozen = null;
+    }
+
+    return MediaQuery(
+      data: covered ? _frozen! : live,
+      child: widget.child,
     );
   }
 }
