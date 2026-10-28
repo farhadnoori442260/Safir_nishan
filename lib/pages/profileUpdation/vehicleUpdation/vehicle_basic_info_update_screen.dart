@@ -200,42 +200,76 @@ class _VehicleBasicInfoUpdateScreenState
 
   InputDecoration _fieldDecoration({
     required String labelText,
+    IconData? icon,
     String? hintText,
-    double labelFontSize = 13,
+    double labelFontSize = 14,
   }) {
+    final OutlineInputBorder baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(
+        color: AppColors.textSecondary.withOpacity(0.16),
+      ),
+    );
+
+    const Color errorColor = Color(0xFFD64545);
+
     return InputDecoration(
       labelText: labelText,
       hintText: hintText,
+      filled: true,
+      fillColor: AppColors.background,
       labelStyle: TextStyle(
         fontSize: labelFontSize,
         color: AppColors.textSecondary,
       ),
-      border: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(
-          Radius.circular(12),
-        ),
+      floatingLabelStyle: TextStyle(
+        fontSize: labelFontSize,
+        fontWeight: FontWeight.w600,
+        color: AppColors.primaryBrand,
       ),
-      focusedBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(
-          Radius.circular(12),
-        ),
-        borderSide: BorderSide(
+      prefixIcon: icon == null
+          ? null
+          : Icon(
+              icon,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
+      border: baseBorder,
+      enabledBorder: baseBorder,
+      focusedBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(
           color: AppColors.primaryBrand,
-          width: 2,
+          width: 1.6,
         ),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: const BorderRadius.all(
-          Radius.circular(12),
-        ),
-        borderSide: BorderSide(
-          color: Colors.grey.shade300,
-        ),
+      errorBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(color: errorColor),
+      ),
+      focusedErrorBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(color: errorColor, width: 1.6),
       ),
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 10,
+        horizontal: 14,
+        vertical: 15,
       ),
+    );
+  }
+
+  /// ظاهر مشترک کارت‌ها؛ سایه‌ی سبک تا هنگام باز شدن کیبورد سنگین نشود.
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(
+        color: AppColors.textSecondary.withOpacity(0.10),
+      ),
+      boxShadow: <BoxShadow>[
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          offset: const Offset(0, 3),
+          blurRadius: 10,
+        ),
+      ],
     );
   }
 
@@ -303,11 +337,18 @@ class _VehicleBasicInfoUpdateScreenState
       appBar: AppBar(
         backgroundColor: AppColors.cardBackground,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: Border(
+          bottom: BorderSide(
+            color: AppColors.textSecondary.withOpacity(0.10),
+          ),
+        ),
         title: Text(
           'vehicle_info_title'.tr(),
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
             color: AppColors.textPrimary,
           ),
         ),
@@ -317,8 +358,8 @@ class _VehicleBasicInfoUpdateScreenState
           child: Text(
             'close'.tr(),
             style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -387,27 +428,23 @@ class _VehicleBasicInfoUpdateScreenState
             horizontal: 16,
             vertical: 8,
           ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: AppColors.cardBackground,
-            boxShadow: const <BoxShadow>[
-              BoxShadow(
-                color: Colors.black12,
-                offset: Offset(0, 2),
-                blurRadius: 6,
-              ),
-            ],
-          ),
+          decoration: _cardDecoration(),
           child: DropdownButtonFormField<String>(
             value: dropdownValue,
             decoration: InputDecoration(
               labelText: 'vehicle_type_label'.tr(),
-              labelStyle: const TextStyle(fontSize: 13),
+              labelStyle: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
               border: InputBorder.none,
             ),
             icon: const Icon(
               Icons.keyboard_arrow_down_rounded,
+              color: AppColors.textSecondary,
             ),
+            borderRadius: BorderRadius.circular(16),
+            dropdownColor: AppColors.cardBackground,
             isExpanded: true,
             items: _vehicleOptions.map(
               (Map<String, String> option) {
@@ -468,17 +505,7 @@ class _VehicleBasicInfoUpdateScreenState
     RegistrationProvider registrationProvider,
   ) {
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: AppColors.cardBackground,
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Colors.black12,
-            offset: Offset(0, 2),
-            blurRadius: 6,
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -488,6 +515,7 @@ class _VehicleBasicInfoUpdateScreenState
             textInputAction: TextInputAction.next,
             decoration: _fieldDecoration(
               labelText: 'vehicle_brand_label'.tr(),
+              icon: Icons.directions_car_outlined,
             ),
             validator: (String? value) {
               if (value == null || value.trim().isEmpty) {
@@ -506,6 +534,7 @@ class _VehicleBasicInfoUpdateScreenState
             textInputAction: TextInputAction.next,
             decoration: _fieldDecoration(
               labelText: 'vehicle_color_label'.tr(),
+              icon: Icons.palette_outlined,
             ),
             validator: (String? value) {
               if (value == null || value.trim().isEmpty) {
@@ -530,6 +559,7 @@ class _VehicleBasicInfoUpdateScreenState
             ],
             decoration: _fieldDecoration(
               labelText: 'vehicle_year_label'.tr(),
+              icon: Icons.event_outlined,
             ),
             validator: (String? value) {
               if (value == null || value.trim().isEmpty) {
@@ -546,8 +576,8 @@ class _VehicleBasicInfoUpdateScreenState
           Text(
             'plate_info_header'.tr(),
             style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              fontSize: 13.5,
               color: AppColors.primaryBrand,
             ),
           ),
@@ -604,6 +634,8 @@ class _VehicleBasicInfoUpdateScreenState
         return DropdownButtonFormField<String>(
           value: value,
           isExpanded: true,
+          borderRadius: BorderRadius.circular(14),
+          dropdownColor: AppColors.cardBackground,
           decoration: _fieldDecoration(
             labelText: 'province'.tr(),
             labelFontSize: 11,
@@ -658,6 +690,8 @@ class _VehicleBasicInfoUpdateScreenState
         return DropdownButtonFormField<String>(
           value: value,
           isExpanded: true,
+          borderRadius: BorderRadius.circular(14),
+          dropdownColor: AppColors.cardBackground,
           decoration: _fieldDecoration(
             labelText: 'plate_letter'.tr(),
             labelFontSize: 11,
@@ -752,6 +786,8 @@ class _VehicleBasicInfoUpdateScreenState
         return DropdownButtonFormField<String>(
           value: value,
           isExpanded: true,
+          borderRadius: BorderRadius.circular(14),
+          dropdownColor: AppColors.cardBackground,
           decoration: _fieldDecoration(
             labelText: 'plate_type'.tr(),
             labelFontSize: 12,
@@ -795,14 +831,20 @@ class _VehicleBasicInfoUpdateScreenState
       ) {
         return SizedBox(
           width: double.infinity,
-          height: 52,
+          height: 54,
           child: ElevatedButton(
             onPressed: state.isLoading ? null : _saveVehicleInfo,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBrand,
-              disabledBackgroundColor: Colors.grey.shade400,
+              backgroundColor: AppColors.primaryButton,
+              foregroundColor: AppColors.buttonText,
+              disabledBackgroundColor:
+                  AppColors.textSecondary.withOpacity(0.15),
+              disabledForegroundColor:
+                  AppColors.textSecondary.withOpacity(0.6),
+              elevation: 0,
+              shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
             child: state.isLoading
@@ -810,7 +852,7 @@ class _VehicleBasicInfoUpdateScreenState
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(
-                      color: Colors.white,
+                      color: AppColors.buttonText,
                       strokeWidth: 2.5,
                     ),
                   )
@@ -818,8 +860,8 @@ class _VehicleBasicInfoUpdateScreenState
                     'confirm_and_submit'.tr(),
                     style: const TextStyle(
                       color: AppColors.buttonText,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15.5,
                     ),
                   ),
           ),
@@ -869,7 +911,8 @@ class _KeyboardAwareBody extends StatelessWidget {
     final EdgeInsets safe = MediaQuery.paddingOf(context);
 
     return AnimatedPadding(
-      duration: const Duration(milliseconds: 150),
+      // مدت کوتاه تا دکمه همراه کیبورد سنگین و دیرجنب حرکت نکند.
+      duration: const Duration(milliseconds: 80),
       curve: Curves.easeOut,
       padding: EdgeInsets.only(
         left: safe.left,
