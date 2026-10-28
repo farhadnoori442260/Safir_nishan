@@ -1877,47 +1877,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       body: SafeArea(
         child: Stack(
           children: [
-            RepaintBoundary(
-  child: MapLibreMap(
-    initialCameraPosition: CameraPosition(
-      target: LatLng(
-        currentPositionOfDriver?.latitude ?? 34.5553,
-        currentPositionOfDriver?.longitude ?? 69.2075,
-      ),
-      zoom: 15,
-    ),
-    styleString: 'assets/map/style.json',
-    rotateGesturesEnabled: false,
-    tiltGesturesEnabled: false,
-    myLocationEnabled: !_isNavArrowVisible,
-    myLocationTrackingMode: MyLocationTrackingMode.none,
-    onMapCreated: _onMapCreated,
-    onStyleLoadedCallback: () async {
-      _isMapStyleReady = true;
-      _isDriverArrowImageAdded = false;
-      _driverNavigationSymbol = null;
-      _navRemainingLine = null;
-      _navTraveledLine = null;
-      _navLastRenderedSegment = -1;
-      _navLastRenderedPoint = null;
-
-      await _prepareDriverNavigationArrow();
-
-      if (_navRoutePoints.length >= 2) {
-        await _renderNavLines(
-          traveled: <LatLng>[],
-          remaining: _navRoutePoints,
-        );
-
-        final Position? p = currentPositionOfDriver;
-        if (p != null) {
-          _pendingNavPosition = p;
-          unawaited(_processPendingNavPosition());
-        }
-      }
-    },
-  ),
-),
+            const ColoredBox(color: Colors.grey),
             Positioned(
               top: 20,
               right: 16,
