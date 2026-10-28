@@ -40,6 +40,13 @@ class _ChatPageState extends State<ChatPage> {
 
   bool _isSending = false;
 
+  /// استریم فقط یک‌بار ساخته می‌شود. اگر در build ساخته شود، با هر بازسازی
+  /// (مثلاً هر فریم انیمیشن کیبورد) StreamBuilder دوباره subscribe می‌کند
+  /// و لیست پیام‌ها چشمک می‌زند.
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>>? _messagesStream;
+
+  int _lastMessageCount = 0;
+
   CollectionReference<Map<String, dynamic>> get _chatCollection {
     return _firestore
         .collection('rides')
@@ -49,6 +56,21 @@ class _ChatPageState extends State<ChatPage> {
 
   String get _currentDriverId {
     return _auth.currentUser?.uid ?? '';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.tripId.trim().isNotEmpty) {
+      // عمداً orderBy استفاده نشده تا پیام‌های قدیمی بدون timestamp نیز
+      // نمایش داده شوند؛ مرتب‌سازی یک‌بار برای هر snapshot انجام می‌شود.
+      _messagesStream = _chatCollection.snapshots().map(
+        (QuerySnapshot<Map<String, dynamic>> snapshot) {
+          return _sortMessages(snapshot.docs);
+        },
+      );
+    }
   }
 
   @override
@@ -104,6 +126,30 @@ class _ChatPageState extends State<ChatPage> {
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
     );
+  }
+
+  /// فقط وقتی تعداد پیام‌ها تغییر کرد و کاربر نزدیک آخرین پیام است اسکرول می‌کند.
+  void _onMessagesCountChanged(int count) {
+    if (count == _lastMessageCount) {
+      return;
+    }
+
+    final bool isFirstLoad = _lastMessageCount == 0;
+    _lastMessageCount = count;
+
+    if (isFirstLoad) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_messagesScrollController.hasClients) {
+        return;
+      }
+
+      if (_messagesScrollController.offset < 250) {
+        _scrollToLatestMessage();
+      }
+    });
   }
 
   Future<void> sendMessage() async {
@@ -259,28 +305,19 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    final double keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
-
     return Scaffold(
-      // جلوگیری از resize ناگهانی کل صفحه هنگام بازشدن کیبورد.
+      // کیبورد فقط یک‌بار و نرم در _KeyboardAwareBody مدیریت می‌شود.
       resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       appBar: _buildAppBar(),
-      body: SafeArea(
-        top: false,
-        maintainBottomViewPadding: true,
-        child: AnimatedPadding(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          padding: EdgeInsets.only(bottom: keyboardHeight),
-          child: Column(
-            children: <Widget>[
-              Expanded(
-                child: _buildMessages(),
-              ),
-              _buildMessageComposer(),
-            ],
-          ),
+      body: _KeyboardAwareBody(
+        child: Column(
+          children: <Widget>[
+            Expanded(
+              child: _buildMessages(),
+            ),
+            _buildMessageComposer(),
+          ],
         ),
       ),
     );
@@ -347,20 +384,24 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildMessages() {
-    if (widget.tripId.trim().isEmpty) {
+    final Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>>? stream =
+        _messagesStream;
+
+    if (stream == null) {
       return _buildErrorState(
         'شناسه سفر برای چت موجود نیست',
       );
     }
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      // عمداً orderBy استفاده نشده تا پیام‌های قدیمی بدون timestamp نیز نمایش داده شوند.
-      stream: _chatCollection.snapshots(),
+    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+      stream: stream,
       builder: (
         BuildContext context,
-        AsyncSnapshot<QuerySnapshot<Map<String, dynamic>>> snapshot,
+        AsyncSnapshot<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+            snapshot,
       ) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Center(
             child: CircularProgressIndicator(
               color: AppColors.primaryBrand,
@@ -377,21 +418,17 @@ class _ChatPageState extends State<ChatPage> {
         }
 
         final List<QueryDocumentSnapshot<Map<String, dynamic>>> messages =
-            _sortMessages(
-          snapshot.data?.docs ??
-              <QueryDocumentSnapshot<Map<String, dynamic>>>[],
-        );
+            snapshot.data ??
+                const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
 
         if (messages.isEmpty) {
           return _buildEmptyState();
         }
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_messageFocusNode.hasFocus) {
-            _scrollToLatestMessage();
-          }
-        });
+        _onMessagesCountChanged(messages.length);
 
+        // reverse: آخرین پیام همیشه پایین و کنار کامپوزر می‌ماند؛
+        // با کوچک/بزرگ شدن صفحه توسط کیبورد نیازی به اسکرول نیست.
         return ListView.builder(
           controller: _messagesScrollController,
           reverse: true,
@@ -406,10 +443,13 @@ class _ChatPageState extends State<ChatPage> {
             BuildContext context,
             int index,
           ) {
-            final Map<String, dynamic> data =
-                messages[messages.length - 1 - index].data();
+            final QueryDocumentSnapshot<Map<String, dynamic>> document =
+                messages[messages.length - 1 - index];
 
-            return _buildMessageBubble(data);
+            return KeyedSubtree(
+              key: ValueKey<String>(document.id),
+              child: _buildMessageBubble(document.data()),
+            );
           },
         );
       },
@@ -587,11 +627,6 @@ class _ChatPageState extends State<ChatPage> {
                   vertical: 10,
                 ),
               ),
-              onTap: () {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _scrollToLatestMessage();
-                });
-              },
               onSubmitted: (_) {
                 if (!_isSending) {
                   sendMessage();
@@ -624,6 +659,31 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// فضای کیبورد و نوار پایین سیستم را یک‌بار و با انیمیشن کوتاه حساب می‌کند.
+/// فقط همین ویجت به viewInsets گوش می‌دهد؛ [child] هر فریم دوباره ساخته نمی‌شود.
+class _KeyboardAwareBody extends StatelessWidget {
+  const _KeyboardAwareBody({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final double keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final EdgeInsets safe = MediaQuery.paddingOf(context);
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(
+        left: safe.left,
+        right: safe.right,
+        bottom: keyboard > safe.bottom ? keyboard : safe.bottom,
+      ),
+      child: child,
     );
   }
 }
