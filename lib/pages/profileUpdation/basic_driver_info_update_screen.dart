@@ -767,8 +767,7 @@ class _BasicDriverInfoUpdateScreenState
                                     enabled: false,
                                     decoration: _inputDecoration(
                                       labelText:
-                                          '${'phone'.tr()} (${'
-                                          not_registered'.tr()})',
+                                          '${'phone'.tr()} (${'not_registered'.tr()})',
                                     ),
                                   ),
                                   const SizedBox(height: 16),
