@@ -615,7 +615,8 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
         context.read<RegistrationProvider>();
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      // کیبورد فقط یک‌بار و به‌صورت نرم در _KeyboardAwareBody مدیریت می‌شود.
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
@@ -641,7 +642,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
           ),
         ],
       ),
-      body: SafeArea(
+      body: _KeyboardAwareBody(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           child: Form(
@@ -652,9 +653,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                   child: SingleChildScrollView(
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.manual,
-                    padding: EdgeInsets.only(
-                      bottom: MediaQuery.viewInsetsOf(context).bottom + 12,
-                    ),
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: <Widget>[
@@ -942,6 +941,31 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+/// فضای کیبورد و نوار پایین سیستم را یک‌بار و با انیمیشن کوتاه حساب می‌کند.
+/// فقط همین ویجت به viewInsets گوش می‌دهد؛ [child] هر فریم دوباره ساخته نمی‌شود.
+class _KeyboardAwareBody extends StatelessWidget {
+  const _KeyboardAwareBody({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final double keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final EdgeInsets safe = MediaQuery.paddingOf(context);
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(
+        left: safe.left,
+        right: safe.right,
+        bottom: keyboard > safe.bottom ? keyboard : safe.bottom,
+      ),
+      child: child,
     );
   }
 }
