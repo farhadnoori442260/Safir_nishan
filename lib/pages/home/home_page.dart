@@ -688,7 +688,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _navRemainingLine = await mapController!.addLine(
         LineOptions(
           geometry: remaining,
-          lineColor: '#0F7D55',
+          lineColor: '#2B59D9',
           lineWidth: 6.0,
           lineOpacity: 0.85,
           lineJoin: 'round',
@@ -1859,7 +1859,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isDriverAvailable
                                 ? const Color(0xFFE53935)
-                                : const Color(0xFF0F7D55),
+                                : AppColors.primaryButton,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -1989,7 +1989,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 onPressed: _centerMapOnDriver,
                 child: const Icon(
                   Icons.my_location_rounded,
-                  color: Color(0xFF0F7D55),
+                  color: AppColors.primaryBrand,
                 ),
               ),
             ),
@@ -2010,7 +2010,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     decoration: BoxDecoration(
                       color: isDriverAvailable
                           ? const Color(0xFFE53935)
-                          : const Color(0xFF0F7D55),
+                          : AppColors.primaryButton,
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: Row(
