@@ -129,39 +129,48 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // ───────── توقف نقشه وقتی دیده نمی‌شود ─────────
-  // نقشه (PlatformView) داخل IndexedStack همیشه زنده است و حتی وقتی تب دیگری
-  // یا فرمی روی آن باز است به رندر ادامه می‌دهد؛ همین باعث لرزش فرم‌ها هنگام
-  // باز شدن کیبورد می‌شد. پس وقتی دیده نمی‌شود، حلقهٔ رندر آن متوقف می‌شود.
-  bool _isMapPaused = false;
-  bool _mapShouldBeVisible = true;
+  // ───────── نقشه فقط وقتی دیده می‌شود در درخت است ─────────
+  // نقشه (PlatformView) داخل IndexedStack همیشه زنده بود و زیر فرم‌ها هم
+  // وجود داشت؛ همین باعث لرزش هنگام باز شدن کیبورد می‌شد. حالا وقتی تب
+  // «خانه» دیده نمی‌شود یا صفحه‌ای روی داشبورد باز است، نقشه حذف می‌شود و
+  // هنگام برگشتن دوباره ساخته می‌شود (مسیر و فلش از روی داده‌های ذخیره‌شده
+  // دوباره رسم می‌شوند).
+  bool _mapWasShown = true;
+  CameraPosition? _savedCameraPosition;
+  Map<String, dynamic>? _activeTripData;
 
-  void _updateMapVisibility(bool visible) {
-    _mapShouldBeVisible = visible;
+  void _onMapHidden() {
+    _savedCameraPosition = mapController?.cameraPosition ?? _savedCameraPosition;
 
-    final MapLibreMapController? controller = mapController;
-    if (controller == null) return;
-    if (visible == !_isMapPaused) return;
+    _arrowAnimationController.stop();
+    mapController = null;
+    _isMapStyleReady = false;
+    _isDriverArrowImageAdded = false;
+    _driverNavigationSymbol = null;
+    _navRemainingLine = null;
+    _navTraveledLine = null;
+    _navLastRenderedSegment = -1;
+    _navLastRenderedPoint = null;
+    _isArrowFrameInFlight = false;
+  }
 
-    _isMapPaused = !visible;
+  /// وقتی نقشه دوباره ساخته شد و سفر فعال است ولی مسیر ندارد (مثلاً سفر
+  /// وقتی نقشه نبود شروع شده)، مسیر را از نو می‌کشد.
+  Future<void> _resumeActiveTripRoute() async {
+    final String? tripId = activeTripId;
+    final Map<String, dynamic>? tripData = _activeTripData;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        if (visible) {
-          await controller.resumeMap();
-        } else {
-          await controller.pauseMap();
-        }
-      } catch (e) {
-        debugPrint('Map pause/resume error: $e');
-      }
-    });
+    if (tripId == null || tripData == null || !mounted) return;
+
+    if (activeTripStatus == TripStatus.accepted) {
+      await _startPickupRoute(tripId, tripData);
+    } else if (activeTripStatus == TripStatus.onTrip) {
+      await _startDestinationRoute(tripId, tripData);
+    }
   }
 
   void _onMapCreated(MapLibreMapController controller) {
     mapController = controller;
-    _isMapPaused = false;
-    _updateMapVisibility(_mapShouldBeVisible);
   }
 
   // ════════════════════════════════════════════════════════════
@@ -1903,15 +1912,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // نقشه فقط وقتی تب «خانه» انتخاب است و صفحهٔ دیگری روی داشبورد باز نیست
-    // دیده می‌شود؛ در غیر این صورت متوقف می‌شود.
     final bool isHomeTab = context.select<DashboardProvider, int>(
           (DashboardProvider provider) => provider.selectedIndex,
         ) ==
         0;
     final ModalRoute<dynamic>? route = ModalRoute.of(context);
     final bool isCovered = route != null && !route.isCurrent;
-    _updateMapVisibility(isHomeTab && !isCovered);
+    final bool showMap = isHomeTab && !isCovered;
+
+    if (_mapWasShown && !showMap) {
+      _onMapHidden();
+    }
+    _mapWasShown = showMap;
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -1920,8 +1932,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: Stack(
           children: [
             RepaintBoundary(
-  child: MapLibreMap(
-    initialCameraPosition: CameraPosition(
+  child: !showMap
+      ? ColoredBox(color: AppColors.background)
+      : MapLibreMap(
+    trackCameraPosition: true,
+    initialCameraPosition: _savedCameraPosition ??
+        CameraPosition(
       target: LatLng(
         currentPositionOfDriver?.latitude ?? 34.5553,
         currentPositionOfDriver?.longitude ?? 69.2075,
@@ -1956,6 +1972,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           _pendingNavPosition = p;
           unawaited(_processPendingNavPosition());
         }
+      } else {
+        // سفر وقتی نقشه نبود شروع شده؛ مسیر از نو کشیده شود
+        unawaited(_resumeActiveTripRoute());
       }
     },
   ),
@@ -2059,6 +2078,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                   final String tripId = tripDoc.id;
                   final Map<String, dynamic> tripData = tripDoc.data();
+                  _activeTripData = tripData;
                   final String status =
                       tripData['status']?.toString() ?? TripStatus.accepted;
 
