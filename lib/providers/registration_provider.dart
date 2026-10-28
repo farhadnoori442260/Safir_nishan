@@ -53,7 +53,10 @@ class RegistrationProvider extends ChangeNotifier {
   String _plateCategory = 'ش';
   String _plateType = 'شخصی';
 
-  Timer? _debounce;
+  Timer? _basicFormDebounce;
+  Timer? _cnicFormDebounce;
+  Timer? _licenseFormDebounce;
+  Timer? _vehicleFormDebounce;
 
   final CommonMethods commonMethods = CommonMethods();
 
@@ -113,8 +116,10 @@ class RegistrationProvider extends ChangeNotifier {
   XFile? get drivingLicenseFrontImage => _drivingLicenseFrontImage;
   XFile? get drivingLicenseBackImage => _drivingLicenseBackImage;
   XFile? get vehicleImage => _vehicleImage;
+
   XFile? get vehicleRegistrationFrontImage =>
       _vehicleRegistrationFrontImage;
+
   XFile? get vehicleRegistrationBackImage =>
       _vehicleRegistrationBackImage;
 
@@ -279,134 +284,159 @@ class RegistrationProvider extends ChangeNotifier {
     checkBasicFormValidity();
   }
 
-  void _runDebounced(VoidCallback callback) {
-    _debounce?.cancel();
+  void _debounce(
+    Timer? currentTimer,
+    void Function(Timer timer) saveTimer,
+    VoidCallback callback,
+  ) {
+    currentTimer?.cancel();
 
-    _debounce = Timer(
+    final Timer timer = Timer(
       const Duration(milliseconds: 300),
       callback,
     );
+
+    saveTimer(timer);
   }
 
   void checkBasicFormValidity() {
-    _runDebounced(() {
-      final String email = emailController.text.trim();
+    _debounce(
+      _basicFormDebounce,
+      (Timer timer) => _basicFormDebounce = timer,
+      () {
+        final String email = emailController.text.trim();
 
-      final bool isValid =
-          firstNameController.text.trim().isNotEmpty &&
-          lastNameController.text.trim().isNotEmpty &&
-          email.isNotEmpty &&
-          email.contains('@') &&
-          addressController.text.trim().length >= 5 &&
-          phoneController.text.trim().length >= 9 &&
-          dobController.text.trim().isNotEmpty;
+        final bool isValid =
+            firstNameController.text.trim().isNotEmpty &&
+            lastNameController.text.trim().isNotEmpty &&
+            email.isNotEmpty &&
+            email.contains('@') &&
+            addressController.text.trim().length >= 5 &&
+            phoneController.text.trim().length >= 9 &&
+            dobController.text.trim().isNotEmpty;
 
-      if (_isFormValidBasic == isValid) {
-        return;
-      }
+        if (_isFormValidBasic == isValid) {
+          return;
+        }
 
-      _isFormValidBasic = isValid;
-      notifyListeners();
-    });
+        _isFormValidBasic = isValid;
+        notifyListeners();
+      },
+    );
   }
 
   void checkCNICFormValidity() {
-    _runDebounced(() {
-      final bool isValid =
-          _cnicFrontImage != null &&
-          _cnicBackImage != null &&
-          cnicController.text.trim().length >= 10;
+    _debounce(
+      _cnicFormDebounce,
+      (Timer timer) => _cnicFormDebounce = timer,
+      () {
+        final bool isValid =
+            _cnicFrontImage != null &&
+            _cnicBackImage != null &&
+            cnicController.text.trim().length >= 10;
 
-      if (_isFormValidCninc == isValid) {
-        return;
-      }
+        if (_isFormValidCninc == isValid) {
+          return;
+        }
 
-      _isFormValidCninc = isValid;
-      notifyListeners();
-    });
+        _isFormValidCninc = isValid;
+        notifyListeners();
+      },
+    );
   }
 
   void checkDrivingLicenseFormValidity() {
-    _runDebounced(() {
-      final bool isValid =
-          _drivingLicenseFrontImage != null &&
-          _drivingLicenseBackImage != null &&
-          drivingLicenseController.text.trim().isNotEmpty;
+    _debounce(
+      _licenseFormDebounce,
+      (Timer timer) => _licenseFormDebounce = timer,
+      () {
+        final bool isValid =
+            _drivingLicenseFrontImage != null &&
+            _drivingLicenseBackImage != null &&
+            drivingLicenseController.text.trim().isNotEmpty;
 
-      if (_isFormValidDrivingLicense == isValid) {
-        return;
-      }
+        if (_isFormValidDrivingLicense == isValid) {
+          return;
+        }
 
-      _isFormValidDrivingLicense = isValid;
-      notifyListeners();
-    });
+        _isFormValidDrivingLicense = isValid;
+        notifyListeners();
+      },
+    );
   }
 
   void checkVehicleBasicFormValidity() {
-    _runDebounced(() {
-      final bool isValid =
-          _selectedVehicle != null &&
-          _selectedVehicle!.trim().isNotEmpty &&
-          brandController.text.trim().isNotEmpty &&
-          colorController.text.trim().isNotEmpty &&
-          numberPlateController.text.trim().isNotEmpty &&
-          productionYearController.text.trim().isNotEmpty &&
-          _plateProvince.isNotEmpty &&
-          _plateCategory.isNotEmpty &&
-          _plateType.isNotEmpty;
+    _debounce(
+      _vehicleFormDebounce,
+      (Timer timer) => _vehicleFormDebounce = timer,
+      () {
+        final bool isValid =
+            _selectedVehicle != null &&
+            _selectedVehicle!.trim().isNotEmpty &&
+            brandController.text.trim().isNotEmpty &&
+            colorController.text.trim().isNotEmpty &&
+            numberPlateController.text.trim().isNotEmpty &&
+            productionYearController.text.trim().isNotEmpty &&
+            _plateProvince.trim().isNotEmpty &&
+            _plateCategory.trim().isNotEmpty &&
+            _plateType.trim().isNotEmpty;
 
-      if (_isVehicleBasicFormValid == isValid) {
-        return;
-      }
+        if (_isVehicleBasicFormValid == isValid) {
+          return;
+        }
 
-      _isVehicleBasicFormValid = isValid;
-      notifyListeners();
-    });
+        _isVehicleBasicFormValid = isValid;
+        notifyListeners();
+      },
+    );
   }
 
   void setPlateProvince(String value) {
-  if (_plateProvince == value) {
-    return;
+    if (_plateProvince == value) {
+      return;
+    }
+
+    _plateProvince = value;
+    checkVehicleBasicFormValidity();
+    notifyListeners();
   }
 
-  _plateProvince = value;
-  notifyListeners();
-  checkVehicleBasicFormValidity();
-}
+  void setPlateCategory(String value) {
+    if (_plateCategory == value) {
+      return;
+    }
 
-void setPlateCategory(String value) {
-  if (_plateCategory == value) {
-    return;
+    _plateCategory = value;
+    checkVehicleBasicFormValidity();
+    notifyListeners();
   }
 
-  _plateCategory = value;
-  notifyListeners();
-  checkVehicleBasicFormValidity();
-}
+  void setPlateType(String value) {
+    if (_plateType == value) {
+      return;
+    }
 
-void setPlateType(String value) {
-  if (_plateType == value) {
-    return;
+    _plateType = value;
+    checkVehicleBasicFormValidity();
+    notifyListeners();
   }
 
-  _plateType = value;
-  notifyListeners();
-  checkVehicleBasicFormValidity();
-}
+  void setSelectedVehicle(String vehicle) {
+    if (_selectedVehicle == vehicle) {
+      return;
+    }
 
-void setSelectedVehicle(String vehicle) {
-  if (_selectedVehicle == vehicle) {
-    return;
+    _selectedVehicle = vehicle;
+    checkVehicleBasicFormValidity();
+    notifyListeners();
   }
-
-  _selectedVehicle = vehicle;
-  notifyListeners();
-  checkVehicleBasicFormValidity();
-}
 
   @override
   void dispose() {
-    _debounce?.cancel();
+    _basicFormDebounce?.cancel();
+    _cnicFormDebounce?.cancel();
+    _licenseFormDebounce?.cancel();
+    _vehicleFormDebounce?.cancel();
 
     firstNameController.dispose();
     lastNameController.dispose();
@@ -957,6 +987,7 @@ void setSelectedVehicle(String vehicle) {
           '${directory.path}/${DateTime.now().microsecondsSinceEpoch}.jpg';
 
       final File file = File(filePath);
+
       await file.writeAsBytes(response.bodyBytes);
 
       return XFile(file.path);
@@ -1052,7 +1083,7 @@ void setSelectedVehicle(String vehicle) {
     bool alreadyAdded = false;
 
     await _firestore.runTransaction(
-      (transaction) async {
+      (Transaction transaction) async {
         final DocumentSnapshot<Map<String, dynamic>> snapshot =
             await transaction.get(driverRef);
 
