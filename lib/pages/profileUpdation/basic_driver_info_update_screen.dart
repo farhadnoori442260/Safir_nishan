@@ -524,7 +524,6 @@ class _BasicDriverInfoUpdateScreenState
         context.read<RegistrationProvider>();
 
     final CommonMethods commonMethods = CommonMethods();
-    final double keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -553,10 +552,7 @@ class _BasicDriverInfoUpdateScreenState
         ),
         leadingWidth: 70,
       ),
-      body: AnimatedPadding(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        padding: EdgeInsets.only(bottom: keyboardHeight),
+      body: _KeyboardAwareBody(
         child: SafeArea(
           top: false,
           child: Padding(
@@ -875,6 +871,31 @@ class _BasicDriverInfoUpdateScreenState
           ),
         ),
       ),
+    );
+  }
+}
+
+/// فضای کیبورد را فقط در همین ویجت می‌خواند؛ پس با هر فریم انیمیشن کیبورد
+/// کل صفحه دوباره ساخته نمی‌شود ([child] همان نمونهٔ قبلی است).
+/// ارتفاع نوار پایین سیستم را [SafeArea] داخلی حساب می‌کند، بنابراین اینجا
+/// از ارتفاع کیبورد کم می‌شود تا دو بار شمرده نشود.
+class _KeyboardAwareBody extends StatelessWidget {
+  const _KeyboardAwareBody({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final double keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final double systemBottom = MediaQuery.paddingOf(context).bottom;
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(
+        bottom: keyboard > systemBottom ? keyboard - systemBottom : 0,
+      ),
+      child: child,
     );
   }
 }
