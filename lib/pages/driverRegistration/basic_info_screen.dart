@@ -157,9 +157,9 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
 
             return Container(
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: AppColors.cardBackground,
                 borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(24),
+                  top: Radius.circular(28),
                 ),
               ),
               padding: EdgeInsets.fromLTRB(
@@ -177,7 +177,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
+                        color: AppColors.textSecondary.withOpacity(0.25),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -199,8 +199,8 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                       vertical: 14,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryBrand.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(14),
+                      color: AppColors.primaryBrand.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
                       _formatJalaliDate(selectedDate),
@@ -288,11 +288,15 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(sheetContext),
                           style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textPrimary,
+                            side: BorderSide(
+                              color: AppColors.textSecondary.withOpacity(0.25),
+                            ),
                             padding: const EdgeInsets.symmetric(
-                              vertical: 12,
+                              vertical: 14,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                           child: const Text('لغو'),
@@ -308,13 +312,14 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                             );
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryBrand,
-                            foregroundColor: Colors.white,
+                            backgroundColor: AppColors.primaryButton,
+                            foregroundColor: AppColors.buttonText,
+                            elevation: 0,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 12,
+                              vertical: 14,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                           child: const Text('تأیید'),
@@ -347,12 +352,30 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       height: 160,
       decoration: BoxDecoration(
         border: Border.all(
-          color: Colors.grey.shade300,
+          color: AppColors.textSecondary.withOpacity(0.14),
         ),
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        color: AppColors.background,
       ),
-      child: child,
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: <Widget>[
+          // نوار ملایم پشت مقدار انتخاب‌شده
+          Center(
+            child: IgnorePointer(
+              child: Container(
+                height: 40,
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBrand.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(child: child),
+        ],
+      ),
     );
   }
 
@@ -364,8 +387,8 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
           title,
           style: const TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
           ),
         ),
         const SizedBox(height: 6),
@@ -414,7 +437,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                           : FontWeight.normal,
                       color: isSelected
                           ? AppColors.primaryBrand
-                          : Colors.black87,
+                          : AppColors.textPrimary.withOpacity(0.55),
                     ),
                   ),
                 );
@@ -467,7 +490,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                           : FontWeight.normal,
                       color: isSelected
                           ? AppColors.primaryBrand
-                          : Colors.black87,
+                          : AppColors.textPrimary.withOpacity(0.55),
                     ),
                   ),
                 );
@@ -524,7 +547,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                           : FontWeight.normal,
                       color: isSelected
                           ? AppColors.primaryBrand
-                          : Colors.black87,
+                          : AppColors.textPrimary.withOpacity(0.55),
                     ),
                   ),
                 );
@@ -539,43 +562,77 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
 
   InputDecoration _inputDecoration({
     required String labelText,
+    IconData? icon,
     Widget? suffixIcon,
     String? hintText,
   }) {
+    final OutlineInputBorder baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(
+        color: AppColors.textSecondary.withOpacity(0.16),
+      ),
+    );
+
+    const Color errorColor = Color(0xFFD64545);
+
     return InputDecoration(
       labelText: labelText,
       hintText: hintText,
+      filled: true,
+      fillColor: AppColors.background,
       labelStyle: const TextStyle(
         fontSize: 14,
         color: AppColors.textSecondary,
       ),
-      focusedBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(
-          Radius.circular(12),
-        ),
-        borderSide: BorderSide(
+      floatingLabelStyle: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppColors.primaryBrand,
+      ),
+      prefixIcon: icon == null
+          ? null
+          : Icon(
+              icon,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
+      border: baseBorder,
+      enabledBorder: baseBorder,
+      focusedBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(
           color: AppColors.primaryBrand,
-          width: 2,
+          width: 1.6,
         ),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: const BorderRadius.all(
-          Radius.circular(12),
-        ),
-        borderSide: BorderSide(
-          color: Colors.grey.shade300,
-        ),
+      errorBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(color: errorColor),
       ),
-      border: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(
-          Radius.circular(12),
-        ),
+      focusedErrorBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(color: errorColor, width: 1.6),
       ),
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 14,
+        horizontal: 14,
+        vertical: 15,
       ),
       suffixIcon: suffixIcon,
+    );
+  }
+
+  /// ظاهر مشترک کارت‌ها؛ سایه‌ی سبک تا هنگام باز شدن کیبورد سنگین نشود.
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(
+        color: AppColors.textSecondary.withOpacity(0.10),
+      ),
+      boxShadow: <BoxShadow>[
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          offset: const Offset(0, 3),
+          blurRadius: 10,
+        ),
+      ],
     );
   }
 
@@ -622,21 +679,29 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
         title: Text(
           'basic_info_title'.tr(),
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
         centerTitle: true,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         backgroundColor: AppColors.cardBackground,
+        shape: Border(
+          bottom: BorderSide(
+            color: AppColors.textSecondary.withOpacity(0.10),
+          ),
+        ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               'close'.tr(),
               style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -657,9 +722,11 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: <Widget>[
-                        _buildProfilePhotoCard(),
+                        RepaintBoundary(child: _buildProfilePhotoCard()),
                         const SizedBox(height: 16),
-                        _buildFormCard(registrationProvider),
+                        RepaintBoundary(
+                          child: _buildFormCard(registrationProvider),
+                        ),
                       ],
                     ),
                   ),
@@ -692,61 +759,58 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
 
         return Container(
           width: double.infinity,
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: Colors.grey.shade200,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            color: AppColors.cardBackground,
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                offset: const Offset(0, 4),
-                blurRadius: 12,
-              ),
-            ],
-          ),
+          decoration: _cardDecoration(),
           child: Column(
             children: <Widget>[
-              const SizedBox(height: 16),
-              CircleAvatar(
-                radius: 55,
-                backgroundColor: Colors.grey.shade200,
-                backgroundImage:
-                    photoPath != null ? FileImage(File(photoPath)) : null,
-                child: photoPath == null
-                    ? Icon(
-                        Icons.person,
-                        size: 55,
-                        color: Colors.grey.shade400,
-                      )
-                    : null,
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
               Container(
+                padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
+                  shape: BoxShape.circle,
                   border: Border.all(
-                    color: AppColors.primaryBrand,
+                    color: AppColors.primaryBrand.withOpacity(0.35),
+                    width: 2,
                   ),
-                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: TextButton.icon(
-                  onPressed: registrationProvider.pickProfileImageFromGallary,
-                  icon: const Icon(
-                    Icons.add_a_photo,
-                    color: AppColors.primaryBrand,
-                    size: 18,
+                child: CircleAvatar(
+                  radius: 52,
+                  backgroundColor: AppColors.background,
+                  backgroundImage:
+                      photoPath != null ? FileImage(File(photoPath)) : null,
+                  child: photoPath == null
+                      ? Icon(
+                          Icons.person_rounded,
+                          size: 52,
+                          color: AppColors.textSecondary.withOpacity(0.5),
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextButton.icon(
+                onPressed: registrationProvider.pickProfileImageFromGallary,
+                style: TextButton.styleFrom(
+                  backgroundColor: AppColors.primaryBrand.withOpacity(0.10),
+                  foregroundColor: AppColors.primaryBrand,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
                   ),
-                  label: Text(
-                    'add_profile_photo'.tr(),
-                    style: const TextStyle(
-                      color: AppColors.primaryBrand,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  shape: const StadiumBorder(),
+                ),
+                icon: const Icon(
+                  Icons.add_a_photo_outlined,
+                  size: 18,
+                ),
+                label: Text(
+                  'add_profile_photo'.tr(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
             ],
           ),
         );
@@ -758,20 +822,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
     RegistrationProvider registrationProvider,
   ) {
     return Container(
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: Colors.grey.shade200,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        color: AppColors.cardBackground,
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            offset: const Offset(0, 4),
-            blurRadius: 12,
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -781,6 +832,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               textInputAction: TextInputAction.next,
               decoration: _inputDecoration(
                 labelText: 'first_name'.tr(),
+                icon: Icons.person_outline_rounded,
               ),
               validator: (String? value) {
                 if (value == null || value.trim().isEmpty) {
@@ -798,6 +850,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               textInputAction: TextInputAction.next,
               decoration: _inputDecoration(
                 labelText: 'last_name'.tr(),
+                icon: Icons.badge_outlined,
               ),
               validator: (String? value) {
                 if (value == null || value.trim().isEmpty) {
@@ -816,6 +869,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               textInputAction: TextInputAction.next,
               decoration: _inputDecoration(
                 labelText: 'email'.tr(),
+                icon: Icons.mail_outline_rounded,
               ),
               validator: (String? value) {
                 final String email = value?.trim() ?? '';
@@ -838,6 +892,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               maxLines: 2,
               decoration: _inputDecoration(
                 labelText: 'home_address'.tr(),
+                icon: Icons.home_outlined,
               ),
               validator: (String? value) {
                 if (value == null || value.trim().length < 5) {
@@ -859,6 +914,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                 textInputAction: TextInputAction.next,
                 decoration: _inputDecoration(
                   labelText: 'mobile_number'.tr(),
+                  icon: Icons.phone_outlined,
                 ),
                 validator: (String? value) {
                   if (value == null || value.trim().length < 9) {
@@ -880,8 +936,10 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               decoration: _inputDecoration(
                 labelText: 'تاریخ تولد (هجری شمسی)',
                 hintText: 'مثلاً ۱۳۷۹/۰۲/۲۲',
+                icon: Icons.cake_outlined,
                 suffixIcon: const Icon(
-                  Icons.calendar_month,
+                  Icons.calendar_month_outlined,
+                  size: 20,
                   color: AppColors.primaryBrand,
                 ),
               ),
@@ -918,24 +976,27 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       ) {
         return SizedBox(
           width: double.infinity,
-          height: 52,
+          height: 54,
           child: ElevatedButton(
             onPressed: isFormValid ? _submitBasicInfo : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: isFormValid
-                  ? AppColors.primaryButton
-                  : Colors.grey.shade400,
+              backgroundColor: AppColors.primaryButton,
               foregroundColor: AppColors.buttonText,
+              disabledBackgroundColor:
+                  AppColors.textSecondary.withOpacity(0.15),
+              disabledForegroundColor:
+                  AppColors.textSecondary.withOpacity(0.6),
               elevation: 0,
+              shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
             child: Text(
               'confirm_and_submit'.tr(),
               style: const TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -958,7 +1019,8 @@ class _KeyboardAwareBody extends StatelessWidget {
     final EdgeInsets safe = MediaQuery.paddingOf(context);
 
     return AnimatedPadding(
-      duration: const Duration(milliseconds: 150),
+      // مدت کوتاه تا دکمه همراه کیبورد سنگین و دیرجنب حرکت نکند.
+      duration: const Duration(milliseconds: 80),
       curve: Curves.easeOut,
       padding: EdgeInsets.only(
         left: safe.left,
