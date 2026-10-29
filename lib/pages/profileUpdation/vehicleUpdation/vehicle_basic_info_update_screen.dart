@@ -200,57 +200,70 @@ class _VehicleBasicInfoUpdateScreenState
 
   InputDecoration _fieldDecoration({
     required String labelText,
-    IconData? icon,
     String? hintText,
+    IconData? icon,
     double labelFontSize = 14,
   }) {
+    // چوکات مثل قبل: بدون پس‌زمینهٔ رنگی تا برچسب دقیقاً داخل بریدگی خط بنشیند.
     final OutlineInputBorder baseBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(
-        color: AppColors.textSecondary.withOpacity(0.16),
+        color: AppColors.textSecondary.withOpacity(0.30),
       ),
     );
 
     const Color errorColor = Color(0xFFD64545);
 
+    // مهم: اندازه و ضخامت فونت برچسب در حالت عادی و شناور یکی است، وگرنه
+    // عرض بریدگی خط با عرض متن نمی‌خواند و خط از روی برچسب رد می‌شود.
+    // رنگ: خاکستری؛ فقط هنگام تایپ (فوکوس) سبز می‌شود.
+    final TextStyle labelBase = TextStyle(
+      fontSize: labelFontSize,
+      color: AppColors.textSecondary,
+    );
+
     return InputDecoration(
       labelText: labelText,
       hintText: hintText,
-      filled: true,
-      fillColor: AppColors.background,
-      labelStyle: TextStyle(
-        fontSize: labelFontSize,
-        color: AppColors.textSecondary,
+      labelStyle: labelBase,
+      floatingLabelStyle: MaterialStateTextStyle.resolveWith(
+        (Set<MaterialState> states) {
+          if (states.contains(MaterialState.error)) {
+            return labelBase.copyWith(color: errorColor);
+          }
+
+          if (states.contains(MaterialState.focused)) {
+            return labelBase.copyWith(color: AppColors.primaryBrand);
+          }
+
+          return labelBase;
+        },
       ),
-      floatingLabelStyle: TextStyle(
-        fontSize: labelFontSize,
-        fontWeight: FontWeight.w600,
-        color: AppColors.primaryBrand,
+      prefixIcon: icon == null ? null : Icon(icon, size: 20),
+      prefixIconColor: MaterialStateColor.resolveWith(
+        (Set<MaterialState> states) {
+          return states.contains(MaterialState.focused)
+              ? AppColors.primaryBrand
+              : AppColors.textSecondary;
+        },
       ),
-      prefixIcon: icon == null
-          ? null
-          : Icon(
-              icon,
-              size: 20,
-              color: AppColors.textSecondary,
-            ),
       border: baseBorder,
       enabledBorder: baseBorder,
       focusedBorder: baseBorder.copyWith(
         borderSide: const BorderSide(
           color: AppColors.primaryBrand,
-          width: 1.6,
+          width: 2,
         ),
       ),
       errorBorder: baseBorder.copyWith(
         borderSide: const BorderSide(color: errorColor),
       ),
       focusedErrorBorder: baseBorder.copyWith(
-        borderSide: const BorderSide(color: errorColor, width: 1.6),
+        borderSide: const BorderSide(color: errorColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 14,
-        vertical: 15,
+        vertical: 14,
       ),
     );
   }
@@ -433,19 +446,15 @@ class _VehicleBasicInfoUpdateScreenState
             value: dropdownValue,
             decoration: InputDecoration(
               labelText: 'vehicle_type_label'.tr(),
-              labelStyle: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
+              labelStyle: const TextStyle(fontSize: 13),
               border: InputBorder.none,
             ),
             icon: const Icon(
               Icons.keyboard_arrow_down_rounded,
-              color: AppColors.textSecondary,
             ),
-            borderRadius: BorderRadius.circular(16),
-            dropdownColor: AppColors.cardBackground,
             isExpanded: true,
+            dropdownColor: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(14),
             items: _vehicleOptions.map(
               (Map<String, String> option) {
                 final String value = option['value']!;
@@ -528,7 +537,7 @@ class _VehicleBasicInfoUpdateScreenState
               registrationProvider.checkVehicleBasicFormValidity();
             },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           TextFormField(
             controller: registrationProvider.colorController,
             textInputAction: TextInputAction.next,
@@ -547,7 +556,7 @@ class _VehicleBasicInfoUpdateScreenState
               registrationProvider.checkVehicleBasicFormValidity();
             },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           TextFormField(
             controller: registrationProvider.productionYearController,
             keyboardType: TextInputType.number,
@@ -559,7 +568,7 @@ class _VehicleBasicInfoUpdateScreenState
             ],
             decoration: _fieldDecoration(
               labelText: 'vehicle_year_label'.tr(),
-              icon: Icons.event_outlined,
+              icon: Icons.calendar_today_outlined,
             ),
             validator: (String? value) {
               if (value == null || value.trim().isEmpty) {
@@ -634,8 +643,8 @@ class _VehicleBasicInfoUpdateScreenState
         return DropdownButtonFormField<String>(
           value: value,
           isExpanded: true,
-          borderRadius: BorderRadius.circular(14),
           dropdownColor: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(14),
           decoration: _fieldDecoration(
             labelText: 'province'.tr(),
             labelFontSize: 11,
@@ -690,8 +699,8 @@ class _VehicleBasicInfoUpdateScreenState
         return DropdownButtonFormField<String>(
           value: value,
           isExpanded: true,
-          borderRadius: BorderRadius.circular(14),
           dropdownColor: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(14),
           decoration: _fieldDecoration(
             labelText: 'plate_letter'.tr(),
             labelFontSize: 11,
@@ -786,8 +795,8 @@ class _VehicleBasicInfoUpdateScreenState
         return DropdownButtonFormField<String>(
           value: value,
           isExpanded: true,
-          borderRadius: BorderRadius.circular(14),
           dropdownColor: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(14),
           decoration: _fieldDecoration(
             labelText: 'plate_type'.tr(),
             labelFontSize: 12,
