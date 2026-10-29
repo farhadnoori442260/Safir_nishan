@@ -494,57 +494,70 @@ class _BasicDriverInfoUpdateScreenState
   InputDecoration _inputDecoration({
     required String labelText,
     IconData? icon,
-    String? hintText,
     Widget? suffixIcon,
+    String? hintText,
   }) {
+    // چوکات مثل قبل: بدون پس‌زمینهٔ رنگی تا برچسب دقیقاً داخل بریدگی خط بنشیند.
     final OutlineInputBorder baseBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(
-        color: AppColors.textSecondary.withOpacity(0.16),
+        color: AppColors.textSecondary.withOpacity(0.30),
       ),
     );
 
     const Color errorColor = Color(0xFFD64545);
 
+    // مهم: اندازه و ضخامت فونت برچسب در حالت عادی و شناور یکی است، وگرنه
+    // عرض بریدگی خط با عرض متن نمی‌خواند و خط از روی برچسب رد می‌شود.
+    // رنگ: خاکستری؛ فقط هنگام تایپ (فوکوس) سبز می‌شود.
+    final TextStyle labelBase = TextStyle(
+      fontSize: 14,
+      color: AppColors.textSecondary,
+    );
+
     return InputDecoration(
       labelText: labelText,
       hintText: hintText,
-      filled: true,
-      fillColor: AppColors.background,
-      labelStyle: const TextStyle(
-        fontSize: 14,
-        color: AppColors.textSecondary,
+      labelStyle: labelBase,
+      floatingLabelStyle: MaterialStateTextStyle.resolveWith(
+        (Set<MaterialState> states) {
+          if (states.contains(MaterialState.error)) {
+            return labelBase.copyWith(color: errorColor);
+          }
+
+          if (states.contains(MaterialState.focused)) {
+            return labelBase.copyWith(color: AppColors.primaryBrand);
+          }
+
+          return labelBase;
+        },
       ),
-      floatingLabelStyle: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: AppColors.primaryBrand,
+      prefixIcon: icon == null ? null : Icon(icon, size: 20),
+      prefixIconColor: MaterialStateColor.resolveWith(
+        (Set<MaterialState> states) {
+          return states.contains(MaterialState.focused)
+              ? AppColors.primaryBrand
+              : AppColors.textSecondary;
+        },
       ),
-      prefixIcon: icon == null
-          ? null
-          : Icon(
-              icon,
-              size: 20,
-              color: AppColors.textSecondary,
-            ),
       border: baseBorder,
       enabledBorder: baseBorder,
       disabledBorder: baseBorder.copyWith(
         borderSide: BorderSide(
-          color: AppColors.textSecondary.withOpacity(0.10),
+          color: AppColors.textSecondary.withOpacity(0.15),
         ),
       ),
       focusedBorder: baseBorder.copyWith(
         borderSide: const BorderSide(
           color: AppColors.primaryBrand,
-          width: 1.6,
+          width: 2,
         ),
       ),
       errorBorder: baseBorder.copyWith(
         borderSide: const BorderSide(color: errorColor),
       ),
       focusedErrorBorder: baseBorder.copyWith(
-        borderSide: const BorderSide(color: errorColor, width: 1.6),
+        borderSide: const BorderSide(color: errorColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 14,
