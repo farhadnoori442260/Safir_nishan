@@ -202,40 +202,89 @@ class _VehicleBasicInfoScreenState
 
   InputDecoration _fieldDecoration({
     required String labelText,
+    String? hintText,
+    IconData? icon,
     double labelFontSize = 14,
   }) {
+    // چوکات مثل قبل: بدون پس‌زمینهٔ رنگی تا برچسب دقیقاً داخل بریدگی خط بنشیند.
+    final OutlineInputBorder baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(
+        color: AppColors.textSecondary.withOpacity(0.30),
+      ),
+    );
+
+    const Color errorColor = Color(0xFFD64545);
+
+    // مهم: اندازه و ضخامت فونت برچسب در حالت عادی و شناور یکی است، وگرنه
+    // عرض بریدگی خط با عرض متن نمی‌خواند و خط از روی برچسب رد می‌شود.
+    // رنگ: خاکستری؛ فقط هنگام تایپ (فوکوس) سبز می‌شود.
+    final TextStyle labelBase = TextStyle(
+      fontSize: labelFontSize,
+      color: AppColors.textSecondary,
+    );
+
     return InputDecoration(
       labelText: labelText,
-      labelStyle: TextStyle(
-        fontSize: labelFontSize,
-        color: AppColors.textSecondary,
+      hintText: hintText,
+      labelStyle: labelBase,
+      floatingLabelStyle: MaterialStateTextStyle.resolveWith(
+        (Set<MaterialState> states) {
+          if (states.contains(MaterialState.error)) {
+            return labelBase.copyWith(color: errorColor);
+          }
+
+          if (states.contains(MaterialState.focused)) {
+            return labelBase.copyWith(color: AppColors.primaryBrand);
+          }
+
+          return labelBase;
+        },
       ),
-      focusedBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(
-          Radius.circular(12),
-        ),
-        borderSide: BorderSide(
+      prefixIcon: icon == null ? null : Icon(icon, size: 20),
+      prefixIconColor: MaterialStateColor.resolveWith(
+        (Set<MaterialState> states) {
+          return states.contains(MaterialState.focused)
+              ? AppColors.primaryBrand
+              : AppColors.textSecondary;
+        },
+      ),
+      border: baseBorder,
+      enabledBorder: baseBorder,
+      focusedBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(
           color: AppColors.primaryBrand,
           width: 2,
         ),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: const BorderRadius.all(
-          Radius.circular(12),
-        ),
-        borderSide: BorderSide(
-          color: Colors.grey.shade300,
-        ),
+      errorBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(color: errorColor),
       ),
-      border: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(
-          Radius.circular(12),
-        ),
+      focusedErrorBorder: baseBorder.copyWith(
+        borderSide: const BorderSide(color: errorColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: 12,
+        horizontal: 14,
         vertical: 14,
       ),
+    );
+  }
+
+  /// ظاهر مشترک کارت‌ها؛ سایه‌ی سبک تا هنگام باز شدن کیبورد سنگین نشود.
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(
+        color: AppColors.textSecondary.withOpacity(0.10),
+      ),
+      boxShadow: <BoxShadow>[
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          offset: const Offset(0, 3),
+          blurRadius: 10,
+        ),
+      ],
     );
   }
 
@@ -288,21 +337,29 @@ class _VehicleBasicInfoScreenState
         title: Text(
           'vehicle_info_title'.tr(),
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
         centerTitle: true,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         backgroundColor: AppColors.cardBackground,
+        shape: Border(
+          bottom: BorderSide(
+            color: AppColors.textSecondary.withOpacity(0.10),
+          ),
+        ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               'close'.tr(),
               style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -371,26 +428,14 @@ class _VehicleBasicInfoScreenState
             horizontal: 16,
             vertical: 8,
           ),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: Colors.grey.shade200,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            color: AppColors.cardBackground,
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                offset: const Offset(0, 4),
-                blurRadius: 12,
-              ),
-            ],
-          ),
+          decoration: _cardDecoration(),
           child: DropdownButtonFormField<String>(
             value: dropdownValue,
             decoration: InputDecoration(
               labelText: 'vehicle_type_label'.tr(),
               labelStyle: const TextStyle(
                 fontSize: 13,
+                color: AppColors.textSecondary,
               ),
               border: InputBorder.none,
             ),
@@ -398,6 +443,8 @@ class _VehicleBasicInfoScreenState
               Icons.keyboard_arrow_down_rounded,
             ),
             isExpanded: true,
+            dropdownColor: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(14),
             items: _vehicleOptions.map(
               (Map<String, String> option) {
                 final String value = option['value']!;
@@ -453,20 +500,7 @@ class _VehicleBasicInfoScreenState
     RegistrationProvider registrationProvider,
   ) {
     return Container(
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: Colors.grey.shade200,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        color: AppColors.cardBackground,
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            offset: const Offset(0, 4),
-            blurRadius: 12,
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -476,6 +510,7 @@ class _VehicleBasicInfoScreenState
             textInputAction: TextInputAction.next,
             decoration: _fieldDecoration(
               labelText: 'vehicle_brand_label'.tr(),
+              icon: Icons.directions_car_outlined,
             ),
             validator: (String? value) {
               if (value == null || value.trim().isEmpty) {
@@ -494,6 +529,7 @@ class _VehicleBasicInfoScreenState
             textInputAction: TextInputAction.next,
             decoration: _fieldDecoration(
               labelText: 'vehicle_color_label'.tr(),
+              icon: Icons.palette_outlined,
             ),
             validator: (String? value) {
               if (value == null || value.trim().isEmpty) {
@@ -518,6 +554,7 @@ class _VehicleBasicInfoScreenState
             ],
             decoration: _fieldDecoration(
               labelText: 'vehicle_year_label'.tr(),
+              icon: Icons.calendar_today_outlined,
             ),
             validator: (String? value) {
               if (value == null || value.trim().isEmpty) {
@@ -534,8 +571,8 @@ class _VehicleBasicInfoScreenState
           Text(
             'plate_info_header'.tr(),
             style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              fontSize: 13.5,
               color: AppColors.primaryBrand,
             ),
           ),
@@ -592,6 +629,8 @@ class _VehicleBasicInfoScreenState
         return DropdownButtonFormField<String>(
           value: value,
           isExpanded: true,
+          dropdownColor: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(14),
           decoration: _fieldDecoration(
             labelText: 'province'.tr(),
             labelFontSize: 11,
@@ -648,6 +687,8 @@ class _VehicleBasicInfoScreenState
         return DropdownButtonFormField<String>(
           value: value,
           isExpanded: true,
+          dropdownColor: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(14),
           decoration: _fieldDecoration(
             labelText: 'plate_letter'.tr(),
             labelFontSize: 11,
@@ -743,6 +784,8 @@ class _VehicleBasicInfoScreenState
         return DropdownButtonFormField<String>(
           value: value,
           isExpanded: true,
+          dropdownColor: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(14),
           decoration: _fieldDecoration(
             labelText: 'plate_type'.tr(),
             labelFontSize: 12,
@@ -790,24 +833,27 @@ class _VehicleBasicInfoScreenState
       ) {
         return SizedBox(
           width: double.infinity,
-          height: 52,
+          height: 54,
           child: ElevatedButton(
             onPressed: isFormValid ? _confirmVehicleInfo : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: isFormValid
-                  ? AppColors.primaryButton
-                  : Colors.grey.shade400,
+              backgroundColor: AppColors.primaryButton,
               foregroundColor: AppColors.buttonText,
+              disabledBackgroundColor:
+                  AppColors.textSecondary.withOpacity(0.15),
+              disabledForegroundColor:
+                  AppColors.textSecondary.withOpacity(0.6),
               elevation: 0,
+              shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
             child: Text(
               'btn_confirm_register'.tr(),
               style: const TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -830,7 +876,8 @@ class _KeyboardAwareBody extends StatelessWidget {
     final EdgeInsets safe = MediaQuery.paddingOf(context);
 
     return AnimatedPadding(
-      duration: const Duration(milliseconds: 150),
+      // مدت کوتاه تا دکمه همراه کیبورد سنگین و دیرجنب حرکت نکند.
+      duration: const Duration(milliseconds: 80),
       curve: Curves.easeOut,
       padding: EdgeInsets.only(
         left: safe.left,
