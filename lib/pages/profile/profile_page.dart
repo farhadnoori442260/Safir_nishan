@@ -33,6 +33,21 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
+  /// صفحه را باز می‌کند و بعد از برگشت، اطلاعات پروفایل را تازه می‌کند.
+  Future<void> _open(Widget page) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
+
+    if (!mounted) return;
+
+    context.read<RegistrationProvider>().retrieveCurrentDriverInfo();
+  }
+
+  /// مشخصات راننده مستقیم از کارت بالای پروفایل (کارت یا آیکن ویرایش) باز می‌شود.
+  Future<void> _openDriverInfo() => _open(const DriverMainInfo());
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthenticationProvider>();
@@ -62,8 +77,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 double.tryParse(driver['rating']?.toString() ?? '5.0') ?? 5.0;
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 105),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 105),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildProfileHeader(
                     name: name,
@@ -74,205 +90,148 @@ class _ProfilePageState extends State<ProfilePage> {
                     rating: rating,
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 24),
 
+                  // «مشخصات راننده» حالا از خود کارت بالا باز می‌شود؛
+                  // اینجا فقط موتر می‌ماند تا تکراری نشود.
                   _buildSectionTitle('profile_section_account'.tr()),
-
-                  _buildProfileMenuOption(
+                  _buildMenuGroup(
                     context,
-                    icon: Icons.account_circle_outlined,
-                    title: 'profile_menu_account'.tr(),
-                    subtitle: 'profile_menu_account_subtitle'.tr(),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DriverMainInfo(),
-                        ),
-                      );
-
-                      if (mounted) {
-                        context
-                            .read<RegistrationProvider>()
-                            .retrieveCurrentDriverInfo();
-                      }
-                    },
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _buildProfileMenuOption(
-                    context,
-                    icon: Icons.directions_car_filled_outlined,
-                    title: 'profile_menu_vehicle'.tr(),
-                    subtitle: 'profile_menu_vehicle_subtitle'.tr(),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const VehicleBasicInfoScreen(),
-                        ),
-                      );
-
-                      if (mounted) {
-                        context
-                            .read<RegistrationProvider>()
-                            .retrieveCurrentDriverInfo();
-                      }
-                    },
+                    [
+                      _MenuItem(
+                        icon: Icons.directions_car_filled_outlined,
+                        title: 'profile_menu_vehicle'.tr(),
+                        subtitle: 'profile_menu_vehicle_subtitle'.tr(),
+                        onTap: () => _open(const VehicleBasicInfoScreen()),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 20),
 
                   _buildSectionTitle('profile_section_documents'.tr()),
-
-                  _buildProfileMenuOption(
+                  _buildMenuGroup(
                     context,
-                    icon: Icons.badge_outlined,
-                    title: 'profile_menu_license'.tr(),
-                    subtitle: 'profile_menu_license_subtitle'.tr(),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DrivingLicenseUpdateScreen(),
-                        ),
-                      );
-
-                      if (mounted) {
-                        context
-                            .read<RegistrationProvider>()
-                            .retrieveCurrentDriverInfo();
-                      }
-                    },
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _buildProfileMenuOption(
-                    context,
-                    icon: Icons.description_outlined,
-                    title: 'profile_menu_vehicle_registration'.tr(),
-                    subtitle:
-                        'profile_menu_vehicle_registration_subtitle'.tr(),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              const VehicleRegistrationUpdateScreen(),
-                        ),
-                      );
-
-                      if (mounted) {
-                        context
-                            .read<RegistrationProvider>()
-                            .retrieveCurrentDriverInfo();
-                      }
-                    },
+                    [
+                      _MenuItem(
+                        icon: Icons.badge_outlined,
+                        title: 'profile_menu_license'.tr(),
+                        subtitle: 'profile_menu_license_subtitle'.tr(),
+                        onTap: () => _open(const DrivingLicenseUpdateScreen()),
+                      ),
+                      _MenuItem(
+                        icon: Icons.description_outlined,
+                        title: 'profile_menu_vehicle_registration'.tr(),
+                        subtitle:
+                            'profile_menu_vehicle_registration_subtitle'.tr(),
+                        onTap: () =>
+                            _open(const VehicleRegistrationUpdateScreen()),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 20),
 
                   _buildSectionTitle('profile_section_app'.tr()),
-
-                  _buildProfileMenuOption(
+                  _buildMenuGroup(
                     context,
-                    icon: Icons.settings_outlined,
-                    title: 'profile_menu_settings'.tr(),
-                    subtitle: 'profile_menu_settings_subtitle'.tr(),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SettingsPage(),
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _buildProfileMenuOption(
-                    context,
-                    icon: Icons.help_outline_rounded,
-                    title: 'profile_menu_support'.tr(),
-                    subtitle: 'profile_menu_support_subtitle'.tr(),
-                    onTap: () {
-                      _showSupportDialog(context);
-                    },
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _buildProfileMenuOption(
-                    context,
-                    icon: Icons.privacy_tip_outlined,
-                    title: 'profile_menu_privacy'.tr(),
-                    subtitle: 'profile_menu_privacy_subtitle'.tr(),
-                    onTap: () {
-                      _showPrivacyPage(context);
-                    },
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _buildProfileMenuOption(
-                    context,
-                    icon: Icons.info_outline_rounded,
-                    title: 'profile_menu_about'.tr(),
-                    subtitle: 'profile_menu_about_subtitle'.tr(),
-                    onTap: () {
-                      _showAboutDialog(context);
-                    },
+                    [
+                      _MenuItem(
+                        icon: Icons.settings_outlined,
+                        title: 'profile_menu_settings'.tr(),
+                        subtitle: 'profile_menu_settings_subtitle'.tr(),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SettingsPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      _MenuItem(
+                        icon: Icons.help_outline_rounded,
+                        title: 'profile_menu_support'.tr(),
+                        subtitle: 'profile_menu_support_subtitle'.tr(),
+                        onTap: () => _showSupportDialog(context),
+                      ),
+                      _MenuItem(
+                        icon: Icons.privacy_tip_outlined,
+                        title: 'profile_menu_privacy'.tr(),
+                        subtitle: 'profile_menu_privacy_subtitle'.tr(),
+                        onTap: () => _showPrivacyPage(context),
+                      ),
+                      _MenuItem(
+                        icon: Icons.info_outline_rounded,
+                        title: 'profile_menu_about'.tr(),
+                        subtitle: 'profile_menu_about_subtitle'.tr(),
+                        onTap: () => _showAboutDialog(context),
+                      ),
+                      // خروج از حساب به‌جای دکمهٔ شناور، داخل لیست آمده تا
+                      // روی نوار پایین و محتوا نیفتد.
+                      _MenuItem(
+                        icon: Icons.logout_rounded,
+                        title: 'profile_logout'.tr(),
+                        onTap: () {
+                          if (authProvider.isLoading) return;
+                          _confirmLogout(authProvider);
+                        },
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 20),
 
                   _buildSectionTitle(
                     'profile_section_account_management'.tr(),
-                    color: Colors.red.shade700,
+                    color: AppColors.error,
                   ),
-
-                  _buildProfileMenuOption(
+                  _buildMenuGroup(
                     context,
-                    icon: Icons.delete_outline_rounded,
-                    iconColor: Colors.red.shade700,
-                    title: 'profile_menu_delete_account'.tr(),
-                    subtitle: 'profile_menu_delete_account_subtitle'.tr(),
-                    onTap: () {
-                      _showDeleteAccountDialog(context, authProvider);
-                    },
+                    [
+                      _MenuItem(
+                        icon: Icons.delete_outline_rounded,
+                        iconColor: AppColors.error,
+                        title: 'profile_menu_delete_account'.tr(),
+                        subtitle: 'profile_menu_delete_account_subtitle'.tr(),
+                        onTap: () =>
+                            _showDeleteAccountDialog(context, authProvider),
+                      ),
+                    ],
                   ),
                 ],
               ),
             );
           },
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          backgroundColor: Colors.red.shade700,
-          onPressed: authProvider.isLoading
-              ? null
-              : () async {
-                  await authProvider.signOut(context);
-                },
-          icon: const Icon(
-            Icons.logout_rounded,
-            color: Colors.white,
-            size: 18,
-          ),
-          label: Text(
-            'profile_logout'.tr(),
-            style: const TextStyle(
-              color: AppColors.buttonText,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-        ),
       ),
     );
   }
+
+  // ════════════════════════════════════════════════════════════
+  //  ظاهر مشترک
+  // ════════════════════════════════════════════════════════════
+
+  BoxDecoration _cardDecoration({double radius = 18}) {
+    return BoxDecoration(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(
+        color: AppColors.textSecondary.withOpacity(0.10),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          offset: const Offset(0, 3),
+          blurRadius: 10,
+        ),
+      ],
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  کارت بالای پروفایل
+  // ════════════════════════════════════════════════════════════
 
   Widget _buildProfileHeader({
     required String name,
@@ -282,246 +241,153 @@ class _ProfilePageState extends State<ProfilePage> {
     required String photo,
     required double rating,
   }) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black12,
-                offset: Offset(0, 2),
-                blurRadius: 8,
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                height: 80,
-                width: 80,
-                child: photo.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: photo,
-                        imageBuilder: (context, imageProvider) => Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.primaryBrand.withOpacity(0.2),
-                              width: 2,
-                            ),
-                            image: DecorationImage(
-                              image: imageProvider,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        placeholder: (_, __) => const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.primaryBrand,
-                          ),
-                        ),
-                        errorWidget: (_, __, ___) => _buildAvatarPlaceholder(),
-                      )
-                    : _buildAvatarPlaceholder(),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    _buildHeaderRow(
-                      icon: Icons.phone_outlined,
-                      child: Directionality(
-                        textDirection: TextDirection.ltr,
-                        child: Text(
-                          phone,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (email.isNotEmpty) ...[
-                      const SizedBox(height: 5),
-                      _buildHeaderRow(
-                        icon: Icons.email_outlined,
-                        child: Text(
-                          email,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (address.isNotEmpty) ...[
-                      const SizedBox(height: 5),
-                      _buildHeaderRow(
-                        icon: Icons.location_on_outlined,
-                        child: Text(
-                          address,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 9),
-                    RatingStars(ratting: rating.toStringAsFixed(1)),
-                  ],
-                ),
-              ),
-            ],
+    // شماره و ایمیل کنار هم می‌آیند و اگر جا نبود خودکار به خط بعد می‌روند.
+    final List<Widget> infoChips = [
+      _buildInfoChip(
+        icon: Icons.phone_outlined,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Text(
+            phone,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeaderRow({
-    required IconData icon,
-    required Widget child,
-  }) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          size: 14,
-          color: AppColors.textSecondary,
+      if (email.isNotEmpty)
+        _buildInfoChip(
+          icon: Icons.mail_outline_rounded,
+          child: Text(
+            email,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ),
-        const SizedBox(width: 6),
-        Expanded(child: child),
-      ],
-    );
-  }
-
-  Widget _buildAvatarPlaceholder() {
-    return CircleAvatar(
-      backgroundColor: Colors.grey.shade200,
-      child: Icon(
-        Icons.person_rounded,
-        color: Colors.grey.shade500,
-        size: 42,
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(
-    String title, {
-    Color? color,
-  }) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(20, 8, 20, 10),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: color ?? AppColors.textSecondary,
+      if (address.isNotEmpty)
+        _buildInfoChip(
+          icon: Icons.location_on_outlined,
+          child: Text(
+            address,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildProfileMenuOption(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    Color? iconColor,
-  }) {
-    final bool isRtl = Directionality.of(context) == TextDirection.rtl;
-    final Color currentIconColor = iconColor ?? AppColors.primaryBrand;
+    ];
 
     return Container(
-      width: MediaQuery.of(context).size.width * 0.92,
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            offset: Offset(0, 1),
-            blurRadius: 4,
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(radius: 22),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(22),
         child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
+          onTap: _openDriverInfo,
+          borderRadius: BorderRadius.circular(22),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 13,
-            ),
-            child: Row(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
-                Icon(
-                  icon,
-                  color: currentIconColor,
-                  size: 24,
+                Row(
+                  children: [
+                    SizedBox(
+                      height: 68,
+                      width: 68,
+                      child: photo.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: photo,
+                              imageBuilder: (context, imageProvider) =>
+                                  Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.primaryBrand
+                                        .withOpacity(0.25),
+                                    width: 2,
+                                  ),
+                                  image: DecorationImage(
+                                    image: imageProvider,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              placeholder: (_, __) => const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primaryBrand,
+                                ),
+                              ),
+                              errorWidget: (_, __, ___) =>
+                                  _buildAvatarPlaceholder(),
+                            )
+                          : _buildAvatarPlaceholder(),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          RatingStars(ratting: rating.toStringAsFixed(1)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // آیکن ویرایش: کل کارت هم قابل لمس است و همین‌جا باز می‌شود.
+                    Semantics(
+                      button: true,
+                      label: 'profile_menu_account'.tr(),
+                      child: Container(
+                        height: 38,
+                        width: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primaryBrand.withOpacity(0.10),
+                        ),
+                        child: const Icon(
+                          Icons.edit_outlined,
+                          size: 19,
+                          color: AppColors.primaryBrand,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 14),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: AppColors.textSecondary.withOpacity(0.10),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: infoChips,
                   ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  isRtl ? Icons.chevron_left : Icons.chevron_right,
-                  color: AppColors.textSecondary.withOpacity(0.55),
-                  size: 21,
                 ),
               ],
             ),
@@ -529,6 +395,211 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
     );
+  }
+
+  Widget _buildInfoChip({
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.textSecondary.withOpacity(0.12),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(width: 6),
+          Flexible(child: child),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatarPlaceholder() {
+    return CircleAvatar(
+      backgroundColor: AppColors.background,
+      child: Icon(
+        Icons.person_rounded,
+        color: AppColors.textSecondary.withOpacity(0.6),
+        size: 38,
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  منو
+  // ════════════════════════════════════════════════════════════
+
+  Widget _buildSectionTitle(
+    String title, {
+    Color? color,
+  }) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(6, 0, 6, 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: color ?? AppColors.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  /// چند ردیف داخل یک کارت، با خط جداکنندهٔ ظریف (به‌جای کارت جدا برای هر ردیف).
+  Widget _buildMenuGroup(
+    BuildContext context,
+    List<_MenuItem> items,
+  ) {
+    return Container(
+      decoration: _cardDecoration(),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            children: [
+              for (int i = 0; i < items.length; i++) ...[
+                _buildMenuRow(context, items[i]),
+                if (i != items.length - 1)
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    indent: 66,
+                    endIndent: 16,
+                    color: AppColors.textSecondary.withOpacity(0.10),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuRow(
+    BuildContext context,
+    _MenuItem item,
+  ) {
+    final bool isRtl = Directionality.of(context) == TextDirection.rtl;
+    final Color color = item.iconColor ?? AppColors.primaryBrand;
+
+    return InkWell(
+      onTap: item.onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        child: Row(
+          children: [
+            Container(
+              height: 36,
+              width: 36,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                item.icon,
+                color: color,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  if (item.subtitle != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      item.subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              isRtl ? Icons.chevron_left : Icons.chevron_right,
+              color: AppColors.textSecondary.withOpacity(0.55),
+              size: 21,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  دیالوگ‌ها
+  // ════════════════════════════════════════════════════════════
+
+  Future<void> _confirmLogout(AuthenticationProvider authProvider) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.cardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'profile_logout'.tr(),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text('btn_cancel'.tr()),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryButton,
+                foregroundColor: AppColors.buttonText,
+                elevation: 0,
+              ),
+              child: Text('btn_confirm'.tr()),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await authProvider.signOut(context);
   }
 
   void _showSupportDialog(BuildContext context) {
@@ -579,6 +650,8 @@ class _ProfilePageState extends State<ProfilePage> {
     showAboutDialog(
       context: context,
       applicationName: 'app_name'.tr(),
+      // TODO(release): نسخه را از package_info_plus بخوانید تا با نسخهٔ
+      // پلی‌استور همیشه یکی باشد.
       applicationVersion: '1.0.0',
       applicationIcon: const Icon(
         Icons.local_taxi_rounded,
@@ -617,8 +690,8 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               title: Text(
                 'profile_menu_delete_account'.tr(),
-                style: TextStyle(
-                  color: Colors.red.shade700,
+                style: const TextStyle(
+                  color: AppColors.error,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -666,11 +739,11 @@ class _ProfilePageState extends State<ProfilePage> {
                             );
 
                             if (context.mounted) {
-                            Navigator.of(context).pushAndRemoveUntil(
+                              Navigator.of(context).pushAndRemoveUntil(
                                 MaterialPageRoute(
                                   builder: (_) => const RegisterScreen(),
                                 ),
-                               (route) => false,
+                                (route) => false,
                               );
                             }
                           } else {
@@ -682,8 +755,9 @@ class _ProfilePageState extends State<ProfilePage> {
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade700,
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppColors.error,
+                    foregroundColor: AppColors.buttonText,
+                    elevation: 0,
                   ),
                   child: isDeleting
                       ? const SizedBox(
@@ -691,7 +765,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           width: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: AppColors.buttonText,
                           ),
                         )
                       : Text('btn_delete'.tr()),
@@ -705,6 +779,23 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
+/// یک ردیف از منوی پروفایل.
+class _MenuItem {
+  const _MenuItem({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+    this.iconColor,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+  final Color? iconColor;
+}
+
 class PrivacyPolicyPage extends StatelessWidget {
   const PrivacyPolicyPage({super.key});
 
@@ -714,7 +805,14 @@ class PrivacyPolicyPage extends StatelessWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.cardBackground,
-        elevation: 1,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: Border(
+          bottom: BorderSide(
+            color: AppColors.textSecondary.withOpacity(0.10),
+          ),
+        ),
         centerTitle: true,
         iconTheme: const IconThemeData(
           color: AppColors.textPrimary,
@@ -736,6 +834,9 @@ class PrivacyPolicyPage extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.cardBackground,
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.textSecondary.withOpacity(0.10),
+            ),
           ),
           child: Text(
             'privacy_policy_text'.tr(),
@@ -771,7 +872,14 @@ class SettingsPage extends StatelessWidget {
         ),
         centerTitle: true,
         backgroundColor: AppColors.cardBackground,
-        elevation: 1,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: Border(
+          bottom: BorderSide(
+            color: AppColors.textSecondary.withOpacity(0.10),
+          ),
+        ),
         iconTheme: const IconThemeData(
           color: AppColors.textPrimary,
         ),
@@ -820,14 +928,10 @@ class SettingsPage extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            offset: Offset(0, 1),
-            blurRadius: 4,
-          ),
-        ],
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.textSecondary.withOpacity(0.10),
+        ),
       ),
       child: ListTile(
         onTap: onTap,
@@ -890,7 +994,14 @@ class _LanguagePageState extends State<LanguagePage> {
         ),
         centerTitle: true,
         backgroundColor: AppColors.cardBackground,
-        elevation: 1,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: Border(
+          bottom: BorderSide(
+            color: AppColors.textSecondary.withOpacity(0.10),
+          ),
+        ),
         iconTheme: const IconThemeData(
           color: AppColors.textPrimary,
         ),
@@ -939,11 +1050,11 @@ class _LanguagePageState extends State<LanguagePage> {
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBrand,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.primaryButton,
+                  foregroundColor: AppColors.buttonText,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   elevation: 0,
                 ),
@@ -994,7 +1105,7 @@ class _LanguagePageState extends State<LanguagePage> {
               )
             : const Icon(
                 Icons.radio_button_unchecked,
-                color: Colors.grey,
+                color: AppColors.textSecondary,
               ),
         onTap: () {
           setState(() {
