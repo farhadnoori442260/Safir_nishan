@@ -1,12 +1,42 @@
 import 'dart:ui' as ui;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import 'package:safir_drivers/constants/trip_status.dart';
 import 'package:safir_drivers/pages/chat_page.dart';
 import 'package:safir_drivers/utils/trip_extras.dart';
+
+String _t(String key, String fallback) {
+  final String v = key.tr();
+  return (v.trim().isEmpty || v == key) ? fallback : v;
+}
+
+/// راننده دریافت پول نقد را تایید می‌کند (payment_status: paid).
+/// تسویه‌ی نهایی (settled) با پنل ادمین است.
+Future<bool> _confirmPaymentReceived(String tripId) async {
+  try {
+    await FirebaseFirestore.instance.collection('rides').doc(tripId).update(
+      <String, dynamic>{
+        'payment_status': 'paid',
+        'payment_confirmed_at': FieldValue.serverTimestamp(),
+        'payment_confirmed_by': FirebaseAuth.instance.currentUser?.uid ?? '',
+        'updated_at': FieldValue.serverTimestamp(),
+      },
+    );
+    return true;
+  } on FirebaseException catch (e) {
+    debugPrint('Confirm payment error: ${e.code} | ${e.message}');
+    return false;
+  } catch (e) {
+    debugPrint('Confirm payment error: $e');
+    return false;
+  }
+}
 
 class ActiveTripSheet extends StatelessWidget {
   final String tripId;
@@ -40,6 +70,7 @@ class ActiveTripSheet extends StatelessWidget {
   static const Color _mutedText = Color(0xFF64748B);
   static const Color _danger = Color(0xFFDC2626);
   static const Color _blue = Color(0xFF2563EB);
+  static const Color _endTrip = Color(0xFFEA580C);
 
   String _formatNumber(dynamic value, {required int decimals}) {
     if (value == null) return '---';
@@ -106,14 +137,122 @@ class ActiveTripSheet extends StatelessWidget {
     return Icons.local_taxi_rounded;
   }
 
-  void _handleTripAction() {
+  Future<void> _handleTripAction(BuildContext context) async {
+    HapticFeedback.mediumImpact();
+
     if (status == TripStatus.accepted) {
       onUpdateTripStatus(tripId, TripStatus.arrived);
     } else if (status == TripStatus.arrived) {
       onUpdateTripStatus(tripId, TripStatus.onTrip);
     } else if (status == TripStatus.onTrip) {
-      onUpdateTripStatus(tripId, TripStatus.completed);
+      // پایان سفر برگشت‌ناپذیر است؛ قبلاً با یک لمس تمام می‌شد
+      final bool shouldEnd = await _confirmEndTrip(context);
+      if (shouldEnd) {
+        onUpdateTripStatus(tripId, TripStatus.completed);
+      }
     }
+  }
+
+  /// قبل از پایان سفر تایید می‌گیرد؛ اگر مسافر «پرداخت کردم» زده باشد،
+  /// همان‌جا می‌شود دریافت پول را هم تایید کرد (بعد از پایان سفر دیگر ممکن نیست).
+  Future<bool> _confirmEndTrip(BuildContext context) async {
+    String? paymentStatus;
+    dynamic amount;
+
+    try {
+      final DocumentSnapshot<Map<String, dynamic>> snap =
+          await FirebaseFirestore.instance
+              .collection('rides')
+              .doc(tripId)
+              .get();
+      paymentStatus = snap.data()?['payment_status']?.toString();
+      amount = snap.data()?['payment_requested_amount'];
+    } catch (_) {
+      // بدون اطلاعات پرداخت هم می‌شود سفر را تمام کرد
+    }
+
+    if (!context.mounted) return false;
+
+    final bool awaiting = paymentStatus == 'awaiting_driver_confirmation';
+
+    final String? choice = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            _t('end_trip_confirm_title', 'پایان سفر'),
+            style: const TextStyle(fontWeight: FontWeight.w800, color: _text),
+          ),
+          content: Text(
+            awaiting
+                ? '${_t('end_trip_payment_pending', 'مسافر اعلام کرده کرایه را پرداخت کرده است')}'
+                    '${amount != null ? ' ($amount)' : ''}. '
+                    '${_t('end_trip_payment_question', 'دریافت پول را تایید می‌کنید؟')}'
+                : _t('end_trip_confirm_msg',
+                    'آیا سفر به مقصد رسیده و می‌خواهید آن را تمام کنید؟'),
+            style: const TextStyle(color: _mutedText, height: 1.5),
+          ),
+          actionsOverflowDirection: VerticalDirection.down,
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'cancel'),
+              child: Text(
+                _t('cancel', 'انصراف'),
+                style: const TextStyle(color: _mutedText),
+              ),
+            ),
+            if (awaiting)
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 'end'),
+                child: Text(
+                  _t('end_trip_without_confirm', 'پایان بدون تایید پول'),
+                  style: const TextStyle(color: _danger),
+                ),
+              ),
+            ElevatedButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, awaiting ? 'pay_and_end' : 'end'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: awaiting ? _primary : _endTrip,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                awaiting
+                    ? _t('end_trip_confirm_and_end', 'تایید پول و پایان سفر')
+                    : _t('btn_end_trip', 'پایان سفر'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (choice == 'pay_and_end') {
+      final bool ok = await _confirmPaymentReceived(tripId);
+
+      if (!ok && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: _danger,
+            content: Text(
+              _t('payment_confirm_failed',
+                  'تایید پرداخت ثبت نشد. دوباره تلاش کنید.'),
+            ),
+          ),
+        );
+        return false;
+      }
+      return true;
+    }
+
+    return choice == 'end';
   }
 
   @override
@@ -225,9 +364,11 @@ class ActiveTripSheet extends StatelessWidget {
                     price: price,
                   ),
                   const SizedBox(height: 12),
+                  _PaymentConfirmCard(tripId: tripId, fallbackPrice: price),
+                  const SizedBox(height: 12),
                   _buildNavigationNotice(),
                   const SizedBox(height: 16),
-                  _buildMainActionButton(),
+                  _buildMainActionButton(context),
                   const SizedBox(height: 10),
                   _buildSecondaryActions(
                     context: context,
@@ -791,7 +932,7 @@ class ActiveTripSheet extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontWeight: FontWeight.w800,
-              fontSize: 11,
+              fontSize: 12.5,
               color: _text,
             ),
           ),
@@ -800,7 +941,7 @@ class ActiveTripSheet extends StatelessWidget {
             label,
             style: const TextStyle(
               color: _mutedText,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -842,12 +983,14 @@ class ActiveTripSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildMainActionButton() {
+  Widget _buildMainActionButton(BuildContext context) {
+    final Color buttonColor = status == TripStatus.onTrip ? _endTrip : _primary;
+
     return SizedBox(
       width: double.infinity,
       height: 54,
       child: ElevatedButton.icon(
-        onPressed: isTripActionLoading ? null : _handleTripAction,
+        onPressed: isTripActionLoading ? null : () => _handleTripAction(context),
         icon: isTripActionLoading
             ? const SizedBox(
                 width: 20,
@@ -872,8 +1015,8 @@ class ActiveTripSheet extends StatelessWidget {
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: _primary,
-          disabledBackgroundColor: _primary.withOpacity(0.50),
+          backgroundColor: buttonColor,
+          disabledBackgroundColor: buttonColor.withOpacity(0.50),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -1038,6 +1181,234 @@ class ActiveTripSheet extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+/// کارت پرداخت نقدی: وضعیت را زنده از سند سفر می‌خواند و بعد از درخواست مسافر،
+/// دکمه‌ی «تایید دریافت پول» را نشان می‌دهد.
+class _PaymentConfirmCard extends StatefulWidget {
+  const _PaymentConfirmCard({
+    required this.tripId,
+    required this.fallbackPrice,
+  });
+
+  final String tripId;
+  final String fallbackPrice;
+
+  @override
+  State<_PaymentConfirmCard> createState() => _PaymentConfirmCardState();
+}
+
+class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
+  bool _busy = false;
+
+  Future<void> _onConfirm(String amountText) async {
+    if (_busy) return;
+
+    final bool? yes = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            _t('payment_confirm_title', 'تایید دریافت پول'),
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              color: ActiveTripSheet._text,
+            ),
+          ),
+          content: Text(
+            '${_t('payment_confirm_msg', 'آیا مبلغ')} $amountText '
+            '${_t('payment_confirm_msg_tail', 'را نقداً از مسافر دریافت کرده‌اید؟')}',
+            style: const TextStyle(
+              color: ActiveTripSheet._mutedText,
+              height: 1.5,
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(
+                _t('cancel', 'انصراف'),
+                style: const TextStyle(color: ActiveTripSheet._mutedText),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ActiveTripSheet._primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(_t('payment_confirm_yes', 'بله، دریافت کردم')),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (yes != true || !mounted) return;
+
+    HapticFeedback.mediumImpact();
+    setState(() => _busy = true);
+
+    final bool ok = await _confirmPaymentReceived(widget.tripId);
+
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: ok ? const Color(0xFF16A34A) : ActiveTripSheet._danger,
+        content: Text(
+          ok
+              ? _t('payment_confirmed_ok', 'دریافت پول تایید شد.')
+              : _t('payment_confirm_failed',
+                  'تایید پرداخت ثبت نشد. دوباره تلاش کنید.'),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.tripId.isEmpty) return const SizedBox.shrink();
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('rides')
+          .doc(widget.tripId)
+          .snapshots(),
+      builder: (BuildContext context,
+          AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snapshot) {
+        final Map<String, dynamic> data =
+            snapshot.data?.data() ?? <String, dynamic>{};
+
+        final String status = data['payment_status']?.toString() ?? 'unpaid';
+        final dynamic requested = data['payment_requested_amount'];
+        final String amountText =
+            '${requested ?? widget.fallbackPrice} ${_t('currency_afg', 'افغانی')}';
+
+        final bool awaiting = status == 'awaiting_driver_confirmation';
+        final bool paid = status == 'paid';
+        final bool settled = status == 'settled';
+
+        final Color color = (paid || settled)
+            ? const Color(0xFF16A34A)
+            : awaiting
+                ? const Color(0xFFD97706)
+                : ActiveTripSheet._mutedText;
+
+        final IconData icon = (paid || settled)
+            ? Icons.check_circle_rounded
+            : awaiting
+                ? Icons.payments_rounded
+                : Icons.hourglass_empty_rounded;
+
+        final String title = settled
+            ? _t('payment_status_settled', 'پرداخت تسویه شد')
+            : paid
+                ? _t('payment_status_paid', 'دریافت پول تایید شد')
+                : awaiting
+                    ? _t('payment_status_awaiting',
+                        'مسافر پرداخت را اعلام کرد')
+                    : _t('payment_status_unpaid',
+                        'منتظر پرداخت نقدی مسافر');
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: color.withOpacity(awaiting ? 0.10 : 0.07),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withOpacity(awaiting ? 0.55 : 0.28)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Icon(icon, color: color, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    amountText,
+                    style: const TextStyle(
+                      color: ActiveTripSheet._text,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              if (awaiting) ...<Widget>[
+                const SizedBox(height: 6),
+                Text(
+                  _t('payment_awaiting_hint',
+                      'بعد از دریافت پول نقد، تایید کنید تا پرداخت ثبت و برای تسویه ارسال شود.'),
+                  style: const TextStyle(
+                    color: ActiveTripSheet._mutedText,
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton.icon(
+                    onPressed: _busy ? null : () => _onConfirm(amountText),
+                    icon: _busy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.check_rounded, size: 20),
+                    label: Text(
+                      _t('btn_confirm_payment', 'تایید دریافت پول'),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ActiveTripSheet._primary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor:
+                          ActiveTripSheet._primary.withOpacity(0.5),
+                      disabledForegroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }
