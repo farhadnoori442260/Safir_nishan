@@ -756,7 +756,7 @@ class ActiveTripSheet extends StatelessWidget {
   }
 
   Widget _buildPartyRow(TripParty party) {
-    final bool isSender = party.role == 'فرستنده';
+    final bool isSender = party.isSender;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
