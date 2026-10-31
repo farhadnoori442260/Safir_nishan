@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -20,12 +18,16 @@ class TripParty {
   final String detail; // پلاک / واحد
   final String note;
 
+  /// فرستنده است یا گیرنده؟ (نباید از روی متن ترجمه‌شده‌ی role تشخیص داده شود)
+  final bool isSender;
+
   const TripParty({
     required this.role,
     required this.name,
     required this.phone,
     required this.detail,
     required this.note,
+    this.isSender = false,
   });
 
   bool get hasContent => name.isNotEmpty || phone.isNotEmpty;
@@ -73,9 +75,9 @@ class TripExtras {
       kind = TripServiceKind.cargo;
     } else if (service == 'intercity') {
       kind = TripServiceKind.intercity;
-    } else if (vehicle == 'Bike' || service == 'bike') {
+    } else if (vehicle.toLowerCase() == 'bike' || service == 'bike') {
       kind = TripServiceKind.bike;
-    } else if (vehicle == 'Auto' || service == 'auto') {
+    } else if (vehicle.toLowerCase() == 'auto' || service == 'auto') {
       kind = TripServiceKind.vip;
     } else {
       kind = TripServiceKind.taxi;
@@ -109,18 +111,8 @@ class TripExtras {
     final List<TripExtraItem> items = <TripExtraItem>[];
     final List<TripParty> parties = <TripParty>[];
 
-    // مسافت
-    final double km = _num(data['distance']);
-    if (km > 0) {
-      items.add(
-        TripExtraItem(
-          Icons.straighten_rounded,
-          'trip_distance_format'.tr(
-            args: <String>[_fa(km.toStringAsFixed(1)).replaceAll('.', '٫')],
-          ),
-        ),
-      );
-    }
+    // مسافت اینجا اضافه نمی‌شود: در کارت اطلاعات سفر هست، و اضافه‌کردنش
+    // باعث می‌شد کارت «موارد اضافه» برای هر سفر معمولی هم نشان داده شود.
 
     // ───── باربری ─────
     if (kind == TripServiceKind.cargo) {
@@ -161,6 +153,7 @@ class TripExtras {
             _str(data, <String>['cargo_sender_unit']),
           ),
           note: _str(data, <String>['cargo_sender_note']),
+          isSender: true,
         ),
       );
 
