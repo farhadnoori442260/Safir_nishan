@@ -44,7 +44,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _navProgressIndex = 0;
   int _navLastRenderedSegment = -1;
   LatLng? _navLastRenderedPoint;
-  Line? _navRemainingLine; // خط سبز (باقی‌ماندهٔ مسیر)
+  Line? _navRemainingLine; // خط آبی (باقی‌ماندهٔ مسیر)
   Line? _navTraveledLine; // خط خاکستری (طی‌شده)
 
   Position? _pendingNavPosition;
@@ -829,9 +829,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 8),
-        content: Text('bg_location_prompt_msg'.tr()), // 🌐 اصلاح‌شده با کلید ترجمه
+        content: Text('bg_location_prompt_msg'.tr()),
         action: SnackBarAction(
-          label: 'settings_label'.tr(), // 🌐 اصلاح‌شده با کلید ترجمه
+          label: 'settings_label'.tr(),
           onPressed: () {
             unawaited(Geolocator.openAppSettings());
           },
@@ -854,7 +854,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
       if (!serviceEnabled) {
-        await _showMessage('gps_disabled_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+        await _showMessage('gps_disabled_msg'.tr());
         return null;
       }
 
@@ -866,7 +866,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        await _showMessage('location_permission_denied_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+        await _showMessage('location_permission_denied_msg'.tr());
         return null;
       }
 
@@ -876,8 +876,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         unawaited(_promptEnableBackgroundLocation());
       }
 
+      // دقت high برای اولین فیکس سریع‌تر است؛ استریم اصلی همچنان
+      // bestForNavigation است.
       final Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.bestForNavigation,
+        desiredAccuracy: LocationAccuracy.high,
         timeLimit: const Duration(seconds: 10),
       );
 
@@ -886,7 +888,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       return position;
     } catch (e) {
       debugPrint('Error fetching driver location: $e');
-      await _showMessage('location_fetch_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+      await _showMessage('location_fetch_error_msg'.tr());
       return null;
     }
   }
@@ -961,6 +963,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
+  /// آنلاین شدن: اول وضعیت در Firestore ثبت می‌شود (سریع)، سپس لوکیشن
+  /// اولیه در پس‌زمینه ارسال می‌شود تا رابط کاربری منتظر GPS نماند.
   Future<void> goOnlineNow() async {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -968,18 +972,39 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _ensureActiveTripStream();
 
     driverOnlineTimestamp = DateTime.now();
-    currentPositionOfDriver ??= await getCurrentLiveLocationOfDriver();
-
-    if (currentPositionOfDriver != null) {
-      await _updateDriverLiveLocation(currentPositionOfDriver!);
-    }
 
     await _setDriverStatus(status: 'waiting', isOnline: true);
+
+    unawaited(_publishInitialLocation());
+  }
+
+  Future<void> _publishInitialLocation() async {
+    try {
+      Position? position = currentPositionOfDriver;
+
+      try {
+        position ??= await Geolocator.getLastKnownPosition();
+      } catch (e) {
+        debugPrint('getLastKnownPosition failed: $e');
+      }
+
+      position ??= await getCurrentLiveLocationOfDriver();
+
+      if (position == null) return;
+
+      currentPositionOfDriver ??= position;
+
+      if (isDriverAvailable) {
+        await _updateDriverLiveLocation(position);
+      }
+    } catch (e) {
+      debugPrint('Initial location publish failed: $e');
+    }
   }
 
   Future<void> goOfflineNow() async {
     if (activeTripId != null) {
-      await _showMessage('cannot_offline_active_trip_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+      await _showMessage('cannot_offline_active_trip_msg'.tr());
       return;
     }
 
@@ -1026,8 +1051,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         distanceFilter: 1,
         intervalDuration: const Duration(seconds: 1),
         foregroundNotificationConfig: ForegroundNotificationConfig(
-          notificationTitle: 'notif_active_trip_title'.tr(), // 🌐 اصلاح‌شده با کلید ترجمه
-          notificationText: 'notif_active_trip_text'.tr(), // 🌐 اصلاح‌شده با کلید ترجمه
+          notificationTitle: 'notif_active_trip_title'.tr(),
+          notificationText: 'notif_active_trip_text'.tr(),
           enableWakeLock: true,
           notificationIcon: const AndroidResource(
             name: 'ic_launcher',
@@ -1143,7 +1168,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final String number = phoneNumber.trim();
 
     if (number.isEmpty) {
-      await _showMessage('passenger_phone_not_found_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+      await _showMessage('passenger_phone_not_found_msg'.tr());
       return;
     }
 
@@ -1153,11 +1178,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final bool launched = await launchUrl(phoneUri);
 
       if (!launched) {
-        await _showMessage('phone_launch_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+        await _showMessage('phone_launch_error_msg'.tr());
       }
     } catch (e) {
       debugPrint('Phone launch error: $e');
-      await _showMessage('phone_launch_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+      await _showMessage('phone_launch_error_msg'.tr());
     }
   }
 
@@ -1173,11 +1198,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
 
       if (!launched) {
-        await _showMessage('map_launch_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+        await _showMessage('map_launch_error_msg'.tr());
       }
     } catch (e) {
       debugPrint('External map launch error: $e');
-      await _showMessage('map_launch_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+      await _showMessage('map_launch_error_msg'.tr());
     }
   }
 
@@ -1337,7 +1362,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       if (pickupLatLng == null) {
         debugPrint('PICKUP: origin not found. keys=${tripData.keys.toList()}');
-        await _showMessage('pickup_coords_not_found_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+        await _showMessage('pickup_coords_not_found_msg'.tr());
         return;
       }
 
@@ -1376,7 +1401,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         debugPrint(
           'DESTINATION: not found. keys=${tripData.keys.toList()}',
         );
-        await _showMessage('destination_coords_not_found_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+        await _showMessage('destination_coords_not_found_msg'.tr());
         return;
       }
 
@@ -1579,7 +1604,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
 
       if (!updated) {
-        await _showMessage('trip_status_update_failed_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+        await _showMessage('trip_status_update_failed_msg'.tr());
         return;
       }
 
@@ -1616,13 +1641,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           );
         }
 
-        await _showMessage('trip_completed_success_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+        await _showMessage('trip_completed_success_msg'.tr());
       }
     } catch (e, stackTrace) {
       debugPrint('Error updating trip status: $e');
       debugPrintStack(stackTrace: stackTrace);
 
-      await _showMessage('trip_status_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+      await _showMessage('trip_status_error_msg'.tr());
     } finally {
       _isLocalTripEnding = false;
       if (mounted) {
@@ -1645,7 +1670,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         status == TripStatus.onTrip;
 
     if (!cancellable) {
-      await _showMessage('trip_cancel_not_allowed_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+      await _showMessage('trip_cancel_not_allowed_msg'.tr());
       return;
     }
 
@@ -1661,9 +1686,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final DocumentReference<Map<String, dynamic>> tripRef =
           _firestore.collection('rides').doc(tripId);
 
-      final StreamSubscription<DocumentSnapshot>? oldSubscription =
-          tripRequestStream as StreamSubscription<DocumentSnapshot>?;
-      unawaited(oldSubscription?.cancel());
+      // ✅ قبلاً اینجا tripRequestStream (استریم درخواست‌های جدید) با یک
+      // cast اشتباه کنسل می‌شد؛ هم خطای TypeError می‌داد و هم بعد از لغو
+      // سفر درخواست جدیدی نمی‌آمد. این بخش حذف شد.
 
       unawaited(
         tripRef.update({
@@ -1675,7 +1700,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }).catchError((Object e) {
           debugPrint('Cancel trip server error: $e');
           unawaited(
-            _showMessage('trip_cancel_server_error_msg'.tr()), // 🌐 اصلاح‌شده با کلید ترجمه
+            _showMessage('trip_cancel_server_error_msg'.tr()),
           );
         }),
       );
@@ -1683,7 +1708,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       await _clearRouteAndNavigation();
 
       unawaited(
-        _setDriverStatus(status: 'waiting', isOnline: true).catchError((Object e) {
+        _setDriverStatus(status: 'waiting', isOnline: true)
+            .catchError((Object e) {
           debugPrint('Error resetting driver status after cancel: $e');
         }),
       );
@@ -1695,12 +1721,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         });
       }
 
-      await _showMessage('trip_cancelled_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+      await _showMessage('trip_cancelled_msg'.tr());
     } catch (e, stackTrace) {
       debugPrint('Error cancelling trip: $e');
       debugPrintStack(stackTrace: stackTrace);
 
-      await _showMessage('trip_cancel_error_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+      await _showMessage('trip_cancel_error_msg'.tr());
     } finally {
       _isLocalTripEnding = false;
       if (mounted) {
@@ -1731,7 +1757,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         activeTripStatus = null;
       });
 
-      await _showMessage('trip_cancelled_by_passenger_msg'.tr()); // 🌐 اصلاح‌شده با کلید ترجمه
+      await _showMessage('trip_cancelled_by_passenger_msg'.tr());
     } finally {
       _isHandlingRemoteEnd = false;
     }
@@ -1807,7 +1833,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   if (isDriverAvailable &&
                                       activeTripId != null) {
                                     await _showMessage(
-                                      'cannot_offline_active_trip_msg'.tr(), // 🌐 اصلاح‌شده با کلید ترجمه
+                                      'cannot_offline_active_trip_msg'.tr(),
                                     );
                                     return;
                                   }
@@ -1846,10 +1872,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   } catch (e) {
                                     debugPrint('Status update error: $e');
                                     await _showMessage(
-                                      'driver_status_update_error_msg'.tr(), // 🌐 اصلاح‌شده با کلید ترجمه
+                                      'driver_status_update_error_msg'.tr(),
                                     );
                                   } finally {
-                                    isLoading = false;
+                                    // ✅ با setState تا دکمهٔ صفحه بلافاصله فعال شود
+                                    if (mounted) {
+                                      setState(() {
+                                        isLoading = false;
+                                      });
+                                    } else {
+                                      isLoading = false;
+                                    }
 
                                     if (modalContext.mounted) {
                                       Navigator.pop(modalContext);
@@ -1932,53 +1965,53 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: Stack(
           children: [
             RepaintBoundary(
-  child: !showMap
-      ? ColoredBox(color: AppColors.background)
-      : MapLibreMap(
-    trackCameraPosition: true,
-    initialCameraPosition: _savedCameraPosition ??
-        CameraPosition(
-      target: LatLng(
-        currentPositionOfDriver?.latitude ?? 34.5553,
-        currentPositionOfDriver?.longitude ?? 69.2075,
-      ),
-      zoom: 15,
-    ),
-    styleString: 'assets/map/style.json',
-    rotateGesturesEnabled: false,
-    tiltGesturesEnabled: false,
-    myLocationEnabled: !_isNavArrowVisible,
-    myLocationTrackingMode: MyLocationTrackingMode.none,
-    onMapCreated: _onMapCreated,
-    onStyleLoadedCallback: () async {
-      _isMapStyleReady = true;
-      _isDriverArrowImageAdded = false;
-      _driverNavigationSymbol = null;
-      _navRemainingLine = null;
-      _navTraveledLine = null;
-      _navLastRenderedSegment = -1;
-      _navLastRenderedPoint = null;
+              child: !showMap
+                  ? ColoredBox(color: AppColors.background)
+                  : MapLibreMap(
+                      trackCameraPosition: true,
+                      initialCameraPosition: _savedCameraPosition ??
+                          CameraPosition(
+                            target: LatLng(
+                              currentPositionOfDriver?.latitude ?? 34.5553,
+                              currentPositionOfDriver?.longitude ?? 69.2075,
+                            ),
+                            zoom: 15,
+                          ),
+                      styleString: 'assets/map/style.json',
+                      rotateGesturesEnabled: false,
+                      tiltGesturesEnabled: false,
+                      myLocationEnabled: !_isNavArrowVisible,
+                      myLocationTrackingMode: MyLocationTrackingMode.none,
+                      onMapCreated: _onMapCreated,
+                      onStyleLoadedCallback: () async {
+                        _isMapStyleReady = true;
+                        _isDriverArrowImageAdded = false;
+                        _driverNavigationSymbol = null;
+                        _navRemainingLine = null;
+                        _navTraveledLine = null;
+                        _navLastRenderedSegment = -1;
+                        _navLastRenderedPoint = null;
 
-      await _prepareDriverNavigationArrow();
+                        await _prepareDriverNavigationArrow();
 
-      if (_navRoutePoints.length >= 2) {
-        await _renderNavLines(
-          traveled: <LatLng>[],
-          remaining: _navRoutePoints,
-        );
+                        if (_navRoutePoints.length >= 2) {
+                          await _renderNavLines(
+                            traveled: <LatLng>[],
+                            remaining: _navRoutePoints,
+                          );
 
-        final Position? p = currentPositionOfDriver;
-        if (p != null) {
-          _pendingNavPosition = p;
-          unawaited(_processPendingNavPosition());
-        }
-      } else {
-        // سفر وقتی نقشه نبود شروع شده؛ مسیر از نو کشیده شود
-        unawaited(_resumeActiveTripRoute());
-      }
-    },
-  ),
-),
+                          final Position? p = currentPositionOfDriver;
+                          if (p != null) {
+                            _pendingNavPosition = p;
+                            unawaited(_processPendingNavPosition());
+                          }
+                        } else {
+                          // سفر وقتی نقشه نبود شروع شده؛ مسیر از نو کشیده شود
+                          unawaited(_resumeActiveTripRoute());
+                        }
+                      },
+                    ),
+            ),
             Positioned(
               top: 20,
               right: 16,
