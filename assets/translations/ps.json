@@ -484,5 +484,8 @@
   "earnings_settled": "تصفیه شوي",
   "earnings_recent_trips": "وروستي سفرونه",
   "earnings_no_trips": "تاسو تر اوسه بشپړ شوی سفر نه لرئ",
-  "payment_status_unpaid_short": "نه دي تایید شوي"
+  "payment_status_unpaid_short": "نه دي تایید شوي",
+  "settings_label": "تنظیمات",
+  "gps_disabled_msg": "مهرباني وکړئ د خپل موبایل موقعیت (GPS) فعال کړئ.",
+  "location_permission_denied_msg": "موقعیت ته د لاسرسي اجازه نه ده ورکړل شوې. د موبایل په تنظیماتو کې دا اجازه فعاله کړئ."
 }
