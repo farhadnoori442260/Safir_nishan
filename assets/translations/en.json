@@ -484,5 +484,8 @@
   "earnings_settled": "Settled",
   "earnings_recent_trips": "Recent Trips",
   "earnings_no_trips": "You have no completed trips yet",
-  "payment_status_unpaid_short": "Unconfirmed"
+  "payment_status_unpaid_short": "Unconfirmed",
+  "settings_label": "Settings",
+  "gps_disabled_msg": "Please turn on your phone's location (GPS).",
+  "location_permission_denied_msg": "Location access was denied. Please enable location permission in your phone's settings."
 }
