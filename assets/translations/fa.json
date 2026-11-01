@@ -484,5 +484,8 @@
   "earnings_settled": "تسویه شده",
   "earnings_recent_trips": "آخرین سفرها",
   "earnings_no_trips": "هنوز سفر تمام‌شده‌ای ندارید",
-  "payment_status_unpaid_short": "تایید نشده"
+  "payment_status_unpaid_short": "تایید نشده",
+  "settings_label": "تنظیمات",
+  "gps_disabled_msg": "لطفاً موقعیت مکانی (GPS) گوشی را روشن کنید.",
+  "location_permission_denied_msg": "اجازهٔ دسترسی به موقعیت مکانی داده نشد. از تنظیمات گوشی اجازه را فعال کنید."
 }
