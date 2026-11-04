@@ -65,7 +65,7 @@ dev_dependencies:
 # ───── آیکن برنامه (راننده: سرمه‌ای) ─────
 flutter_launcher_icons:
   android: true
-  ios: true
+  ios: false
   image_path: "assets/icon/ios_appstore_1024.png"
   adaptive_icon_background: "#12304F"
   adaptive_icon_foreground: "assets/icon/android_adaptive_foreground_1024.png"
