@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,28 +13,25 @@ import 'package:safir_drivers/pages/chat_page.dart';
 import 'package:safir_drivers/utils/trip_extras.dart';
 
 String _t(String key, String fallback) {
-  final String v = key.tr();
-  return (v.trim().isEmpty || v == key) ? fallback : v;
+  final String value = key.tr();
+  return value.trim().isEmpty || value == key ? fallback : value;
 }
 
-/// راننده دریافت پول نقد را تایید می‌کند (payment_status: paid).
-/// تسویه‌ی نهایی (settled) با پنل ادمین است.
 Future<bool> _confirmPaymentReceived(String tripId) async {
   try {
-    await FirebaseFirestore.instance.collection('rides').doc(tripId).update(
-      <String, dynamic>{
-        'payment_status': 'paid',
-        'payment_confirmed_at': FieldValue.serverTimestamp(),
-        'payment_confirmed_by': FirebaseAuth.instance.currentUser?.uid ?? '',
-        'updated_at': FieldValue.serverTimestamp(),
-      },
-    );
+    await FirebaseFirestore.instance
+        .collection('rides')
+        .doc(tripId)
+        .update(<String, dynamic>{
+      'payment_status': 'paid',
+      'payment_confirmed_at': FieldValue.serverTimestamp(),
+      'payment_confirmed_by':
+          FirebaseAuth.instance.currentUser?.uid ?? '',
+      'updated_at': FieldValue.serverTimestamp(),
+    });
     return true;
-  } on FirebaseException catch (e) {
-    debugPrint('Confirm payment error: ${e.code} | ${e.message}');
-    return false;
-  } catch (e) {
-    debugPrint('Confirm payment error: $e');
+  } catch (error) {
+    debugPrint('Confirm payment error: $error');
     return false;
   }
 }
@@ -72,36 +70,28 @@ class ActiveTripSheet extends StatelessWidget {
   static const Color _blue = Color(0xFF2563EB);
   static const Color _endTrip = Color(0xFFEA580C);
 
+  String _firstText(List<String> keys, String fallback) {
+    for (final String key in keys) {
+      final String value = tripData[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty && value != 'null') return value;
+    }
+    return fallback;
+  }
+
   String _formatNumber(dynamic value, {required int decimals}) {
     if (value == null) return '---';
-
-    if (value is num) {
-      return value.toDouble().toStringAsFixed(decimals);
-    }
+    if (value is num) return value.toDouble().toStringAsFixed(decimals);
 
     final String raw = value.toString().trim();
-
     if (raw.isEmpty) return '---';
 
-    final String cleaned = raw.replaceAll(',', '');
-    final double? number = double.tryParse(cleaned);
-
+    final double? number = double.tryParse(raw.replaceAll(',', ''));
     return number == null ? raw : number.toStringAsFixed(decimals);
   }
 
-  String _getActionButtonTitle(String currentStatus) {
-    if (currentStatus == TripStatus.accepted) {
-      return 'btn_arrived_pickup'.tr();
-    }
-
-    if (currentStatus == TripStatus.arrived) {
-      return 'btn_start_trip'.tr();
-    }
-
-    if (currentStatus == TripStatus.onTrip) {
-      return 'btn_end_trip'.tr();
-    }
-
+  String _getActionButtonTitle() {
+    if (status == TripStatus.arrived) return 'btn_start_trip'.tr();
+    if (status == TripStatus.onTrip) return 'btn_end_trip'.tr();
     return 'btn_arrived_pickup'.tr();
   }
 
@@ -109,31 +99,21 @@ class ActiveTripSheet extends StatelessWidget {
     if (status == TripStatus.accepted) {
       return 'active_trip_status_accepted'.tr();
     }
-
     if (status == TripStatus.arrived) {
       return 'active_trip_status_arrived'.tr();
     }
-
     if (status == TripStatus.onTrip) {
       return 'active_trip_status_on_trip'.tr();
     }
-
     return 'active_trip_status_active'.tr();
   }
 
   IconData _getStatusIcon() {
+    if (status == TripStatus.arrived) return Icons.location_on_rounded;
+    if (status == TripStatus.onTrip) return Icons.route_rounded;
     if (status == TripStatus.accepted) {
       return Icons.directions_car_filled_rounded;
     }
-
-    if (status == TripStatus.arrived) {
-      return Icons.location_on_rounded;
-    }
-
-    if (status == TripStatus.onTrip) {
-      return Icons.route_rounded;
-    }
-
     return Icons.local_taxi_rounded;
   }
 
@@ -145,108 +125,105 @@ class ActiveTripSheet extends StatelessWidget {
     } else if (status == TripStatus.arrived) {
       onUpdateTripStatus(tripId, TripStatus.onTrip);
     } else if (status == TripStatus.onTrip) {
-      // پایان سفر برگشت‌ناپذیر است؛ قبلاً با یک لمس تمام می‌شد
-      final bool shouldEnd = await _confirmEndTrip(context);
-      if (shouldEnd) {
+      if (await _confirmEndTrip(context)) {
         onUpdateTripStatus(tripId, TripStatus.completed);
       }
     }
   }
 
-  /// قبل از پایان سفر تایید می‌گیرد؛ اگر مسافر «پرداخت کردم» زده باشد،
-  /// همان‌جا می‌شود دریافت پول را هم تایید کرد (بعد از پایان سفر دیگر ممکن نیست).
   Future<bool> _confirmEndTrip(BuildContext context) async {
     String? paymentStatus;
     dynamic amount;
 
     try {
-      final DocumentSnapshot<Map<String, dynamic>> snap =
-          await FirebaseFirestore.instance
-              .collection('rides')
-              .doc(tripId)
-              .get();
-      paymentStatus = snap.data()?['payment_status']?.toString();
-      amount = snap.data()?['payment_requested_amount'];
-    } catch (_) {
-      // بدون اطلاعات پرداخت هم می‌شود سفر را تمام کرد
+      final snapshot = await FirebaseFirestore.instance
+          .collection('rides')
+          .doc(tripId)
+          .get();
+
+      paymentStatus = snapshot.data()?['payment_status']?.toString();
+      amount = snapshot.data()?['payment_requested_amount'];
+    } catch (error) {
+      debugPrint('Read payment before ending trip: $error');
     }
 
     if (!context.mounted) return false;
 
-    final bool awaiting = paymentStatus == 'awaiting_driver_confirmation';
+    final bool awaiting =
+        paymentStatus == 'awaiting_driver_confirmation';
 
     final String? choice = await showDialog<String>(
       context: context,
-      builder: (BuildContext ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+      builder: (BuildContext ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          _t('end_trip_confirm_title', 'پایان سفر'),
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: _text,
           ),
-          title: Text(
-            _t('end_trip_confirm_title', 'پایان سفر'),
-            style: const TextStyle(fontWeight: FontWeight.w800, color: _text),
+        ),
+        content: Text(
+          awaiting
+              ? '${_t('end_trip_payment_pending', 'مسافر اعلام کرده کرایه را پرداخت کرده است')}'
+                  '${amount != null ? ' ($amount)' : ''}. '
+                  '${_t('end_trip_payment_question', 'دریافت پول را تایید می‌کنید؟')}'
+              : _t(
+                  'end_trip_confirm_msg',
+                  'آیا سفر به مقصد رسیده و می‌خواهید آن را تمام کنید؟',
+                ),
+          style: const TextStyle(color: _mutedText, height: 1.5),
+        ),
+        actionsOverflowDirection: VerticalDirection.down,
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'cancel'),
+            child: Text(_t('cancel', 'انصراف')),
           ),
-          content: Text(
-            awaiting
-                ? '${_t('end_trip_payment_pending', 'مسافر اعلام کرده کرایه را پرداخت کرده است')}'
-                    '${amount != null ? ' ($amount)' : ''}. '
-                    '${_t('end_trip_payment_question', 'دریافت پول را تایید می‌کنید؟')}'
-                : _t('end_trip_confirm_msg',
-                    'آیا سفر به مقصد رسیده و می‌خواهید آن را تمام کنید؟'),
-            style: const TextStyle(color: _mutedText, height: 1.5),
-          ),
-          actionsOverflowDirection: VerticalDirection.down,
-          actions: <Widget>[
+          if (awaiting)
             TextButton(
-              onPressed: () => Navigator.pop(ctx, 'cancel'),
+              onPressed: () => Navigator.pop(ctx, 'end'),
               child: Text(
-                _t('cancel', 'انصراف'),
-                style: const TextStyle(color: _mutedText),
+                _t('end_trip_without_confirm', 'پایان بدون تایید پول'),
+                style: const TextStyle(color: _danger),
               ),
             ),
-            if (awaiting)
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, 'end'),
-                child: Text(
-                  _t('end_trip_without_confirm', 'پایان بدون تایید پول'),
-                  style: const TextStyle(color: _danger),
-                ),
-              ),
-            ElevatedButton(
-              onPressed: () =>
-                  Navigator.pop(ctx, awaiting ? 'pay_and_end' : 'end'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: awaiting ? _primary : _endTrip,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                awaiting
-                    ? _t('end_trip_confirm_and_end', 'تایید پول و پایان سفر')
-                    : _t('btn_end_trip', 'پایان سفر'),
-              ),
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.pop(ctx, awaiting ? 'pay_and_end' : 'end'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: awaiting ? _primary : _endTrip,
+              foregroundColor: Colors.white,
             ),
-          ],
-        );
-      },
+            child: Text(
+              awaiting
+                  ? _t('end_trip_confirm_and_end', 'تایید پول و پایان سفر')
+                  : _t('btn_end_trip', 'پایان سفر'),
+            ),
+          ),
+        ],
+      ),
     );
 
     if (choice == 'pay_and_end') {
       final bool ok = await _confirmPaymentReceived(tripId);
 
-      if (!ok && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: _danger,
-            content: Text(
-              _t('payment_confirm_failed',
-                  'تایید پرداخت ثبت نشد. دوباره تلاش کنید.'),
+      if (!ok) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: _danger,
+              content: Text(
+                _t(
+                  'payment_confirm_failed',
+                  'تایید پرداخت ثبت نشد. دوباره تلاش کنید.',
+                ),
+              ),
             ),
-          ),
-        );
+          );
+        }
         return false;
       }
       return true;
@@ -257,29 +234,54 @@ class ActiveTripSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String passengerName = tripData['passenger_name']?.toString() ??
-        tripData['userName']?.toString() ??
-        tripData['full_name']?.toString() ??
-        'passenger'.tr();
+    final String passengerName = _firstText(
+      <String>['passenger_name', 'userName', 'full_name'],
+      _t('passenger', 'مسافر'),
+    );
 
-    final String passengerPhone = tripData['passenger_phone']?.toString() ??
-        tripData['userPhone']?.toString() ??
-        tripData['phone']?.toString() ??
-        '';
+    final String passengerPhone = _firstText(
+      <String>['passenger_phone', 'userPhone', 'phone'],
+      '',
+    );
 
+    return _ActiveTripChatHost(
+      tripId: tripId,
+      status: status,
+      passengerName: passengerName,
+      passengerPhone: passengerPhone,
+      builder: (BuildContext context, VoidCallback openChat) {
+        return _buildTripContent(
+          context,
+          passengerName,
+          passengerPhone,
+          openChat,
+        );
+      },
+    );
+  }
+
+  Widget _buildTripContent(
+    BuildContext context,
+    String passengerName,
+    String passengerPhone,
+    VoidCallback openChat,
+  ) {
     final String passengerRating =
         '${tripData['userRating'] ?? tripData['rating'] ?? '4.8'}';
 
-    final String originAddress = tripData['origin_address']?.toString() ??
-        tripData['originAddress']?.toString() ??
-        tripData['pickup_address']?.toString() ??
-        '-';
+    final String originAddress = _firstText(
+      <String>['origin_address', 'originAddress', 'pickup_address'],
+      '-',
+    );
 
-    final String destinationAddress =
-        tripData['destination_address']?.toString() ??
-            tripData['destinationAddress']?.toString() ??
-            tripData['dropoff_address']?.toString() ??
-            '-';
+    final String destinationAddress = _firstText(
+      <String>[
+        'destination_address',
+        'destinationAddress',
+        'dropoff_address',
+      ],
+      '-',
+    );
 
     final String duration = _formatNumber(
       tripData['trip_duration'] ??
@@ -344,37 +346,29 @@ class ActiveTripSheet extends StatelessWidget {
                   _buildStatusHeader(),
                   const SizedBox(height: 12),
                   _buildPassengerCard(
-                    passengerName: passengerName,
-                    passengerPhone: passengerPhone,
-                    passengerRating: passengerRating,
+                    passengerName,
+                    passengerPhone,
+                    passengerRating,
                   ),
                   const SizedBox(height: 12),
-                  _buildAddressCard(
-                    originAddress: originAddress,
-                    destinationAddress: destinationAddress,
-                  ),
+                  _buildAddressCard(originAddress, destinationAddress),
                   const SizedBox(height: 12),
                   if (extras.hasContent) ...<Widget>[
                     _buildExtrasCard(extras),
                     const SizedBox(height: 12),
                   ],
-                  _buildTripInformation(
-                    duration: duration,
-                    distance: distance,
-                    price: price,
-                  ),
+                  _buildTripInformation(duration, distance, price),
                   const SizedBox(height: 12),
-                  _PaymentConfirmCard(tripId: tripId, fallbackPrice: price),
+                  _PaymentConfirmCard(
+                    tripId: tripId,
+                    fallbackPrice: price,
+                  ),
                   const SizedBox(height: 12),
                   _buildNavigationNotice(),
                   const SizedBox(height: 16),
                   _buildMainActionButton(context),
                   const SizedBox(height: 10),
-                  _buildSecondaryActions(
-                    context: context,
-                    passengerName: passengerName,
-                    passengerPhone: passengerPhone,
-                  ),
+                  _buildSecondaryActions(openChat),
                   const SizedBox(height: 10),
                   _buildNavigationButton(context),
                 ],
@@ -439,7 +433,6 @@ class ActiveTripSheet extends StatelessWidget {
                   style: const TextStyle(
                     color: Color(0xFFD1FAE5),
                     fontSize: 11,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -455,11 +448,11 @@ class ActiveTripSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildPassengerCard({
-    required String passengerName,
-    required String passengerPhone,
-    required String passengerRating,
-  }) {
+  Widget _buildPassengerCard(
+    String name,
+    String phone,
+    String rating,
+  ) {
     return _cardContainer(
       child: Row(
         children: <Widget>[
@@ -482,7 +475,7 @@ class ActiveTripSheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  passengerName,
+                  name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -501,7 +494,7 @@ class ActiveTripSheet extends StatelessWidget {
                     ),
                     const SizedBox(width: 3),
                     Text(
-                      passengerRating,
+                      rating,
                       style: const TextStyle(
                         color: _text,
                         fontSize: 12,
@@ -511,9 +504,9 @@ class ActiveTripSheet extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        passengerPhone.isEmpty
+                        phone.isEmpty
                             ? 'active_trip_phone_unavailable'.tr()
-                            : passengerPhone,
+                            : phone,
                         textDirection: ui.TextDirection.ltr,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -530,7 +523,7 @@ class ActiveTripSheet extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _buildCallButton(
-            phone: passengerPhone,
+            phone: phone,
             label: 'active_trip_call_passenger'.tr(),
           ),
         ],
@@ -549,15 +542,16 @@ class ActiveTripSheet extends StatelessWidget {
       label: label,
       button: true,
       child: Material(
-        color: hasPhone ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+        color: hasPhone
+            ? const Color(0xFFDCFCE7)
+            : const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
           onTap: hasPhone ? () => onMakePhoneCall(phone.trim()) : null,
-          child: Container(
+          child: SizedBox(
             width: size,
             height: size,
-            alignment: Alignment.center,
             child: Icon(
               Icons.phone_in_talk_rounded,
               color: hasPhone
@@ -571,46 +565,27 @@ class ActiveTripSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildAddressCard({
-    required String originAddress,
-    required String destinationAddress,
-  }) {
+  Widget _buildAddressCard(String origin, String destination) {
     return _cardContainer(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Column(
             children: <Widget>[
-              Container(
-                width: 18,
-                height: 18,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFDCFCE7),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.circle,
-                  size: 9,
-                  color: Color(0xFF16A34A),
-                ),
+              const Icon(
+                Icons.circle,
+                size: 18,
+                color: Color(0xFF16A34A),
               ),
               Container(
                 width: 2,
                 height: 38,
                 color: const Color(0xFFCBD5E1),
               ),
-              Container(
-                width: 18,
-                height: 18,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFEE2E2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.location_on_rounded,
-                  size: 13,
-                  color: _danger,
-                ),
+              const Icon(
+                Icons.location_on_rounded,
+                size: 18,
+                color: _danger,
               ),
             ],
           ),
@@ -620,15 +595,15 @@ class ActiveTripSheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 _buildAddressText(
-                  label: 'origin_label'.tr(),
-                  value: originAddress,
-                  labelColor: const Color(0xFF15803D),
+                  'origin_label'.tr(),
+                  origin,
+                  const Color(0xFF15803D),
                 ),
                 const SizedBox(height: 16),
                 _buildAddressText(
-                  label: 'destination_label'.tr(),
-                  value: destinationAddress,
-                  labelColor: _danger,
+                  'destination_label'.tr(),
+                  destination,
+                  _danger,
                 ),
               ],
             ),
@@ -638,11 +613,11 @@ class ActiveTripSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildAddressText({
-    required String label,
-    required String value,
-    required Color labelColor,
-  }) {
+  Widget _buildAddressText(
+    String label,
+    String value,
+    Color color,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -650,7 +625,7 @@ class ActiveTripSheet extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: labelColor,
+            color: color,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -708,11 +683,37 @@ class ActiveTripSheet extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: extras.items
-                  .map(
-                    (TripExtraItem item) => _buildExtraChip(item),
-                  )
-                  .toList(),
+              children: extras.items.map((TripExtraItem item) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(item.icon, size: 15, color: _primary),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          item.text,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _text,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
           ],
           for (final TripParty party in extras.parties) ...<Widget>[
@@ -726,38 +727,7 @@ class ActiveTripSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildExtraChip(TripExtraItem item) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(item.icon, size: 15, color: _primary),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              item.text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: _text,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPartyRow(TripParty party) {
-    final bool isSender = party.isSender;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -770,7 +740,9 @@ class ActiveTripSheet extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
-                  color: isSender ? const Color(0xFF15803D) : _danger,
+                  color: party.isSender
+                      ? const Color(0xFF15803D)
+                      : _danger,
                 ),
               ),
               const SizedBox(height: 3),
@@ -786,8 +758,7 @@ class ActiveTripSheet extends StatelessWidget {
                   color: _text,
                 ),
               ),
-              if (party.phone.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 2),
+              if (party.phone.isNotEmpty)
                 Text(
                   party.phone,
                   textDirection: ui.TextDirection.ltr,
@@ -796,9 +767,7 @@ class ActiveTripSheet extends StatelessWidget {
                     color: _mutedText,
                   ),
                 ),
-              ],
-              if (party.detail.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 3),
+              if (party.detail.isNotEmpty)
                 Text(
                   party.detail,
                   style: const TextStyle(
@@ -806,14 +775,10 @@ class ActiveTripSheet extends StatelessWidget {
                     color: _mutedText,
                   ),
                 ),
-              ],
-              if (party.note.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 3),
+              if (party.note.isNotEmpty)
                 Text(
                   'active_trip_note_prefix'.tr(
-                    namedArgs: <String, String>{
-                      'note': party.note,
-                    },
+                    namedArgs: <String, String>{'note': party.note},
                   ),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
@@ -823,7 +788,6 @@ class ActiveTripSheet extends StatelessWidget {
                     color: _mutedText,
                   ),
                 ),
-              ],
             ],
           ),
         ),
@@ -831,9 +795,7 @@ class ActiveTripSheet extends StatelessWidget {
         _buildCallButton(
           phone: party.phone,
           label: 'active_trip_call_party'.tr(
-            namedArgs: <String, String>{
-              'role': party.role,
-            },
+            namedArgs: <String, String>{'role': party.role},
           ),
           size: 42,
         ),
@@ -841,71 +803,65 @@ class ActiveTripSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildTripInformation({
-    required String duration,
-    required String distance,
-    required String price,
-  }) {
+  Widget _buildTripInformation(
+    String duration,
+    String distance,
+    String price,
+  ) {
     return Row(
       children: <Widget>[
         Expanded(
           child: _buildInfoCard(
-            icon: Icons.schedule_rounded,
-            label: 'active_trip_duration_label'.tr(),
-            value: duration == '---'
+            Icons.schedule_rounded,
+            'active_trip_duration_label'.tr(),
+            duration == '---'
                 ? '---'
                 : 'active_trip_minutes'.tr(
-                    namedArgs: <String, String>{
-                      'value': duration,
-                    },
+                    namedArgs: <String, String>{'value': duration},
                   ),
-            color: const Color(0xFFF97316),
-            backgroundColor: const Color(0xFFFFEDD5),
+            const Color(0xFFF97316),
+            const Color(0xFFFFEDD5),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _buildInfoCard(
-            icon: Icons.route_rounded,
-            label: 'active_trip_distance_label'.tr(),
-            value: distance == '---'
+            Icons.route_rounded,
+            'active_trip_distance_label'.tr(),
+            distance == '---'
                 ? '---'
                 : 'active_trip_kilometers'.tr(
-                    namedArgs: <String, String>{
-                      'value': distance,
-                    },
+                    namedArgs: <String, String>{'value': distance},
                   ),
-            color: _blue,
-            backgroundColor: const Color(0xFFDBEAFE),
+            _blue,
+            const Color(0xFFDBEAFE),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _buildInfoCard(
-            icon: Icons.account_balance_wallet_rounded,
-            label: 'active_trip_fare_label'.tr(),
-            value: price == '---'
+            Icons.account_balance_wallet_rounded,
+            'active_trip_fare_label'.tr(),
+            price == '---'
                 ? '---'
                 : 'active_trip_afghanis'.tr(
-                    namedArgs: <String, String>{
-                      'value': price,
-                    },
+                    namedArgs: <String, String>{'value': price},
                   ),
-            color: _primary,
-            backgroundColor: const Color(0xFFCCFBF1),
+            _primary,
+            const Color(0xFFCCFBF1),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildInfoCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-    required Color backgroundColor,
-  }) {
+  Widget _buildInfoCard(
+    IconData icon,
+    String label,
+    String value,
+    Color color,
+    Color backgroundColor,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
       decoration: BoxDecoration(
@@ -942,7 +898,6 @@ class ActiveTripSheet extends StatelessWidget {
             style: const TextStyle(
               color: _mutedText,
               fontSize: 11,
-              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -984,20 +939,22 @@ class ActiveTripSheet extends StatelessWidget {
   }
 
   Widget _buildMainActionButton(BuildContext context) {
-    final Color buttonColor = status == TripStatus.onTrip ? _endTrip : _primary;
+    final Color color = status == TripStatus.onTrip ? _endTrip : _primary;
 
     return SizedBox(
       width: double.infinity,
       height: 54,
       child: ElevatedButton.icon(
-        onPressed: isTripActionLoading ? null : () => _handleTripAction(context),
+        onPressed: isTripActionLoading
+            ? null
+            : () => _handleTripAction(context),
         icon: isTripActionLoading
             ? const SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.4,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  color: Colors.white,
                 ),
               )
             : Icon(
@@ -1007,7 +964,7 @@ class ActiveTripSheet extends StatelessWidget {
                 color: Colors.white,
               ),
         label: Text(
-          _getActionButtonTitle(status),
+          _getActionButtonTitle(),
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.bold,
@@ -1015,8 +972,8 @@ class ActiveTripSheet extends StatelessWidget {
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: buttonColor,
-          disabledBackgroundColor: buttonColor.withOpacity(0.50),
+          backgroundColor: color,
+          disabledBackgroundColor: color.withOpacity(0.5),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -1026,11 +983,7 @@ class ActiveTripSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildSecondaryActions({
-    required BuildContext context,
-    required String passengerName,
-    required String passengerPhone,
-  }) {
+  Widget _buildSecondaryActions(VoidCallback openChat) {
     final bool canCancel =
         status != TripStatus.onTrip && status != TripStatus.completed;
 
@@ -1042,20 +995,7 @@ class ActiveTripSheet extends StatelessWidget {
             label: 'btn_sms_chat'.tr(),
             color: _blue,
             backgroundColor: const Color(0xFFEFF6FF),
-            onPressed: isTripActionLoading
-                ? null
-                : () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatPage(
-                          tripId: tripId,
-                          passengerName: passengerName,
-                          passengerPhone: passengerPhone,
-                        ),
-                      ),
-                    );
-                  },
+            onPressed: isTripActionLoading ? null : openChat,
           ),
         ),
         if (canCancel) ...<Widget>[
@@ -1109,7 +1049,7 @@ class ActiveTripSheet extends StatelessWidget {
   }
 
   Widget _buildNavigationButton(BuildContext context) {
-    final bool isGoingToPickup =
+    final bool pickup =
         status == TripStatus.accepted || status == TripStatus.arrived;
 
     return SizedBox(
@@ -1119,9 +1059,9 @@ class ActiveTripSheet extends StatelessWidget {
         onPressed: isTripActionLoading
             ? null
             : () {
-                final LatLng? targetPosition = getNavigationTarget();
+                final LatLng? target = getNavigationTarget();
 
-                if (targetPosition == null) {
+                if (target == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -1132,10 +1072,7 @@ class ActiveTripSheet extends StatelessWidget {
                   return;
                 }
 
-                onOpenExternalMap(
-                  targetPosition.latitude,
-                  targetPosition.longitude,
-                );
+                onOpenExternalMap(target.latitude, target.longitude);
               },
         icon: const Icon(
           Icons.navigation_rounded,
@@ -1143,18 +1080,18 @@ class ActiveTripSheet extends StatelessWidget {
           size: 20,
         ),
         label: Text(
-          isGoingToPickup
+          pickup
               ? 'btn_external_navigation_origin'.tr()
               : 'btn_external_navigation_destination'.tr(),
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
           ),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: _blue,
-          disabledBackgroundColor: _blue.withOpacity(0.50),
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: _blue.withOpacity(0.5),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -1185,8 +1122,302 @@ class ActiveTripSheet extends StatelessWidget {
   }
 }
 
-/// کارت پرداخت نقدی: وضعیت را زنده از سند سفر می‌خواند و بعد از درخواست مسافر،
-/// دکمه‌ی «تایید دریافت پول» را نشان می‌دهد.
+// دریافت پیام جدید و بازکردن چت شناور در صفحهٔ سفر.
+class _ActiveTripChatHost extends StatefulWidget {
+  const _ActiveTripChatHost({
+    required this.tripId,
+    required this.status,
+    required this.passengerName,
+    required this.passengerPhone,
+    required this.builder,
+  });
+
+  final String tripId;
+  final String status;
+  final String passengerName;
+  final String passengerPhone;
+  final Widget Function(BuildContext, VoidCallback) builder;
+
+  @override
+  State<_ActiveTripChatHost> createState() => _ActiveTripChatHostState();
+}
+
+class _ActiveTripChatHostState extends State<_ActiveTripChatHost>
+    with WidgetsBindingObserver {
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
+
+  final Set<String> _knownIds = <String>{};
+
+  bool _ready = false;
+  bool _scheduled = false;
+  int _generation = 0;
+
+  DialogRoute<void>? _chatRoute;
+
+  bool get _isActive {
+    return widget.status == TripStatus.accepted ||
+        widget.status == TripStatus.arrived ||
+        widget.status == TripStatus.onTrip;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _listen();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ActiveTripChatHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.tripId != widget.tripId ||
+        oldWidget.status != widget.status) {
+      if (oldWidget.tripId != widget.tripId || !_isActive) {
+        _closeChatLater();
+      }
+      _listen();
+    }
+  }
+
+  void _listen() {
+    _subscription?.cancel();
+    _subscription = null;
+
+    final int generation = ++_generation;
+    _knownIds.clear();
+    _ready = false;
+    _scheduled = false;
+
+    if (!_isActive || widget.tripId.trim().isEmpty) return;
+
+    _subscription = FirebaseFirestore.instance
+        .collection('rides')
+        .doc(widget.tripId)
+        .collection('chats')
+        .snapshots(includeMetadataChanges: true)
+        .listen(
+      (QuerySnapshot<Map<String, dynamic>> snapshot) {
+        if (!mounted || generation != _generation) return;
+
+        // پاسخ اولیه شامل پیام‌های قبلی است.
+        if (!_ready) {
+          for (final document in snapshot.docs) {
+            _knownIds.add(document.id);
+          }
+          if (!snapshot.metadata.isFromCache) {
+            _ready = true;
+          }
+          return;
+        }
+
+        final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+        if (uid.isEmpty) return;
+
+        bool incoming = false;
+
+        for (final document in snapshot.docs) {
+          if (!_knownIds.add(document.id)) continue;
+
+          final Map<String, dynamic> data = document.data();
+
+          final String sender =
+              data['senderId']?.toString().trim() ?? '';
+          final String type =
+              data['senderType']?.toString().trim().toLowerCase() ?? '';
+          final String text =
+              data['message']?.toString().trim() ?? '';
+
+          if (text.isEmpty ||
+              sender.isEmpty ||
+              sender == uid ||
+              type == 'driver' ||
+              document.metadata.hasPendingWrites) {
+            continue;
+          }
+
+          incoming = true;
+        }
+
+        if (incoming) _scheduleOpen(generation);
+      },
+      onError: (Object error) {
+        debugPrint('Active trip chat listener error: $error');
+      },
+    );
+  }
+
+  void _scheduleOpen(int generation) {
+    if (_scheduled ||
+        _chatRoute != null ||
+        WidgetsBinding.instance.lifecycleState !=
+            AppLifecycleState.resumed) {
+      return;
+    }
+
+    _scheduled = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || generation != _generation) return;
+
+      _scheduled = false;
+
+      if (WidgetsBinding.instance.lifecycleState ==
+          AppLifecycleState.resumed) {
+        unawaited(_openChat());
+      }
+    });
+
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  Future<void> _openChat() async {
+    if (!mounted ||
+        !_isActive ||
+        _chatRoute != null ||
+        widget.tripId.trim().isEmpty) {
+      return;
+    }
+
+    final String tripId = widget.tripId;
+    final String name = widget.passengerName;
+    final String phone = widget.passengerPhone;
+
+    final NavigatorState navigator =
+        Navigator.of(context, rootNavigator: true);
+
+    final DialogRoute<void> route = DialogRoute<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 20,
+          ),
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final double preferredHeight =
+                  MediaQuery.sizeOf(context).height * 0.78;
+
+              final double height =
+                  constraints.maxHeight < preferredHeight
+                      ? constraints.maxHeight
+                      : preferredHeight;
+
+              // خود Dialog فضای کیبورد را حساب می‌کند؛
+              // ChatPage نباید دوباره همان فاصله را اضافه کند.
+              return SizedBox(
+                width: 520,
+                height: height,
+                child: Column(
+                  children: <Widget>[
+                    Container(
+                      height: 48,
+                      color: const Color(0xFF12304F),
+                      padding: const EdgeInsetsDirectional.only(
+                        start: 14,
+                        end: 4,
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              _t('chat', 'گفتگو'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: _t('close', 'بستن'),
+                            onPressed: () {
+                              Navigator.of(dialogContext).pop();
+                            },
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: MediaQuery(
+                        data: MediaQuery.of(context).copyWith(
+                          viewInsets: EdgeInsets.zero,
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: ChatPage(
+                          tripId: tripId,
+                          passengerName: name,
+                          passengerPhone: phone,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    _chatRoute = route;
+
+    try {
+      await navigator.push<void>(route);
+    } catch (error) {
+      debugPrint('Open trip chat error: $error');
+    } finally {
+      if (identical(_chatRoute, route)) {
+        _chatRoute = null;
+      }
+    }
+  }
+
+  void _closeChatLater() {
+    final DialogRoute<void>? route = _chatRoute;
+    _chatRoute = null;
+
+    if (route == null) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final NavigatorState? navigator = route.navigator;
+      if (navigator != null && navigator.mounted && route.isActive) {
+        navigator.removeRoute(route);
+      }
+    });
+
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  @override
+  void dispose() {
+    ++_generation;
+    _subscription?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _closeChatLater();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.builder(
+      context,
+      () => unawaited(_openChat()),
+    );
+  }
+}
+
+// کارت تایید پرداخت نقدی.
 class _PaymentConfirmCard extends StatefulWidget {
   const _PaymentConfirmCard({
     required this.tripId,
@@ -1231,22 +1462,17 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text(
-                _t('cancel', 'انصراف'),
-                style: const TextStyle(color: ActiveTripSheet._mutedText),
-              ),
+              child: Text(_t('cancel', 'انصراف')),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: ActiveTripSheet._primary,
                 foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
               ),
-              child: Text(_t('payment_confirm_yes', 'بله، دریافت کردم')),
+              child: Text(
+                _t('payment_confirm_yes', 'بله، دریافت کردم'),
+              ),
             ),
           ],
         );
@@ -1265,12 +1491,15 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: ok ? const Color(0xFF16A34A) : ActiveTripSheet._danger,
+        backgroundColor:
+            ok ? const Color(0xFF16A34A) : ActiveTripSheet._danger,
         content: Text(
           ok
               ? _t('payment_confirmed_ok', 'دریافت پول تایید شد.')
-              : _t('payment_confirm_failed',
-                  'تایید پرداخت ثبت نشد. دوباره تلاش کنید.'),
+              : _t(
+                  'payment_confirm_failed',
+                  'تایید پرداخت ثبت نشد. دوباره تلاش کنید.',
+                ),
         ),
       ),
     );
@@ -1285,27 +1514,34 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
           .collection('rides')
           .doc(widget.tripId)
           .snapshots(),
-      builder: (BuildContext context,
-          AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snapshot) {
+      builder: (
+        BuildContext context,
+        AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snapshot,
+      ) {
         final Map<String, dynamic> data =
             snapshot.data?.data() ?? <String, dynamic>{};
 
-        final String status = data['payment_status']?.toString() ?? 'unpaid';
-        final dynamic requested = data['payment_requested_amount'];
-        final String amountText =
-            '${requested ?? widget.fallbackPrice} ${_t('currency_afg', 'افغانی')}';
+        final String status =
+            data['payment_status']?.toString() ?? 'unpaid';
 
-        final bool awaiting = status == 'awaiting_driver_confirmation';
+        final dynamic requested = data['payment_requested_amount'];
+
+        final String amountText =
+            '${requested ?? widget.fallbackPrice} '
+            '${_t('currency_afg', 'افغانی')}';
+
+        final bool awaiting =
+            status == 'awaiting_driver_confirmation';
         final bool paid = status == 'paid';
         final bool settled = status == 'settled';
 
-        final Color color = (paid || settled)
+        final Color color = paid || settled
             ? const Color(0xFF16A34A)
             : awaiting
                 ? const Color(0xFFD97706)
                 : ActiveTripSheet._mutedText;
 
-        final IconData icon = (paid || settled)
+        final IconData icon = paid || settled
             ? Icons.check_circle_rounded
             : awaiting
                 ? Icons.payments_rounded
@@ -1316,10 +1552,14 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
             : paid
                 ? _t('payment_status_paid', 'دریافت پول تایید شد')
                 : awaiting
-                    ? _t('payment_status_awaiting',
-                        'مسافر پرداخت را اعلام کرد')
-                    : _t('payment_status_unpaid',
-                        'منتظر پرداخت نقدی مسافر');
+                    ? _t(
+                        'payment_status_awaiting',
+                        'مسافر پرداخت را اعلام کرد',
+                      )
+                    : _t(
+                        'payment_status_unpaid',
+                        'منتظر پرداخت نقدی مسافر',
+                      );
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -1328,7 +1568,9 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
           decoration: BoxDecoration(
             color: color.withOpacity(awaiting ? 0.10 : 0.07),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withOpacity(awaiting ? 0.55 : 0.28)),
+            border: Border.all(
+              color: color.withOpacity(awaiting ? 0.55 : 0.28),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1347,12 +1589,15 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
                       ),
                     ),
                   ),
-                  Text(
-                    amountText,
-                    style: const TextStyle(
-                      color: ActiveTripSheet._text,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                  Flexible(
+                    child: Text(
+                      amountText,
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        color: ActiveTripSheet._text,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -1360,8 +1605,10 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
               if (awaiting) ...<Widget>[
                 const SizedBox(height: 6),
                 Text(
-                  _t('payment_awaiting_hint',
-                      'بعد از دریافت پول نقد، تایید کنید تا پرداخت ثبت و برای تسویه ارسال شود.'),
+                  _t(
+                    'payment_awaiting_hint',
+                    'بعد از دریافت پول نقد، تایید کنید تا پرداخت ثبت و برای تسویه ارسال شود.',
+                  ),
                   style: const TextStyle(
                     color: ActiveTripSheet._mutedText,
                     fontSize: 12,
@@ -1373,7 +1620,9 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
                   width: double.infinity,
                   height: 46,
                   child: ElevatedButton.icon(
-                    onPressed: _busy ? null : () => _onConfirm(amountText),
+                    onPressed: _busy
+                        ? null
+                        : () => _onConfirm(amountText),
                     icon: _busy
                         ? const SizedBox(
                             width: 18,
