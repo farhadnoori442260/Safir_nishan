@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    
-    <item android:drawable="@android:color/white" />
 
-    </layer-list>
+    <!-- رنگ زمینهٔ اپ (مسافر: سبز | راننده: سرمه‌ای)
+         از values/ic_launcher_background.xml می‌آید -->
+    <item android:drawable="@color/ic_launcher_background" />
+
+</layer-list>
