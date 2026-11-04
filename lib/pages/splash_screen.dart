@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:safir_drivers/pages/auth/register_screen.dart';
 import 'package:safir_drivers/pages/dashboard.dart';
 import 'package:safir_drivers/providers/authentication_provider.dart';
-import 'package:safir_drivers/utils/app_colors.dart';
 import 'package:safir_drivers/widgets/blocked_screen.dart';
+import 'package:safir_drivers/widgets/safir_splash_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,10 +19,11 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
   bool _isLoading = true;
   bool _hasError = false;
+  bool _animationDone = false; // انیمیشن لوگو تمام شده؟
   Widget? _targetScreen;
 
-  // رنگ سبز سفارشی
-  static const Color _brandGreen = Color(0xFF1B7A57);
+  // رنگ اپ راننده (با آیکن و اسپلش بومی یکی است)
+  static const Color _brandColor = Color(0xFF12304F);
 
   @override
   void initState() {
@@ -30,11 +31,19 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkAuthAndNavigation();
   }
 
+  String _tr(String key, String fallback) {
+    final String v = key.tr();
+    return (v.trim().isEmpty || v == key) ? fallback : v;
+  }
+
   Future<void> _checkAuthAndNavigation() async {
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _hasError = false;
+        _targetScreen = null;
+      });
+    }
 
     try {
       final User? user = await FirebaseAuth.instance
@@ -114,7 +123,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     if (_hasError) {
       return Scaffold(
-        backgroundColor: _brandGreen,
+        backgroundColor: _brandColor,
         body: SafeArea(
           child: Stack(
             children: [
@@ -122,16 +131,16 @@ class _SplashScreenState extends State<SplashScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Image.asset(
-                      'assets/images/splash.png',
-                      width: 160,
-                      fit: BoxFit.contain,
+                    const SafirLogoMark(
+                      size: 140,
+                      backgroundColor: _brandColor,
                     ),
                     const SizedBox(height: 24),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 40.0),
                       child: Text(
-                        'network_error_msg'.tr(),
+                        _tr('network_error_msg',
+                            'مشکلی در برقراری ارتباط پیش آمده است.'),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 16,
@@ -160,11 +169,11 @@ class _SplashScreenState extends State<SplashScreen> {
                         ),
                       ),
                       child: Text(
-                        'retry'.tr(),
+                        _tr('retry', 'تلاش دوباره'),
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: _brandGreen,
+                          color: _brandColor,
                         ),
                       ),
                     ),
@@ -177,29 +186,40 @@ class _SplashScreenState extends State<SplashScreen> {
       );
     }
 
-    if (_isLoading || _targetScreen == null) {
-      return Scaffold(
-        backgroundColor: _brandGreen,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // لوگوی اصلی
-              Image.asset(
-                'assets/images/splash.png',
-                width: 160,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 20),
-              // انیمیشن ۳ نقطه مشابه تصویر نمونه
-              const _ThreeDotsLoading(),
-            ],
-          ),
-        ),
-      );
+    // انیمیشن تمام شده و مقصد مشخص است → برو
+    if (_animationDone && _targetScreen != null) {
+      return _targetScreen!;
     }
 
-    return _targetScreen!;
+    // اگر انیمیشن تمام شد ولی بررسی لاگین هنوز طول می‌کشد، لودینگ نشان بده
+    final bool waiting = _animationDone && _targetScreen == null && _isLoading;
+
+    return Scaffold(
+      backgroundColor: _brandColor,
+      body: Stack(
+        children: [
+          Center(
+            child: SafirLogoAnimation(
+              key: const ValueKey('safir_driver_logo_animation'),
+              backgroundColor: _brandColor,
+              title: 'Safir',
+              subtitle: 'Driver',
+              onCompleted: () {
+                if (!mounted) return;
+                setState(() => _animationDone = true);
+              },
+            ),
+          ),
+          if (waiting)
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 90,
+              child: Center(child: _ThreeDotsLoading()),
+            ),
+        ],
+      ),
+    );
   }
 }
 
