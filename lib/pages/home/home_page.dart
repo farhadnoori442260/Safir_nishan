@@ -64,12 +64,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _lastArrowFrameMs = 0;
   static const int _arrowFrameGapMs = 33; // حدود ۳۰ فریم بر ثانیه
 
-  static const double _offRouteThresholdMeters = 25.0;
+  // GPS شهری به‌راحتی ۲۰ تا ۴۰ متر خطا دارد؛ عدد ۲۵ باعث می‌شد آیکن بین
+  // «روی خط» و «نقطهٔ خام GPS» بپرد.
+  static const double _offRouteThresholdMeters = 40.0;
 
-  // نوشتن لوکیشن در Firestore حداکثر هر ۲ ثانیه (با ارسال آخرین مقدار)
-  static const Duration _locationWriteInterval = Duration(seconds: 2);
+  // ───────── نوشتن لوکیشن در Firestore (برای کم‌کردن هزینه) ─────────
+  //
+  //  • حین سفر: حداکثر هر ۳ ثانیه و فقط اگر ≥ ۵ متر جابه‌جا شده؛
+  //    وقتی ایستاده، هر ۱۵ ثانیه یک ضربان.
+  //  • آماده‌باش (آنلاین بدون سفر): حداکثر هر ۳۰ ثانیه و فقط اگر ≥ ۵۰ متر
+  //    جابه‌جا شده؛ وقتی ایستاده، هر ۶۰ ثانیه یک ضربان.
+  //  • شروع و پایان سفر همیشه فوراً نوشته می‌شود.
+  static const Duration _tripWriteInterval = Duration(seconds: 3);
+  static const Duration _tripHeartbeat = Duration(seconds: 15);
+  static const double _tripMinMoveMeters = 5;
+  static const Duration _idleWriteInterval = Duration(seconds: 30);
+  static const Duration _idleHeartbeat = Duration(seconds: 60);
+  static const double _idleMinMoveMeters = 50;
+
   DateTime? _lastLocationWriteAt;
-  Timer? _locationWriteTimer;
+  Position? _lastWrittenPosition;
+  Timer? _locationWriteTimer; // ضربان (وقتی ایستاده است)
+  Timer? _trailingWriteTimer; // ارسال آخرین مقدار بعد از فاصلهٔ حداقل
   Position? _queuedLocation;
 
   bool isDriverAvailable = false;
@@ -125,6 +141,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     positionStreamHomePage?.cancel();
     tripRequestStream?.cancel();
     _locationWriteTimer?.cancel();
+    _trailingWriteTimer?.cancel();
     _arrowAnimationController.dispose();
     super.dispose();
   }
@@ -432,8 +449,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     final double t = _arrowAnimationController.value;
 
+    // اگر فریم قبلی هنوز تمام نشده، این فریم رد می‌شود؛ ولی فریم آخر نباید
+    // گم شود، وگرنه فلش کمی قبل از نقطه می‌ایستد.
+    if (_isArrowFrameInFlight) {
+      if (t >= 1.0) {
+        Future.delayed(const Duration(milliseconds: 40), _animateNavArrow);
+      }
+      return;
+    }
+
     final int nowMs = DateTime.now().millisecondsSinceEpoch;
-    if (_isArrowFrameInFlight) return;
     if (t < 1.0 && nowMs - _lastArrowFrameMs < _arrowFrameGapMs) return;
 
     _lastArrowFrameMs = nowMs;
@@ -483,6 +508,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     } finally {
       _isProcessingNavUpdate = false;
     }
+  }
+
+  /// زاویهٔ پایدار مسیر: از نقطه‌ای حدود ۱۲ متر جلوتر حساب می‌شود تا
+  /// سر پیچ‌ها و قطعه‌های خیلی کوتاه فلش تند نپرد.
+  double _navBearingAhead(_NavSnap snap, List<LatLng> route) {
+    for (int i = snap.segmentIndex + 1; i < route.length; i++) {
+      final double d = Geolocator.distanceBetween(
+        snap.point.latitude,
+        snap.point.longitude,
+        route[i].latitude,
+        route[i].longitude,
+      );
+      if (d >= 12) {
+        return _calculateBearing(snap.point, route[i]);
+      }
+    }
+
+    final int i = min(snap.segmentIndex, route.length - 2);
+    return _calculateBearing(route[i], route[i + 1]);
   }
 
   Future<void> _updateNavArrow(LatLng rawPosition, double rawHeading) async {
@@ -535,14 +579,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         // ───── زاویه ─────
         double bearing = _arrowAnimEndBearing;
 
-        if (_driverNavigationSymbol == null) {
-          if (onRouteSnap != null &&
-              route.length > onRouteSnap.segmentIndex + 1) {
-            bearing = _calculateBearing(
-              route[onRouteSnap.segmentIndex],
-              route[onRouteSnap.segmentIndex + 1],
-            );
-          } else if (rawHeading >= 0) {
+        if (onRouteSnap != null && route.length > onRouteSnap.segmentIndex + 1) {
+          // روی مسیر: زاویهٔ پایدار خیابان
+          bearing = _navBearingAhead(onRouteSnap, route);
+        } else if (_driverNavigationSymbol == null) {
+          if (rawHeading >= 0) {
             bearing = rawHeading;
           }
         } else if (previousTarget != null &&
@@ -552,7 +593,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   target.latitude,
                   target.longitude,
                 ) >
-                3) {
+                6) {
+          // خارج از مسیر: جهت حرکت واقعی (لرزش GPS فلش را نمی‌چرخاند)
           bearing = _calculateBearing(previousTarget, target);
         }
 
@@ -748,9 +790,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   LatLng _getClosestPointOnSegment(LatLng p, LatLng a, LatLng b) {
-    final double x = p.longitude, y = p.latitude;
-    final double x1 = a.longitude, y1 = a.latitude;
-    final double x2 = b.longitude, y2 = b.latitude;
+    // طول جغرافیایی در عرض‌های بالا کوتاه‌تر است؛ برای فاصلهٔ درست مقیاس
+    // می‌شود (قبلاً مقیاس نداشت و نقطهٔ نزدیک‌ترین کمی اشتباه درمی‌آمد).
+    final double k = cos(p.latitude * pi / 180);
+
+    final double x = p.longitude * k, y = p.latitude;
+    final double x1 = a.longitude * k, y1 = a.latitude;
+    final double x2 = b.longitude * k, y2 = b.latitude;
 
     final double dx = x2 - x1;
     final double dy = y2 - y1;
@@ -760,7 +806,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     double t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
     t = t.clamp(0.0, 1.0).toDouble();
 
-    return LatLng(y1 + t * dy, x1 + t * dx);
+    return LatLng(y1 + t * dy, (x1 + t * dx) / k);
   }
 
   double _calculateBearing(LatLng start, LatLng end) {
@@ -779,35 +825,86 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   // ════════════════════════════════════════════════════════════
-  //  ارسال لوکیشن به Firestore
+  //  ارسال لوکیشن به Firestore (کم‌هزینه)
   // ════════════════════════════════════════════════════════════
 
   void _queueDriverLocationWrite(Position position) {
+    final bool onTrip = activeTripId != null;
+    final Duration minInterval =
+        onTrip ? _tripWriteInterval : _idleWriteInterval;
+    final Duration heartbeat = onTrip ? _tripHeartbeat : _idleHeartbeat;
+    final double minMove = onTrip ? _tripMinMoveMeters : _idleMinMoveMeters;
+
     final DateTime now = DateTime.now();
     final DateTime? last = _lastLocationWriteAt;
+    final Position? lastPos = _lastWrittenPosition;
 
-    if (last == null || now.difference(last) >= _locationWriteInterval) {
-      _lastLocationWriteAt = now;
-      _queuedLocation = null;
-      unawaited(_updateDriverLiveLocation(position));
+    final Duration sinceLast = last == null ? heartbeat : now.difference(last);
+    final double moved = lastPos == null
+        ? double.infinity
+        : Geolocator.distanceBetween(
+            lastPos.latitude,
+            lastPos.longitude,
+            position.latitude,
+            position.longitude,
+          );
+
+    final bool due = last == null ||
+        sinceLast >= heartbeat ||
+        (sinceLast >= minInterval && moved >= minMove);
+
+    if (due) {
+      _writeLocationNow(position);
       return;
     }
 
+    // هنوز زود است: آخرین مقدار نگه داشته می‌شود و اگر جابه‌جایی کافی بوده،
+    // بعد از رسیدن فاصلهٔ حداقل ارسال می‌شود.
     _queuedLocation = position;
 
-    _locationWriteTimer ??= Timer(
-      _locationWriteInterval - now.difference(last),
+    if (moved >= minMove) {
+      final Duration wait = minInterval - sinceLast;
+      _trailingWriteTimer ??= Timer(
+        wait.isNegative ? Duration.zero : wait,
+        () {
+          _trailingWriteTimer = null;
+          final Position? queued = _queuedLocation;
+          if (queued != null && mounted && isDriverAvailable) {
+            _writeLocationNow(queued);
+          }
+        },
+      );
+    }
+  }
+
+  void _writeLocationNow(Position position) {
+    _lastLocationWriteAt = DateTime.now();
+    _lastWrittenPosition = position;
+    _queuedLocation = null;
+
+    _trailingWriteTimer?.cancel();
+    _trailingWriteTimer = null;
+
+    // اگر بعد از این هیچ حرکتی نبود، ضربان آخرین موقعیت را دوباره می‌فرستد
+    _locationWriteTimer?.cancel();
+    _locationWriteTimer = Timer(
+      activeTripId != null ? _tripHeartbeat : _idleHeartbeat,
       () {
         _locationWriteTimer = null;
-        final Position? queued = _queuedLocation;
-        _queuedLocation = null;
-
-        if (queued != null && mounted && isDriverAvailable) {
-          _lastLocationWriteAt = DateTime.now();
-          unawaited(_updateDriverLiveLocation(queued));
-        }
+        if (!mounted || !isDriverAvailable) return;
+        final Position? p = _queuedLocation ?? currentPositionOfDriver;
+        if (p != null) _writeLocationNow(p);
       },
     );
+
+    unawaited(_updateDriverLiveLocation(position));
+  }
+
+  /// فوراً بنویس (شروع یا پایان سفر) تا مسافر و سرور منتظر نمانند
+  void _forceLocationWrite() {
+    final Position? p = currentPositionOfDriver;
+    if (p == null || !isDriverAvailable) return;
+    _writeLocationNow(p);
   }
 
   bool _hasWarnedBackgroundLocation = false;
@@ -995,7 +1092,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       currentPositionOfDriver ??= position;
 
       if (isDriverAvailable) {
-        await _updateDriverLiveLocation(position);
+        // با _writeLocationNow تا زمان آخرین نوشتن ثبت شود و بلافاصله
+        // یک نوشتن تکراری از استریم نیاید.
+        _writeLocationNow(position);
       }
     } catch (e) {
       debugPrint('Initial location publish failed: $e');
@@ -1018,7 +1117,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     _locationWriteTimer?.cancel();
     _locationWriteTimer = null;
+    _trailingWriteTimer?.cancel();
+    _trailingWriteTimer = null;
     _queuedLocation = null;
+    _lastLocationWriteAt = null;
+    _lastWrittenPosition = null;
 
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -1228,6 +1331,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _lastArrowUpdateAt = null;
       _arrowAnimEndBearing = 0.0;
       _arrowDisplayBearing = 0.0;
+      _isArrowFrameInFlight = false;
 
       if (mapController != null) {
         try {
@@ -1635,6 +1739,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           });
         }
 
+        // پایان سفر: وضعیت «بدون سفر» همان لحظه در موقعیت ثبت شود
+        _forceLocationWrite();
+
         if (mounted) {
           unawaited(
             context.read<RegistrationProvider>().fetchDriverEarnings(),
@@ -1721,6 +1828,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         });
       }
 
+      // لغو سفر: وضعیت «بدون سفر» همان لحظه در موقعیت ثبت شود
+      _forceLocationWrite();
+
       await _showMessage('trip_cancelled_msg'.tr());
     } catch (e, stackTrace) {
       debugPrint('Error cancelling trip: $e');
@@ -1756,6 +1866,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         activeTripId = null;
         activeTripStatus = null;
       });
+
+      _forceLocationWrite();
 
       await _showMessage('trip_cancelled_by_passenger_msg'.tr());
     } finally {
@@ -2127,6 +2239,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                     WidgetsBinding.instance.addPostFrameCallback((_) async {
                       if (!mounted) return;
+
+                      // شروع سفر یا تغییر وضعیت: موقعیت همان لحظه ثبت شود
+                      _forceLocationWrite();
 
                       if (previousTripId != null && previousTripId != tripId) {
                         await _clearRouteAndNavigation();
