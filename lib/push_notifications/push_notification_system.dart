@@ -24,10 +24,26 @@ class PushNotificationSystem {
 
   factory PushNotificationSystem() => _instance;
 
-  PushNotificationSystem._internal();
+  PushNotificationSystem._internal() {
+    // وقتی یک بار پخش زنگ تمام شد، اگر هنوز نوبت پخش مانده و دیالوگ باز است
+    // دوباره پخش می‌شود. (فقط یک بار برای کل برنامه ثبت می‌شود.)
+    _alertCompleteSubscription = _audioPlayer.onPlayerComplete.listen((_) {
+      if (_alertPlaysLeft > 0 && _isTripDialogOpen) {
+        _alertPlaysLeft--;
+        unawaited(_playAlertOnce());
+      }
+    });
+  }
 
   final FirebaseMessaging firebaseCloudMessaging = FirebaseMessaging.instance;
   final AudioPlayer _audioPlayer = AudioPlayer();
+
+  /// تعداد دفعات پخش زنگ برای هر درخواست سفر.
+  /// قبلاً زنگ «حلقه‌ای» بود و تا بسته‌شدن دیالوگ مدام تکرار می‌شد.
+  /// اگر زنگ بلندتر/بیشتر می‌خواهی، عدد را ۲ یا ۳ کن.
+  static const int _alertRepeatCount = 1;
+  int _alertPlaysLeft = 0;
+  StreamSubscription<void>? _alertCompleteSubscription;
 
   /// درخواست سفر هر چند ثانیه‌ای ممکن است از دو مسیر برسد
   /// (Firestore و push)؛ شنونده‌ها فقط یک بار ثبت می‌شوند.
@@ -41,6 +57,10 @@ class PushNotificationSystem {
   bool _isTripDialogOpen = false;
   String? _shownTripId;
   final List<String> _queuedTripIds = <String>[];
+
+  /// سفرهایی که یک بار برای راننده نمایش داده شده‌اند؛ با رسیدن دوبارهٔ همان
+  /// سفر (از Firestore یا push) دیگر زنگ و دیالوگ تکراری ساخته نمی‌شود.
+  final Set<String> _handledTripIds = <String>{};
 
   // ════════════════════════════════════════════════════════════
   //  توکن و اشتراک
@@ -270,11 +290,8 @@ class PushNotificationSystem {
     return '';
   }
 
-  Future<void> _startTripAlertSound() async {
+  Future<void> _playAlertOnce() async {
     try {
-      await _audioPlayer.stop();
-      await _audioPlayer.setReleaseMode(ReleaseMode.loop);
-
       await _audioPlayer.play(
         AssetSource('audio/fa/alert-sound.mp3'),
         volume: 1.0,
@@ -284,8 +301,24 @@ class PushNotificationSystem {
     }
   }
 
+  /// زنگ درخواست سفر را به تعداد [_alertRepeatCount] بار پخش می‌کند
+  /// (به‌جای حلقهٔ بی‌پایان تا بسته‌شدن دیالوگ).
+  Future<void> _startTripAlertSound() async {
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.setReleaseMode(ReleaseMode.stop);
+
+      _alertPlaysLeft = _alertRepeatCount > 1 ? _alertRepeatCount - 1 : 0;
+
+      await _playAlertOnce();
+    } catch (e) {
+      log('Audio error: $e');
+    }
+  }
+
   Future<void> _stopTripAlertSound() async {
     try {
+      _alertPlaysLeft = 0;
       await _audioPlayer.stop();
       await _audioPlayer.setReleaseMode(ReleaseMode.stop);
     } catch (e) {
@@ -333,6 +366,13 @@ class PushNotificationSystem {
     bool fromPush = false,
   }) async {
     if (tripID.trim().isEmpty) return;
+
+    // سفری که قبلاً نشان داده شده (رد شد یا زمانش گذشت) دوباره نشان داده نمی‌شود.
+    // قبلاً همان سفر هم از Firestore و هم از push می‌رسید و دوباره زنگ می‌خورد.
+    if (_handledTripIds.contains(tripID)) {
+      log('Trip $tripID already shown. Ignoring duplicate.');
+      return;
+    }
 
     // ✅ فقط یک دیالوگ هم‌زمان؛ بقیه در صف می‌مانند
     if (_isTripDialogOpen) {
@@ -533,6 +573,10 @@ class PushNotificationSystem {
       log('Context is not mounted. Trip $tripID ignored.');
       return;
     }
+
+    // از این لحظه این سفر «نشان داده‌شده» حساب می‌شود
+    if (_handledTripIds.length > 200) _handledTripIds.clear();
+    _handledTripIds.add(tripID);
 
     await _startTripAlertSound();
 
