@@ -54,6 +54,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   LatLng? _arrowAnimEnd;
   LatLng? _arrowDisplayLatLng;
   LatLng? _arrowLastTarget;
+  LatLng? _arrowBearingRef; // نقطهٔ مرجع جهت (≥ ۱۰ متر فاصله)
   double _arrowAnimStartBearing = 0.0;
   double _arrowAnimEndBearing = 0.0;
   double _arrowDisplayBearing = 0.0;
@@ -64,17 +65,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _lastArrowFrameMs = 0;
   static const int _arrowFrameGapMs = 33; // حدود ۳۰ فریم بر ثانیه
 
-  // GPS شهری به‌راحتی ۲۰ تا ۴۰ متر خطا دارد؛ عدد ۲۵ باعث می‌شد آیکن بین
-  // «روی خط» و «نقطهٔ خام GPS» بپرد.
+  // GPS شهری به‌راحتی ۲۰ تا ۴۰ متر خطا دارد؛ عدد ۲۵ باعث پریدن آیکن بین
+  // «روی خط» و «نقطهٔ خام» می‌شد.
   static const double _offRouteThresholdMeters = 40.0;
 
-  // ───────── نوشتن لوکیشن در Firestore (برای کم‌کردن هزینه) ─────────
-  //
-  //  • حین سفر: حداکثر هر ۳ ثانیه و فقط اگر ≥ ۵ متر جابه‌جا شده؛
-  //    وقتی ایستاده، هر ۱۵ ثانیه یک ضربان.
-  //  • آماده‌باش (آنلاین بدون سفر): حداکثر هر ۳۰ ثانیه و فقط اگر ≥ ۵۰ متر
-  //    جابه‌جا شده؛ وقتی ایستاده، هر ۶۰ ثانیه یک ضربان.
-  //  • شروع و پایان سفر همیشه فوراً نوشته می‌شود.
+  // ───────── نوشتن موقعیت در Firestore (برای کم‌کردن هزینه) ─────────
+  //  • حین سفر: حداکثر هر ۳ ثانیه، و فقط اگر ≥ ۵ متر جابه‌جا شده؛
+  //    اگر ایستاده است هر ۱۵ ثانیه یک ضربان.
+  //  • آماده‌باش (بدون سفر): حداکثر هر ۳۰ ثانیه و فقط اگر ≥ ۵۰ متر جابه‌جا
+  //    شده؛ اگر ایستاده است هر ۶۰ ثانیه یک ضربان.
+  //  • شروع/پایان سفر: فوراً نوشته می‌شود.
   static const Duration _tripWriteInterval = Duration(seconds: 3);
   static const Duration _tripHeartbeat = Duration(seconds: 15);
   static const double _tripMinMoveMeters = 5;
@@ -87,6 +87,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Timer? _locationWriteTimer; // ضربان (وقتی ایستاده است)
   Timer? _trailingWriteTimer; // ارسال آخرین مقدار بعد از فاصلهٔ حداقل
   Position? _queuedLocation;
+
+  // ───────── فقط سفرهای نزدیک را بخوان (کم‌کردن هزینهٔ خواندن) ─────────
+  // مسافر روی هر سفر `geo_cell` می‌نویسد (شبکهٔ ۰٫۱ درجه ≈ ۱۰ کیلومتر).
+  // راننده فقط ناحیهٔ خودش و ناحیه‌های اطراف را گوش می‌دهد؛ با عوض‌شدن
+  // ناحیه، استریم خودکار دوباره ساخته می‌شود. حین سفر فعال هم استریم بسته است.
+  static const double _geoCellDeg = 0.1;
+  String? _listeningCellsKey;
+  final Set<String> _handledTripIds = <String>{};
 
   bool isDriverAvailable = false;
   bool isLoading = false;
@@ -247,7 +255,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Future<void> _centerMapOnDriver() async {
     if (mapController == null) return;
 
-    final Position? livePosition = await getCurrentLiveLocationOfDriver();
+    // وقتی آنلاین است موقعیت زنده از استریم همین‌جا هست؛ منتظر GPS نمی‌ماند
+    final Position? livePosition =
+        (isDriverAvailable && currentPositionOfDriver != null)
+            ? currentPositionOfDriver
+            : await getCurrentLiveLocationOfDriver();
     if (livePosition == null || mapController == null) return;
 
     LatLng target = LatLng(livePosition.latitude, livePosition.longitude);
@@ -449,7 +461,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     final double t = _arrowAnimationController.value;
 
-    // اگر فریم قبلی هنوز تمام نشده، این فریم رد می‌شود؛ ولی فریم آخر نباید
+    // اگر فریم قبلی هنوز تمام نشده، این فریم را رد کن؛ ولی فریم آخر نباید
     // گم شود، وگرنه فلش کمی قبل از نقطه می‌ایستد.
     if (_isArrowFrameInFlight) {
       if (t >= 1.0) {
@@ -510,25 +522,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
-  /// زاویهٔ پایدار مسیر: از نقطه‌ای حدود ۱۲ متر جلوتر حساب می‌شود تا
-  /// سر پیچ‌ها و قطعه‌های خیلی کوتاه فلش تند نپرد.
-  double _navBearingAhead(_NavSnap snap, List<LatLng> route) {
-    for (int i = snap.segmentIndex + 1; i < route.length; i++) {
-      final double d = Geolocator.distanceBetween(
-        snap.point.latitude,
-        snap.point.longitude,
-        route[i].latitude,
-        route[i].longitude,
-      );
-      if (d >= 12) {
-        return _calculateBearing(snap.point, route[i]);
-      }
-    }
-
-    final int i = min(snap.segmentIndex, route.length - 2);
-    return _calculateBearing(route[i], route[i + 1]);
-  }
-
   Future<void> _updateNavArrow(LatLng rawPosition, double rawHeading) async {
     if (mapController == null || !_isMapStyleReady || !mounted) return;
 
@@ -577,25 +570,35 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         final LatLng? previousTarget = _arrowLastTarget;
 
         // ───── زاویه ─────
+        // جهت فقط وقتی عوض می‌شود که حرکت واقعی باشد (≥ ۱۰ متر)؛
+        // لرزش GPS فلش را نمی‌چرخاند.
         double bearing = _arrowAnimEndBearing;
 
-        if (onRouteSnap != null && route.length > onRouteSnap.segmentIndex + 1) {
-          // روی مسیر: زاویهٔ پایدار خیابان
-          bearing = _navBearingAhead(onRouteSnap, route);
-        } else if (_driverNavigationSymbol == null) {
-          if (rawHeading >= 0) {
+        if (_driverNavigationSymbol == null) {
+          if (onRouteSnap != null &&
+              route.length > onRouteSnap.segmentIndex + 1) {
+            bearing = _calculateBearing(
+              route[onRouteSnap.segmentIndex],
+              route[onRouteSnap.segmentIndex + 1],
+            );
+          } else if (rawHeading >= 0) {
             bearing = rawHeading;
           }
-        } else if (previousTarget != null &&
-            Geolocator.distanceBetween(
-                  previousTarget.latitude,
-                  previousTarget.longitude,
-                  target.latitude,
-                  target.longitude,
-                ) >
-                6) {
-          // خارج از مسیر: جهت حرکت واقعی (لرزش GPS فلش را نمی‌چرخاند)
-          bearing = _calculateBearing(previousTarget, target);
+          _arrowBearingRef = target;
+        } else {
+          final LatLng? ref = _arrowBearingRef ?? previousTarget;
+
+          if (ref != null &&
+              Geolocator.distanceBetween(
+                    ref.latitude,
+                    ref.longitude,
+                    target.latitude,
+                    target.longitude,
+                  ) >=
+                  10) {
+            bearing = _calculateBearing(ref, target);
+            _arrowBearingRef = target;
+          }
         }
 
         final DateTime now = DateTime.now();
@@ -790,8 +793,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   LatLng _getClosestPointOnSegment(LatLng p, LatLng a, LatLng b) {
-    // طول جغرافیایی در عرض‌های بالا کوتاه‌تر است؛ برای فاصلهٔ درست مقیاس
-    // می‌شود (قبلاً مقیاس نداشت و نقطهٔ نزدیک‌ترین کمی اشتباه درمی‌آمد).
+    // طول جغرافیایی در عرض‌های بالا کوتاه‌تر است؛ برای فاصلهٔ درست مقیاس می‌شود
+    // (قبلاً مقیاس نداشت و نقطهٔ تصویرشده کمی کج می‌افتاد)
     final double k = cos(p.latitude * pi / 180);
 
     final double x = p.longitude * k, y = p.latitude;
@@ -886,6 +889,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _trailingWriteTimer = null;
 
     // اگر بعد از این هیچ حرکتی نبود، ضربان آخرین موقعیت را دوباره می‌فرستد
+    // تا مسافر و سرور بدانند راننده هنوز آنلاین است.
     _locationWriteTimer?.cancel();
     _locationWriteTimer = Timer(
       activeTripId != null ? _tripHeartbeat : _idleHeartbeat,
@@ -900,7 +904,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     unawaited(_updateDriverLiveLocation(position));
   }
 
-  /// فوراً بنویس (شروع یا پایان سفر) تا مسافر و سرور منتظر نمانند
+  /// فوراً بنویس (شروع یا پایان سفر) تا مسافر منتظر نماند
   void _forceLocationWrite() {
     final Position? p = currentPositionOfDriver;
     if (p == null || !isDriverAvailable) return;
@@ -1092,8 +1096,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       currentPositionOfDriver ??= position;
 
       if (isDriverAvailable) {
-        // با _writeLocationNow تا زمان آخرین نوشتن ثبت شود و بلافاصله
-        // یک نوشتن تکراری از استریم نیاید.
+        // از مسیر مشترک می‌نویسد تا زمان آخرین نوشتن ثبت شود
+        // (قبلاً اولین خوانش استریم یک نوشتن اضافه می‌ساخت)
         _writeLocationNow(position);
       }
     } catch (e) {
@@ -1112,6 +1116,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     await tripRequestStream?.cancel();
     tripRequestStream = null;
+    _listeningCellsKey = null;
+    _handledTripIds.clear();
 
     _activeTripStream = null;
 
@@ -1172,6 +1178,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         if (!mounted) return;
 
         _queueDriverLocationWrite(position);
+        _refreshTripRequestListenerIfNeeded(position);
 
         final NavigationController navController =
             context.read<NavigationController>();
@@ -1194,13 +1201,63 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  /// شمارهٔ ناحیه‌ها: ناحیهٔ راننده + حلقهٔ اطراف (۳×۳ یا ۵×۵ بر اساس شعاع جستجو)
+  List<String> _nearbyGeoCells(double lat, double lng) {
+    final num radiusKm = AppConfigService.instance.config.searchRadiusKm;
+    final int ring = min(2, max(1, (radiusKm / 8).ceil()));
+
+    final int cy = (lat / _geoCellDeg).floor();
+    final int cx = (lng / _geoCellDeg).floor();
+
+    return <String>[
+      for (int dy = -ring; dy <= ring; dy++)
+        for (int dx = -ring; dx <= ring; dx++) '${cy + dy}_${cx + dx}',
+    ];
+  }
+
+  /// با هر موقعیت جدید صدا زده می‌شود: استریم درخواست‌ها را فقط وقتی لازم است
+  /// می‌سازد (ناحیه عوض شد، یا بعد از پایان سفر) و حین سفر می‌بندد.
+  void _refreshTripRequestListenerIfNeeded(Position p) {
+    if (!isDriverAvailable) return;
+
+    if (activeTripId != null) {
+      if (tripRequestStream != null) {
+        tripRequestStream?.cancel();
+        tripRequestStream = null;
+        _listeningCellsKey = null;
+      }
+      return;
+    }
+
+    final String key =
+        _nearbyGeoCells(p.latitude, p.longitude).join(',');
+
+    if (tripRequestStream == null || key != _listeningCellsKey) {
+      listenForTripRequests();
+    }
+  }
+
   void listenForTripRequests() {
     tripRequestStream?.cancel();
-    debugPrint('RIDES: listener started');
+    tripRequestStream = null;
+
+    // بدون موقعیت، ناحیه معلوم نیست؛ با اولین موقعیت GPS شروع می‌شود
+    // (به‌جای خواندن همهٔ سفرهای کشور).
+    final Position? pos = currentPositionOfDriver;
+    if (pos == null) {
+      _listeningCellsKey = null;
+      debugPrint('RIDES: waiting for first GPS fix');
+      return;
+    }
+
+    final List<String> cells = _nearbyGeoCells(pos.latitude, pos.longitude);
+    _listeningCellsKey = cells.join(',');
+    debugPrint('RIDES: listener started, cells=${cells.length}');
 
     tripRequestStream = _firestore
         .collection('rides')
         .where('status', isEqualTo: TripStatus.searching)
+        .where('geo_cell', whereIn: cells)
         .snapshots()
         .listen(
       (QuerySnapshot<Map<String, dynamic>> snapshot) {
@@ -1215,6 +1272,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           if (change.type != DocumentChangeType.added) continue;
 
           final String tripId = change.doc.id;
+
+          // با ساخته‌شدن دوبارهٔ استریم (تغییر ناحیه)، سفری که قبلاً نشان
+          // داده شده دوباره پیام نمی‌سازد
+          if (_handledTripIds.contains(tripId)) continue;
+          if (_handledTripIds.length > 200) _handledTripIds.clear();
+          _handledTripIds.add(tripId);
+
           debugPrint('RIDES: new trip $tripId');
 
           final AppConfig config = AppConfigService.instance.config;
@@ -1225,6 +1289,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           }
 
           final Map<String, dynamic>? rideData = change.doc.data();
+
+          // درخواست‌های قدیمی‌تر از ۵ دقیقه (مسافر دیگر منتظر نیست) نادیده
+          // گرفته می‌شوند. هنگام باز شدن استریم، سفرهای کهنهٔ مانده هم به
+          // عنوان «added» می‌آمدند و برای راننده پیام می‌ساختند.
+          final dynamic createdRaw = rideData?['createdAt'];
+          if (createdRaw is Timestamp &&
+              DateTime.now().difference(createdRaw.toDate()) >
+                  const Duration(minutes: 5)) {
+            debugPrint('RIDES: $tripId is stale, skip');
+            continue;
+          }
+
           final LatLng? pickupPoint =
               rideData == null ? null : _pickupLatLng(rideData);
           final Position? driverPosition = currentPositionOfDriver;
@@ -1328,10 +1404,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _arrowAnimEnd = null;
       _arrowDisplayLatLng = null;
       _arrowLastTarget = null;
+      _arrowBearingRef = null;
       _lastArrowUpdateAt = null;
       _arrowAnimEndBearing = 0.0;
       _arrowDisplayBearing = 0.0;
-      _isArrowFrameInFlight = false;
 
       if (mapController != null) {
         try {
@@ -1739,7 +1815,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           });
         }
 
-        // پایان سفر: وضعیت «بدون سفر» همان لحظه در موقعیت ثبت شود
+        // پایان سفر: موقعیت (با active_trip_id خالی) فوراً نوشته شود
         _forceLocationWrite();
 
         if (mounted) {
@@ -1828,7 +1904,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         });
       }
 
-      // لغو سفر: وضعیت «بدون سفر» همان لحظه در موقعیت ثبت شود
       _forceLocationWrite();
 
       await _showMessage('trip_cancelled_msg'.tr());
@@ -2240,7 +2315,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     WidgetsBinding.instance.addPostFrameCallback((_) async {
                       if (!mounted) return;
 
-                      // شروع سفر یا تغییر وضعیت: موقعیت همان لحظه ثبت شود
+                      // شروع/تغییر سفر: موقعیت فوراً (با active_trip_id) نوشته
+                      // شود تا مسافر موقعیت قدیمیِ آماده‌باش را نبیند
                       _forceLocationWrite();
 
                       if (previousTripId != null && previousTripId != tripId) {
