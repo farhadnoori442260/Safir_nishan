@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,75 @@ import 'package:safir_drivers/utils/app_colors.dart';
 import 'package:safir_drivers/utils/lang_helper.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+// دریافت پیام در پس‌زمینه
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(
+  RemoteMessage message,
+) async {
+  await Firebase.initializeApp();
+
+  debugPrint(
+    'Driver background message received: ${message.messageId}',
+  );
+}
+
+// راه‌اندازی دریافت اعلان‌های عمومی رانندگان
+Future<void> _setupDriverNotifications() async {
+  try {
+    // اگر راه‌اندازی اولیهٔ Firebase ناموفق بود،
+    // تنظیم اعلان نباید باعث توقف برنامه شود.
+    if (Firebase.apps.isEmpty) {
+      debugPrint(
+        'Driver notifications: Firebase is not initialized',
+      );
+      return;
+    }
+
+    final messaging = FirebaseMessaging.instance;
+
+    final settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.denied) {
+      debugPrint(
+        'Driver notifications: permission denied',
+      );
+      return;
+    }
+
+    await messaging.setAutoInitEnabled(true);
+
+    // تنظیم نمایش اعلان در پیش‌زمینه برای پلتفرم‌های Apple
+    await messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    // ثبت دریافت پیام هنگام بازبودن اپ
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint(
+        'Driver foreground message received: ${message.messageId}',
+      );
+    });
+
+    // نام این گروه مطابق مقصد رانندگان در سرور Netlify است.
+    await messaging.subscribeToTopic('drivers');
+
+    debugPrint(
+      'Driver notifications: subscribed to drivers',
+    );
+  } catch (error) {
+    // خطای اعلان نباید مانع بازشدن اپ شود.
+    debugPrint(
+      'Driver notifications setup error: $error',
+    );
+  }
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +100,10 @@ Future<void> main() async {
 
   try {
     await Firebase.initializeApp();
+
+    FirebaseMessaging.onBackgroundMessage(
+      _firebaseMessagingBackgroundHandler,
+    );
   } catch (error) {
     debugPrint('Firebase initialization error: $error');
   }
@@ -50,6 +124,11 @@ Future<void> main() async {
       child: const MyApp(),
     ),
   );
+
+  // تنظیم اعلان پس از نمایش اولین فریم برنامه
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _setupDriverNotifications();
+  });
 }
 
 Future<void> _requestPermissionsSafely() async {
