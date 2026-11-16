@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../providers/registration_provider.dart';
+import '../../../utils/afghan_locations.dart';
 import '../../../utils/app_colors.dart';
 
 class VehicleBasicInfoScreen extends StatefulWidget {
@@ -18,19 +19,14 @@ class _VehicleBasicInfoScreenState
     extends State<VehicleBasicInfoScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  final List<String> afghanistanProvinces = <String>[
-    'کابل',
-    'هرات',
-    'بلخ',
-    'قندهار',
-    'ننگرهار',
-    'غزنی',
-    'پکتیا',
-    'پروان',
-    'کندز',
-    'دایکندی',
-    'بامیان',
-  ];
+  // همهٔ ۳۴ ولایت (قبلاً فقط ۱۱ ولایت بود و راننده‌های بقیه ولایت‌ها نمی‌توانستند
+  // پلاک درست ثبت کنند). همان فهرست ولایت‌های ثبت‌نام است.
+  final List<String> afghanistanProvinces = AfghanLocations.provinces;
+
+  // املای قدیمی ذخیره‌شده → املای فهرست فعلی
+  static const Map<String, String> _provinceAlias = <String, String>{
+    'کندهار': 'قندهار',
+  };
 
   final List<String> plateCategories = <String>[
     'ش',
@@ -79,6 +75,29 @@ class _VehicleBasicInfoScreenState
       'label': 'vehicle_cargo',
       'icon': 'assets/vehicles/cargo.png',
     },
+  ];
+
+  // پیشنهاد سریع برند/مدل و رنگ؛ تایپ را کم می‌کند و املای یکسان می‌دهد
+  static const Map<String, List<String>> _brandSuggestions =
+      <String, List<String>>{
+    'Car': <String>[
+      'تویوتا کرولا',
+      'تویوتا پروبکس',
+      'تویوتا کمری',
+      'تویوتا ویتز',
+      'هیوندای',
+      'نیسان',
+    ],
+    'Bike': <String>['هوندا', 'یاماها', 'سوزوکی'],
+  };
+
+  static const List<String> _colorSuggestions = <String>[
+    'سفید',
+    'نقره‌ای',
+    'خاکستری',
+    'مشکی',
+    'آبی',
+    'قرمز',
   ];
 
   String _toEnglishNumbers(String input) {
@@ -172,8 +191,8 @@ class _VehicleBasicInfoScreenState
 
     return Image.asset(
       assetPath,
-      height: 32,
-      width: 56,
+      height: 36,
+      width: 60,
       fit: BoxFit.contain,
       errorBuilder: (
         BuildContext context,
@@ -182,8 +201,8 @@ class _VehicleBasicInfoScreenState
       ) {
         return Icon(
           fallbackIcon,
-          size: 28,
-          color: AppColors.primaryBrand,
+          size: 30,
+          color: AppColors.textPrimary,
         );
       },
     );
@@ -210,11 +229,11 @@ class _VehicleBasicInfoScreenState
     final OutlineInputBorder baseBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(
-        color: AppColors.textSecondary.withOpacity(0.30),
+        color: AppColors.fieldBorder,
       ),
     );
 
-    const Color errorColor = Color(0xFFD64545);
+    final Color errorColor = AppColors.danger;
 
     // مهم: اندازه و ضخامت فونت برچسب در حالت عادی و شناور یکی است، وگرنه
     // عرض بریدگی خط با عرض متن نمی‌خواند و خط از روی برچسب رد می‌شود.
@@ -252,7 +271,7 @@ class _VehicleBasicInfoScreenState
       border: baseBorder,
       enabledBorder: baseBorder,
       focusedBorder: baseBorder.copyWith(
-        borderSide: const BorderSide(
+        borderSide: BorderSide(
           color: AppColors.primaryBrand,
           width: 2,
         ),
@@ -270,22 +289,19 @@ class _VehicleBasicInfoScreenState
     );
   }
 
-  /// ظاهر مشترک کارت‌ها؛ سایه‌ی سبک تا هنگام باز شدن کیبورد سنگین نشود.
+  /// ظاهر مشترک کارت‌ها؛ بدون سایه (سبک‌تر است و در حالت تاریک تمیز می‌ماند).
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: AppColors.cardBackground,
       borderRadius: BorderRadius.circular(24),
-      border: Border.all(
-        color: AppColors.textSecondary.withOpacity(0.10),
-      ),
-      boxShadow: <BoxShadow>[
-        BoxShadow(
-          color: Colors.black.withOpacity(0.03),
-          offset: const Offset(0, 3),
-          blurRadius: 10,
-        ),
-      ],
+      border: Border.all(color: AppColors.borderLight),
     );
+  }
+
+  // سال ساخت: چهار رقم، میلادی (مثلاً ۲۰۱۵)، از ۱۹۷۰ تا سال آینده
+  bool _yearOk(String raw) {
+    final int? y = int.tryParse(_toEnglishNumbers(raw.trim()));
+    return y != null && y >= 1970 && y <= DateTime.now().year + 1;
   }
 
   void _confirmVehicleInfo() {
@@ -298,7 +314,8 @@ class _VehicleBasicInfoScreenState
     final RegistrationProvider registrationProvider =
         context.read<RegistrationProvider>();
 
-    final bool isValid =
+    final bool isValid = _yearOk(
+            registrationProvider.productionYearController.text) &&
         registrationProvider.selectedVehicle != null &&
             registrationProvider.selectedVehicle!.trim().isNotEmpty &&
             registrationProvider.brandController.text.trim().isNotEmpty &&
@@ -336,7 +353,7 @@ class _VehicleBasicInfoScreenState
       appBar: AppBar(
         title: Text(
           'vehicle_info_title'.tr(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
@@ -348,16 +365,14 @@ class _VehicleBasicInfoScreenState
         surfaceTintColor: Colors.transparent,
         backgroundColor: AppColors.cardBackground,
         shape: Border(
-          bottom: BorderSide(
-            color: AppColors.textSecondary.withOpacity(0.10),
-          ),
+          bottom: BorderSide(color: AppColors.borderLight),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               'close'.tr(),
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
@@ -399,100 +414,176 @@ class _VehicleBasicInfoScreenState
     );
   }
 
+  String _typeFallbackLabel(String value) => value == 'Car'
+      ? 'تاکسی (سواری)'
+      : value == 'Bike'
+          ? 'موترسایکل'
+          : 'باربری';
+
+  /// انتخاب نوع وسیله: سه کارت کنار هم، همیشه دیده می‌شود (به‌جای منوی بازشو)
   Widget _buildVehicleTypeSelector() {
-    return Selector<RegistrationProvider, String?>(
-      selector: (
-        BuildContext context,
-        RegistrationProvider provider,
-      ) {
-        return provider.selectedVehicle;
+    final RegistrationProvider registrationProvider =
+        context.read<RegistrationProvider>();
+
+    return FormField<String>(
+      validator: (String? _) {
+        final String? v = registrationProvider.selectedVehicle;
+        final bool ok = v != null &&
+            _vehicleOptions.any((Map<String, String> o) => o['value'] == v);
+        return ok ? null : 'نوع وسیله را انتخاب کنید';
       },
-      builder: (
-        BuildContext context,
-        String? selectedVehicle,
-        Widget? child,
-      ) {
-        final RegistrationProvider registrationProvider =
-            context.read<RegistrationProvider>();
-
-        final String? dropdownValue = _vehicleOptions.any(
-          (Map<String, String> option) =>
-              option['value'] == selectedVehicle,
-        )
-            ? selectedVehicle
-            : null;
-
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
-          decoration: _cardDecoration(),
-          child: DropdownButtonFormField<String>(
-            value: dropdownValue,
-            decoration: InputDecoration(
-              labelText: 'vehicle_type_label'.tr(),
-              labelStyle: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-              border: InputBorder.none,
-            ),
-            icon: const Icon(
-              Icons.keyboard_arrow_down_rounded,
-            ),
-            isExpanded: true,
-            dropdownColor: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(14),
-            items: _vehicleOptions.map(
-              (Map<String, String> option) {
-                final String value = option['value']!;
-
-                final String fallbackLabel = value == 'Car'
-                    ? 'تاکسی (سواری)'
-                    : value == 'Bike'
-                        ? 'موترسایکل'
-                        : 'باربری';
-
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Row(
+      builder: (FormFieldState<String> field) {
+        return Selector<RegistrationProvider, String?>(
+          selector: (BuildContext context, RegistrationProvider provider) =>
+              provider.selectedVehicle,
+          builder: (BuildContext context, String? selectedVehicle, Widget? _) {
+            return Container(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.all(16),
+              decoration: _cardDecoration(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'vehicle_type_label'.tr(),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
                     children: <Widget>[
-                      _vehicleOptionIcon(
-                        option['icon']!,
-                        value,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        _vehicleLabel(
-                          option['label']!,
-                          fallbackLabel,
+                      for (int i = 0; i < _vehicleOptions.length; i++) ...<Widget>[
+                        if (i > 0) const SizedBox(width: 10),
+                        Expanded(
+                          child: _typeCard(
+                            option: _vehicleOptions[i],
+                            selected:
+                                selectedVehicle == _vehicleOptions[i]['value'],
+                            onTap: () {
+                              registrationProvider.setSelectedVehicle(
+                                _vehicleOptions[i]['value']!,
+                              );
+                              field.didChange(_vehicleOptions[i]['value']);
+                            },
+                          ),
                         ),
-                        style: const TextStyle(
-                          fontSize: 14,
-                        ),
-                      ),
+                      ],
                     ],
                   ),
-                );
-              },
-            ).toList(),
-            validator: (String? value) {
-              if (value == null || value.isEmpty) {
-                return 'نوع وسیله را انتخاب کنید';
-              }
-
-              return null;
-            },
-            onChanged: (String? value) {
-              if (value != null) {
-                registrationProvider.setSelectedVehicle(value);
-              }
-            },
-          ),
+                  if (field.hasError)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        field.errorText!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.danger,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _typeCard({
+    required Map<String, String> option,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final String value = option['value']!;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primaryBrand.withOpacity(0.10)
+              : AppColors.backgroundLight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? AppColors.primaryBrand : AppColors.fieldBorder,
+            width: selected ? 1.6 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            _vehicleOptionIcon(option['icon']!, value),
+            const SizedBox(height: 8),
+            Text(
+              _vehicleLabel(option['label']!, _typeFallbackLabel(value)),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                color: selected ? AppColors.primaryBrand : AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _chips(
+    List<String> items,
+    TextEditingController controller,
+    RegistrationProvider provider,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: controller,
+        builder: (BuildContext context, TextEditingValue v, Widget? _) {
+          return Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: items.map((String item) {
+              final bool on = v.text.trim() == item;
+              return GestureDetector(
+                onTap: () {
+                  controller.text = item;
+                  provider.checkVehicleBasicFormValidity();
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: on
+                        ? AppColors.primaryBrand.withOpacity(0.10)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: on ? AppColors.primaryBrand : AppColors.fieldBorder,
+                    ),
+                  ),
+                  child: Text(
+                    item,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color:
+                          on ? AppColors.primaryBrand : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        },
+      ),
     );
   }
 
@@ -523,6 +614,19 @@ class _VehicleBasicInfoScreenState
               registrationProvider.checkVehicleBasicFormValidity();
             },
           ),
+          Selector<RegistrationProvider, String?>(
+            selector: (BuildContext c, RegistrationProvider p) =>
+                p.selectedVehicle,
+            builder: (BuildContext c, String? type, Widget? _) {
+              final List<String>? list = _brandSuggestions[type];
+              if (list == null) return const SizedBox.shrink();
+              return _chips(
+                list,
+                registrationProvider.brandController,
+                registrationProvider,
+              );
+            },
+          ),
           const SizedBox(height: 16),
           TextFormField(
             controller: registrationProvider.colorController,
@@ -542,6 +646,11 @@ class _VehicleBasicInfoScreenState
               registrationProvider.checkVehicleBasicFormValidity();
             },
           ),
+          _chips(
+            _colorSuggestions,
+            registrationProvider.colorController,
+            registrationProvider,
+          ),
           const SizedBox(height: 16),
           TextFormField(
             controller: registrationProvider.productionYearController,
@@ -554,11 +663,19 @@ class _VehicleBasicInfoScreenState
             ],
             decoration: _fieldDecoration(
               labelText: 'vehicle_year_label'.tr(),
+              hintText: '2015',
               icon: Icons.calendar_today_outlined,
             ),
             validator: (String? value) {
               if (value == null || value.trim().isEmpty) {
                 return 'vehicle_year_error'.tr();
+              }
+
+              if (!_yearOk(value)) {
+                return _vehicleLabel(
+                  'vehicle_year_invalid',
+                  'سال ساخت را میلادی و درست بنویسید (مثلاً 2015)',
+                );
               }
 
               return null;
@@ -570,10 +687,10 @@ class _VehicleBasicInfoScreenState
           const SizedBox(height: 20),
           Text(
             'plate_info_header'.tr(),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 13.5,
-              color: AppColors.primaryBrand,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -622,13 +739,15 @@ class _VehicleBasicInfoScreenState
         final RegistrationProvider registrationProvider =
             context.read<RegistrationProvider>();
 
-        final String value = afghanistanProvinces.contains(province)
-            ? province
+        final String normalized = _provinceAlias[province] ?? province;
+        final String value = afghanistanProvinces.contains(normalized)
+            ? normalized
             : afghanistanProvinces.first;
 
         return DropdownButtonFormField<String>(
           value: value,
           isExpanded: true,
+          menuMaxHeight: 320,
           dropdownColor: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(14),
           decoration: _fieldDecoration(
@@ -647,8 +766,9 @@ class _VehicleBasicInfoScreenState
                 child: Text(
                   provinceName,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               );
@@ -705,8 +825,9 @@ class _VehicleBasicInfoScreenState
                 child: Text(
                   categoryName,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               );
@@ -746,7 +867,7 @@ class _VehicleBasicInfoScreenState
         ),
       ),
       validator: (String? value) {
-        if (value == null || value.trim().isEmpty) {
+        if (value == null || value.trim().length < 3) {
           return 'plate_number_error'.tr();
         }
 
@@ -801,8 +922,9 @@ class _VehicleBasicInfoScreenState
                 value: type,
                 child: Text(
                   type,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               );
@@ -839,10 +961,8 @@ class _VehicleBasicInfoScreenState
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryButton,
               foregroundColor: AppColors.buttonText,
-              disabledBackgroundColor:
-                  AppColors.textSecondary.withOpacity(0.15),
-              disabledForegroundColor:
-                  AppColors.textSecondary.withOpacity(0.6),
+              disabledBackgroundColor: AppColors.borderLight,
+              disabledForegroundColor: AppColors.textSecondary,
               elevation: 0,
               shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
