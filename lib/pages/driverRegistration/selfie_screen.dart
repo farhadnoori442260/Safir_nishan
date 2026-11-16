@@ -1,12 +1,12 @@
-import 'dart:io';
-
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/registration_provider.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/photo_capture_card.dart';
 
 class SelfieScreen extends StatefulWidget {
   const SelfieScreen({super.key});
@@ -19,24 +19,138 @@ class _SelfieScreenState extends State<SelfieScreen> {
   // تعریف ImagePicker داخلی برای کنترل سایز عکس
   final ImagePicker _picker = ImagePicker();
 
-  // متد بهینه‌شده برای گرفتن عکس سلفی بدون درگیر کردن رم گوشی
+  // اگر ترجمه وجود نداشت، .tr() خود کلید را برمی‌گرداند؛ در این حالت متن پیش‌فرض
+  String _t(String key, String fallback) {
+    final String v = key.tr();
+    return v == key ? fallback : v;
+  }
+
+  void _cameraError() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _t('camera_unavailable',
+              'دوربین باز نشد. اجازهٔ دسترسی به دوربین را در تنظیمات گوشی بدهید.'),
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _fieldDecoration(String label, {String? helper}) {
+    final OutlineInputBorder border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: AppColors.fieldBorder),
+    );
+    return InputDecoration(
+      labelText: label,
+      helperText: helper,
+      counterText: '',
+      labelStyle: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+      floatingLabelStyle: TextStyle(fontSize: 14, color: AppColors.primaryBrand),
+      helperStyle: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+      border: border,
+      enabledBorder: border,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppColors.primaryBrand, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppColors.danger),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppColors.danger, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    );
+  }
+
+  AppBar _appBar(String titleKey) {
+    return AppBar(
+      title: Text(
+        titleKey.tr(),
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textPrimary,
+        ),
+      ),
+      centerTitle: true,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: AppColors.cardBackground,
+      iconTheme: IconThemeData(color: AppColors.textPrimary),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(
+            'close'.tr(),
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _confirmButton({required bool enabled, required VoidCallback onTap}) {
+    return SizedBox(
+      height: 52,
+      child: ElevatedButton(
+        onPressed: enabled ? onTap : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryButton,
+          foregroundColor: AppColors.buttonText,
+          disabledBackgroundColor: AppColors.borderLight,
+          disabledForegroundColor: AppColors.textSecondary,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: Text(
+          'confirm_and_save'.tr(),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _formCard(Widget child) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.borderLight),
+        borderRadius: BorderRadius.circular(20),
+        color: AppColors.cardBackground,
+      ),
+      child: child,
+    );
+  }
+
+  // سلفی با کارت: دوربین جلو (طبیعی‌ترین حالت برای سلفی) و کیفیتی که هم چهره
+  // و هم نوشتهٔ کارت دیده شود.
   Future<void> _takeLightPhoto(RegistrationProvider registrationProvider) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 600,       // عکس را فشرده می‌کند تا رم پر نشود
-        maxHeight: 600,      // ارتفاع عکس را بهینه می‌کند
-        imageQuality: 40,    // کیفیت را به ۴۰ درصد کاهش می‌دهد تا حجم به شدت کم شود
+        preferredCameraDevice: CameraDevice.front,
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 75,
       );
 
       if (pickedFile != null) {
-        setState(() {
-          // قرار دادن عکس سبک داخل متغیر پرووایدر
-          registrationProvider.cnicWithSelfieImage = pickedFile;
-        });
+        // ستر پرووایدر خودش notifyListeners می‌زند
+        registrationProvider.cnicWithSelfieImage = pickedFile;
       }
     } catch (e) {
-      debugPrint("خطا در گرفتن عکس سلفی سبک: $e");
+      debugPrint("خطا در گرفتن عکس سلفی: $e");
+      _cameraError();
     }
   }
 
@@ -45,176 +159,35 @@ class _SelfieScreenState extends State<SelfieScreen> {
     return Consumer<RegistrationProvider>(
       builder: (context, registrationProvider, child) => Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: Text(
-            'selfie_screen_title'.tr(),
-            style: const TextStyle(
-              fontSize: 16, 
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          centerTitle: true,
-          elevation: 0,
-          backgroundColor: AppColors.cardBackground,
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text(
-                'close'.tr(), 
-                style: const TextStyle(
-                  color: AppColors.textPrimary, 
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
+        appBar: _appBar('selfie_screen_title'),
+        body: SafeArea(
           child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 10),
                 // بخش بارگذاری تصویر سلفی تایید هویت
-                _buildImagePicker(
-                  context: context,
+                PhotoCaptureCard(
                   label: 'selfie_label'.tr(),
-                  imageFile: registrationProvider.cnicWithSelfieImage,
-                  onPressed: () => _takeLightPhoto(registrationProvider), // استفاده از دوربین بهینه‌شده
-                  description: 'selfie_description'.tr(),
+                  hint: 'selfie_description'.tr(),
+                  image: registrationProvider.cnicWithSelfieImage,
+                  buttonText: 'selfie_take_photo'.tr(),
+                  retakeText: _t('retake_photo', 'گرفتن دوباره'),
+                  placeholderIcon: Icons.face_retouching_natural_outlined,
+                  previewHeight: 220,
+                  onPressed: () => _takeLightPhoto(registrationProvider),
                 ),
-                const SizedBox(height: 25),
+                const SizedBox(height: 24),
 
                 // دکمه تایید نهایی سلفی
-                SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: registrationProvider.cnicWithSelfieImage != null
-                        ? () async {
-                            try {
-                              Navigator.pop(context, true);
-                            } catch (e) {
-                              debugPrint("Error while saving data: $e");
-                            }
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: registrationProvider.cnicWithSelfieImage != null
-                          ? AppColors.primaryButton
-                          : Colors.grey.shade400,
-                      foregroundColor: AppColors.buttonText,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      'confirm_and_save'.tr(),
-                      style: const TextStyle(
-                        fontSize: 16, 
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                _confirmButton(
+                  enabled: registrationProvider.cnicWithSelfieImage != null,
+                  onTap: () => Navigator.pop(context, true),
                 ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildImagePicker({
-    required BuildContext context,
-    required String label,
-    required XFile? imageFile,
-    required VoidCallback onPressed,
-    required String description,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(20),
-        color: AppColors.cardBackground,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04), 
-            offset: const Offset(0, 4), 
-            blurRadius: 12.0,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 15, 
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          imageFile != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(imageFile.path), 
-                    height: 200, 
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Image.asset(
-                  'assets/auth/selfie-with-id.png', 
-                  height: 200,
-                  errorBuilder: (c, e, s) => Icon(Icons.account_box, size: 130, color: Colors.grey.shade300),
-                ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            height: 42,
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.primaryBrand),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TextButton.icon(
-              onPressed: onPressed,
-              icon: const Icon(Icons.camera_alt, color: AppColors.primaryBrand),
-              label: Text(
-                'selfie_take_photo'.tr(),
-                style: const TextStyle(
-                  color: AppColors.primaryBrand, 
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Text(
-              description,
-              textAlign: TextAlign.justify,
-              style: const TextStyle(
-                fontSize: 12, 
-                color: AppColors.textSecondary, 
-                height: 1.5,
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
       ),
     );
   }
