@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../providers/registration_provider.dart';
 import '../../../utils/app_colors.dart';
+import '../../../widgets/photo_capture_card.dart';
 
 class DriverCarImageScreeen extends StatefulWidget {
   const DriverCarImageScreeen({super.key});
@@ -18,25 +17,38 @@ class DriverCarImageScreeen extends StatefulWidget {
 class _DriverCarImageScreeenState extends State<DriverCarImageScreeen> {
   final ImagePicker _picker = ImagePicker(); // ابزار دوربین سبک داخلی
 
-  // متد بهینه‌شده برای گرفتن عکس موتر بدون پر شدن رم گوشی و کرش کردن
+  // اگر ترجمه وجود نداشت، .tr() خود کلید را برمی‌گرداند؛ در این حالت متن پیش‌فرض
+  String _t(String key, String fallback) {
+    final String v = key.tr();
+    return v == key ? fallback : v;
+  }
+
+  // عکس موتر: اندازهٔ متوسط کافی است (فقط برای شناسایی ظاهر و پلاک)
   Future<void> _takeLightCarPhoto(RegistrationProvider provider) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 600, // فشرده‌سازی عرض عکس
-        maxHeight: 600, // فشرده‌سازی ارتفاع عکس
-        imageQuality: 40, // کاهش کیفیت به ۴۰٪ برای سبک شدن فوق‌العاده فایل
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 70,
       );
 
       if (pickedFile != null) {
-        setState(() {
-          provider.vehicleImage = pickedFile;
-          // تغییر دادن وضعیت فلگ اضافه شدن عکس در پرووایدر
-          provider.isVehiclePhotoAdded = true;
-        });
+        // ستر در پرووایدر خودش notifyListeners می‌زند
+        provider.vehicleImage = pickedFile;
+        provider.isVehiclePhotoAdded = true;
       }
     } catch (e) {
       debugPrint("Error taking vehicle photo: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t('camera_unavailable',
+                'دوربین باز نشد. اجازهٔ دسترسی به دوربین را در تنظیمات گوشی بدهید.'),
+          ),
+        ),
+      );
     }
   }
 
@@ -48,13 +60,14 @@ class _DriverCarImageScreeenState extends State<DriverCarImageScreeen> {
         appBar: AppBar(
           title: Text(
             'vehicle_image_title'.tr(),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
           ),
           centerTitle: true,
           elevation: 0,
+          surfaceTintColor: Colors.transparent,
           backgroundColor: AppColors.cardBackground,
           actions: [
             TextButton(
@@ -63,51 +76,51 @@ class _DriverCarImageScreeenState extends State<DriverCarImageScreeen> {
               },
               child: Text(
                 'close'.tr(),
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
+        body: SafeArea(
           child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 10),
-                // بخش انتخاب تصویر موتر/موتورسایکل راننده با دوربین سبک جدید
-                _buildImagePicker(
-                  context,
-                  'vehicle_image_hint'.tr(),
-                  registrationProvider.vehicleImage,
-                  () => _takeLightCarPhoto(registrationProvider), // فراخوانی دوربین سبک
+                // بخش انتخاب تصویر موتر/موتورسایکل راننده
+                PhotoCaptureCard(
+                  label: 'vehicle_image_hint'.tr(),
+                  hint: _t(
+                    'vehicle_image_tip',
+                    'موتر را از روبرو و از فاصلهٔ چند قدمی عکس بگیرید؛ کل موتر و پلاک پیدا باشد.',
+                  ),
+                  image: registrationProvider.vehicleImage,
+                  buttonText: 'take_photo_camera'.tr(),
+                  retakeText: _t('retake_photo', 'گرفتن دوباره'),
+                  placeholderIcon: Icons.directions_car_outlined,
+                  previewHeight: 200,
+                  onPressed: () => _takeLightCarPhoto(registrationProvider),
                 ),
-                const SizedBox(height: 25),
+                const SizedBox(height: 24),
 
                 // دکمه تایید و ثبت نهایی
                 SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.9,
-                  height: 50,
+                  height: 52,
                   child: ElevatedButton(
-                    onPressed: registrationProvider.isVehiclePhotoAdded
-                        ? () async {
-                            try {
-                              Navigator.pop(context, true);
-                            } catch (e) {
-                              debugPrint("Error while saving data: $e");
-                            }
-                          }
+                    onPressed: registrationProvider.isVehiclePhotoAdded &&
+                            registrationProvider.vehicleImage != null
+                        ? () => Navigator.pop(context, true)
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: registrationProvider.isVehiclePhotoAdded
-                          ? AppColors.primaryButton
-                          : Colors.grey.shade400,
+                      backgroundColor: AppColors.primaryButton,
                       foregroundColor: AppColors.buttonText,
+                      disabledBackgroundColor: AppColors.borderLight,
+                      disabledForegroundColor: AppColors.textSecondary,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       elevation: 0,
                     ),
@@ -124,85 +137,6 @@ class _DriverCarImageScreeenState extends State<DriverCarImageScreeen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  // ویجت سفارشی‌سازی شده برای کادر انتخاب تصویر
-  Widget _buildImagePicker(
-    BuildContext context,
-    String label,
-    XFile? imageFile,
-    VoidCallback onPressed,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(20),
-        color: AppColors.cardBackground,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            offset: const Offset(0, 4),
-            blurRadius: 12.0,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // نمایش عکس گرفته‌شده یا آیکون پیش‌فرض
-          imageFile != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(imageFile.path),
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Icon(
-                  Icons.directions_car,
-                  size: 100,
-                  color: Colors.grey.shade300,
-                ),
-
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            height: 44,
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.primaryBrand),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TextButton.icon(
-              onPressed: onPressed,
-              icon: const Icon(Icons.camera_alt, color: AppColors.primaryBrand),
-              label: Text(
-                'take_photo_camera'.tr(),
-                style: const TextStyle(
-                  color: AppColors.primaryBrand,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
       ),
     );
   }
