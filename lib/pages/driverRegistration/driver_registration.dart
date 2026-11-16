@@ -37,6 +37,29 @@ class _DriverRegistrationState extends State<DriverRegistration> {
         isVehicleInfoComplete,
       ].where((e) => e).length;
 
+  @override
+  void initState() {
+    super.initState();
+    // اگر راننده قبلاً بخشی از مراحل را پر کرده و برگشته (یا مدارکش از سرور
+    // آمده)، تیک مرحله‌های کامل از همان اول دیده شود، نه از صفر.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final RegistrationProvider p = context.read<RegistrationProvider>();
+      setState(() {
+        isBasicInfoComplete = p.isFormValidBasic;
+        isCnicComplete = p.isFormValidCninc;
+        isSelfieComplete = p.isSelfieStepComplete;
+        isDrivingLicenseInfoComplete = p.isFormValidDrivingLicnese;
+        isVehicleInfoComplete = p.isVehicleStepComplete;
+        isAllComplete = isBasicInfoComplete &&
+            isCnicComplete &&
+            isSelfieComplete &&
+            isDrivingLicenseInfoComplete &&
+            isVehicleInfoComplete;
+      });
+    });
+  }
+
   // اگر ترجمه وجود نداشت، .tr() خود کلید را برمی‌گرداند؛ در این حالت متن پیش‌فرض
   String _t(String key, String fallback) {
     final String v = key.tr();
@@ -78,8 +101,9 @@ class _DriverRegistrationState extends State<DriverRegistration> {
   Future<void> _submit(RegistrationProvider registrationProvider) async {
     registrationProvider.startLoading();
     try {
-      await registrationProvider.saveUserData(context);
-      if (!mounted) return;
+      // saveUserData خودش پیام خطا نشان می‌دهد؛ فقط اگر موفق بود ادامه می‌دهیم
+      final bool saved = await registrationProvider.saveUserData(context);
+      if (!saved || !mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (c) => const Dashboard()),
