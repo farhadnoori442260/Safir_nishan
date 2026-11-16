@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
@@ -50,6 +51,20 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       registrationProvider.initFields(authProvider);
     });
   }
+
+  // اگر ترجمه نبود، .tr() خود کلید را برمی‌گرداند؛ آن‌وقت متن پیش‌فرض
+  String _t(String key, String fallback) {
+    final String v = key.tr();
+    return v == key ? fallback : v;
+  }
+
+  // حداقل سن برای راننده شدن
+  static const int _minAge = 18;
+
+  int get _maxBirthYear => Jalali.now().year - _minAge;
+
+  static final RegExp _emailRe =
+      RegExp(r'^[\w.+\-]+@[\w\-]+(\.[\w\-]+)+$');
 
   String _toAfghanDigits(String value) {
     const List<String> english = <String>[
@@ -104,12 +119,14 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
 
   Jalali _getInitialJalaliDate(String savedDate) {
     final Jalali today = Jalali.now();
+    // پیش‌فرض: حدود ۳۰ ساله، تا راننده مجبور نباشد سال‌ها را از امسال عقب بیاید
+    final Jalali fallback = Jalali(today.year - 30, 1, 1);
 
     try {
       final List<String> parts = savedDate.trim().split('/');
 
       if (parts.length != 3) {
-        return today;
+        return fallback;
       }
 
       final int year = int.parse(parts[0]);
@@ -117,22 +134,22 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       final int day = int.parse(parts[2]);
 
       if (year < 1300 ||
-          year > today.year ||
+          year > _maxBirthYear ||
           month < 1 ||
           month > 12 ||
           day < 1) {
-        return today;
+        return fallback;
       }
 
       final int maxDay = Jalali(year, month, 1).monthLength;
 
       if (day > maxDay) {
-        return today;
+        return fallback;
       }
 
       return Jalali(year, month, day);
     } catch (_) {
-      return today;
+      return fallback;
     }
   }
 
@@ -153,12 +170,12 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
             BuildContext context,
             StateSetter setSheetState,
           ) {
-            final int currentJalaliYear = Jalali.now().year;
+            final int currentJalaliYear = _maxBirthYear;
 
             return Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.cardBackground,
-                borderRadius: BorderRadius.vertical(
+                borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(28),
                 ),
               ),
@@ -177,14 +194,14 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: AppColors.textSecondary.withOpacity(0.25),
+                        color: AppColors.handle,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'انتخاب تاریخ تولد',
+                  Text(
+                    _t('pick_birth_date', 'انتخاب تاریخ تولد'),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -205,7 +222,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                     child: Text(
                       _formatJalaliDate(selectedDate),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         color: AppColors.primaryBrand,
                         fontWeight: FontWeight.bold,
@@ -290,7 +307,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textPrimary,
                             side: BorderSide(
-                              color: AppColors.textSecondary.withOpacity(0.25),
+                              color: AppColors.borderLight,
                             ),
                             padding: const EdgeInsets.symmetric(
                               vertical: 14,
@@ -299,7 +316,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          child: const Text('لغو'),
+                          child: Text(_t('cancel', 'لغو')),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -322,7 +339,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          child: const Text('تأیید'),
+                          child: Text(_t('confirm', 'تأیید')),
                         ),
                       ),
                     ],
@@ -352,7 +369,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       height: 160,
       decoration: BoxDecoration(
         border: Border.all(
-          color: AppColors.textSecondary.withOpacity(0.14),
+          color: AppColors.borderLight,
         ),
         borderRadius: BorderRadius.circular(16),
         color: AppColors.background,
@@ -385,7 +402,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       children: <Widget>[
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: AppColors.textSecondary,
@@ -404,7 +421,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _pickerTitle('سال'),
+        _pickerTitle(_t('year', 'سال')),
         _wheelContainer(
           child: ListWheelScrollView.useDelegate(
             key: ValueKey<int>(selectedDate.year),
@@ -457,7 +474,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _pickerTitle('ماه'),
+        _pickerTitle(_t('month', 'ماه')),
         _wheelContainer(
           child: ListWheelScrollView.useDelegate(
             key: ValueKey<int>(selectedDate.month),
@@ -510,7 +527,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _pickerTitle('روز'),
+        _pickerTitle(_t('day', 'روز')),
         _wheelContainer(
           child: ListWheelScrollView.useDelegate(
             key: ValueKey<String>(
@@ -570,11 +587,11 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
     final OutlineInputBorder baseBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(
-        color: AppColors.textSecondary.withOpacity(0.30),
+        color: AppColors.fieldBorder,
       ),
     );
 
-    const Color errorColor = Color(0xFFD64545);
+    final Color errorColor = AppColors.danger;
 
     // مهم: اندازه و ضخامت فونت برچسب در حالت عادی و شناور یکی است، وگرنه
     // عرض بریدگی خط با عرض متن نمی‌خواند و خط از روی برچسب رد می‌شود.
@@ -612,7 +629,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       border: baseBorder,
       enabledBorder: baseBorder,
       focusedBorder: baseBorder.copyWith(
-        borderSide: const BorderSide(
+        borderSide: BorderSide(
           color: AppColors.primaryBrand,
           width: 2,
         ),
@@ -631,21 +648,14 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
     );
   }
 
-  /// ظاهر مشترک کارت‌ها؛ سایه‌ی سبک تا هنگام باز شدن کیبورد سنگین نشود.
+  /// ظاهر مشترک کارت‌ها؛ بدون سایه (هم سبک‌تر است، هم در حالت تاریک تمیز).
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: AppColors.cardBackground,
       borderRadius: BorderRadius.circular(24),
       border: Border.all(
-        color: AppColors.textSecondary.withOpacity(0.10),
+        color: AppColors.borderLight,
       ),
-      boxShadow: <BoxShadow>[
-        BoxShadow(
-          color: Colors.black.withOpacity(0.03),
-          offset: const Offset(0, 3),
-          blurRadius: 10,
-        ),
-      ],
     );
   }
 
@@ -664,8 +674,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
     final bool isValid =
         registrationProvider.firstNameController.text.trim().isNotEmpty &&
             registrationProvider.lastNameController.text.trim().isNotEmpty &&
-            email.isNotEmpty &&
-            email.contains('@') &&
+            _emailRe.hasMatch(email) &&
             registrationProvider.addressController.text.trim().length >= 5 &&
             registrationProvider.phoneController.text.trim().length >= 9 &&
             registrationProvider.dobController.text.trim().isNotEmpty;
@@ -691,7 +700,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
       appBar: AppBar(
         title: Text(
           'basic_info_title'.tr(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
@@ -704,7 +713,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
         backgroundColor: AppColors.cardBackground,
         shape: Border(
           bottom: BorderSide(
-            color: AppColors.textSecondary.withOpacity(0.10),
+            color: AppColors.borderLight,
           ),
         ),
         actions: <Widget>[
@@ -712,7 +721,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'close'.tr(),
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
@@ -781,8 +790,8 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: AppColors.primaryBrand.withOpacity(0.35),
-                    width: 2,
+                    color: AppColors.borderLight,
+                    width: 1.5,
                   ),
                 ),
                 child: CircleAvatar(
@@ -843,6 +852,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
             TextFormField(
               controller: registrationProvider.firstNameController,
               textInputAction: TextInputAction.next,
+              textCapitalization: TextCapitalization.words,
               decoration: _inputDecoration(
                 labelText: 'first_name'.tr(),
                 icon: Icons.person_outline_rounded,
@@ -861,6 +871,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
             TextFormField(
               controller: registrationProvider.lastNameController,
               textInputAction: TextInputAction.next,
+              textCapitalization: TextCapitalization.words,
               decoration: _inputDecoration(
                 labelText: 'last_name'.tr(),
                 icon: Icons.badge_outlined,
@@ -880,6 +891,8 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               controller: registrationProvider.emailController,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
+              autocorrect: false,
+              enableSuggestions: false,
               decoration: _inputDecoration(
                 labelText: 'email'.tr(),
                 icon: Icons.mail_outline_rounded,
@@ -887,7 +900,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               validator: (String? value) {
                 final String email = value?.trim() ?? '';
 
-                if (email.isEmpty || !email.contains('@')) {
+                if (!_emailRe.hasMatch(email)) {
                   return 'invalid_email_error'.tr();
                 }
 
@@ -925,6 +938,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                 controller: registrationProvider.phoneController,
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
+                inputFormatters: <TextInputFormatter>[_AsciiDigitsFormatter()],
                 decoration: _inputDecoration(
                   labelText: 'mobile_number'.tr(),
                   icon: Icons.phone_outlined,
@@ -947,10 +961,10 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               readOnly: true,
               showCursor: false,
               decoration: _inputDecoration(
-                labelText: 'تاریخ تولد (هجری شمسی)',
-                hintText: 'مثلاً ۱۳۷۹/۰۲/۲۲',
+                labelText: _t('birth_date_label', 'تاریخ تولد (هجری شمسی)'),
+                hintText: _t('birth_date_hint', 'مثلاً ۱۳۷۰/۰۲/۲۲'),
                 icon: Icons.cake_outlined,
-                suffixIcon: const Icon(
+                suffixIcon: Icon(
                   Icons.calendar_month_outlined,
                   size: 20,
                   color: AppColors.primaryBrand,
@@ -958,7 +972,7 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
               ),
               validator: (String? value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'تاریخ تولد را انتخاب کنید';
+                  return _t('err_birth_date', 'تاریخ تولد را انتخاب کنید');
                 }
 
                 return null;
@@ -995,10 +1009,8 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryButton,
               foregroundColor: AppColors.buttonText,
-              disabledBackgroundColor:
-                  AppColors.textSecondary.withOpacity(0.15),
-              disabledForegroundColor:
-                  AppColors.textSecondary.withOpacity(0.6),
+              disabledBackgroundColor: AppColors.borderLight,
+              disabledForegroundColor: AppColors.textSecondary,
               elevation: 0,
               shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
@@ -1041,6 +1053,38 @@ class _KeyboardAwareBody extends StatelessWidget {
         bottom: keyboard > safe.bottom ? keyboard : safe.bottom,
       ),
       child: child,
+    );
+  }
+}
+/// ارقام فارسی/عربی را به لاتین تبدیل می‌کند و فقط رقم و + می‌پذیرد؛
+/// تا شماره همیشه در Firebase و سرور یک‌شکل ذخیره شود.
+class _AsciiDigitsFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    const String fa = '۰۱۲۳۴۵۶۷۸۹';
+    const String ar = '٠١٢٣٤٥٦٧٨٩';
+    final StringBuffer out = StringBuffer();
+    for (final int r in newValue.text.runes) {
+      final String c = String.fromCharCode(r);
+      final int fi = fa.indexOf(c);
+      final int ai = ar.indexOf(c);
+      if (fi >= 0) {
+        out.write(fi);
+      } else if (ai >= 0) {
+        out.write(ai);
+      } else if (RegExp(r'[0-9+]').hasMatch(c)) {
+        out.write(c);
+      }
+    }
+    final String text = out.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(
+        offset: newValue.selection.baseOffset.clamp(0, text.length),
+      ),
     );
   }
 }
