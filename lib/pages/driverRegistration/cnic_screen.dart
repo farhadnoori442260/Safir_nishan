@@ -1,12 +1,12 @@
-import 'dart:io';
-
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/registration_provider.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/photo_capture_card.dart';
 
 class CNICScreen extends StatefulWidget {
   const CNICScreen({super.key});
@@ -17,30 +17,143 @@ class CNICScreen extends StatefulWidget {
 
 class _CNICScreenState extends State<CNICScreen> {
   final _formKey = GlobalKey<FormState>();
-  final ImagePicker _picker = ImagePicker(); // تعریف ابزار دوربین سبک
+  final ImagePicker _picker = ImagePicker();
 
-  // متد بهینه‌شده برای گرفتن عکس کارت ملی/تذکره بدون کرش
+  // اگر ترجمه وجود نداشت، .tr() خود کلید را برمی‌گرداند؛ در این حالت متن پیش‌فرض
+  String _t(String key, String fallback) {
+    final String v = key.tr();
+    return v == key ? fallback : v;
+  }
+
+  void _cameraError() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _t('camera_unavailable',
+              'دوربین باز نشد. اجازهٔ دسترسی به دوربین را در تنظیمات گوشی بدهید.'),
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _fieldDecoration(String label, {String? helper}) {
+    final OutlineInputBorder border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: AppColors.fieldBorder),
+    );
+    return InputDecoration(
+      labelText: label,
+      helperText: helper,
+      counterText: '',
+      labelStyle: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+      floatingLabelStyle: TextStyle(fontSize: 14, color: AppColors.primaryBrand),
+      helperStyle: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+      border: border,
+      enabledBorder: border,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppColors.primaryBrand, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppColors.danger),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppColors.danger, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    );
+  }
+
+  AppBar _appBar(String titleKey) {
+    return AppBar(
+      title: Text(
+        titleKey.tr(),
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textPrimary,
+        ),
+      ),
+      centerTitle: true,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: AppColors.cardBackground,
+      iconTheme: IconThemeData(color: AppColors.textPrimary),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(
+            'close'.tr(),
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _confirmButton({required bool enabled, required VoidCallback onTap}) {
+    return SizedBox(
+      height: 52,
+      child: ElevatedButton(
+        onPressed: enabled ? onTap : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryButton,
+          foregroundColor: AppColors.buttonText,
+          disabledBackgroundColor: AppColors.borderLight,
+          disabledForegroundColor: AppColors.textSecondary,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: Text(
+          'confirm_and_save'.tr(),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _formCard(Widget child) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.borderLight),
+        borderRadius: BorderRadius.circular(20),
+        color: AppColors.cardBackground,
+      ),
+      child: child,
+    );
+  }
+
+  // سند باید خوانا باشد: قبلاً ۶۰۰ پیکسل و کیفیت ۴۰٪ بود و شمارهٔ روی تذکره
+  // خوانده نمی‌شد.
   Future<void> _pickLightImage(bool isFront, RegistrationProvider provider) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 600,
-        maxHeight: 600,
-        imageQuality: 40, // کیفیت ۴۰ درصد برای جلوگیری از بسته شدن برنامه
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 75,
       );
 
       if (pickedFile != null) {
-        setState(() {
-          if (isFront) {
-            provider.cnincFrontImage = pickedFile;
-          } else {
-            provider.cnincBackImage = pickedFile;
-          }
-          provider.checkCNICFormValidity(); // بررسی مجدد اعتبار فرم
-        });
+        // ستر در پرووایدر خودش اعتبار فرم را دوباره حساب و اعلان می‌کند
+        if (isFront) {
+          provider.cnincFrontImage = pickedFile;
+        } else {
+          provider.cnincBackImage = pickedFile;
+        }
       }
     } catch (e) {
       debugPrint("Error picking CNIC image: $e");
+      _cameraError();
     }
   }
 
@@ -49,99 +162,54 @@ class _CNICScreenState extends State<CNICScreen> {
     return Consumer<RegistrationProvider>(
       builder: (context, registrationProvider, child) => Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: Text(
-            'cnic_screen_title'.tr(),
-            style: const TextStyle(
-              fontSize: 16, 
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          centerTitle: true,
-          elevation: 0,
-          backgroundColor: AppColors.cardBackground,
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text(
-                'close'.tr(), 
-                style: const TextStyle(
-                  color: AppColors.textPrimary, 
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
+        appBar: _appBar('cnic_screen_title'),
+        body: SafeArea(
           child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 10),
-                  
                   // بارگذاری تصویر روی کارت هویت / تذکره
-                  _buildImagePicker(
-                    context: context,
+                  PhotoCaptureCard(
                     label: 'cnic_front_hint'.tr(),
-                    imageFile: registrationProvider.cnincFrontImage,
+                    hint: _t(
+                      'doc_photo_tip',
+                      'سند را روی سطح صاف بگذارید؛ هر چهار گوشه پیدا و نوشته‌ها خوانا باشد، بدون انعکاس نور.',
+                    ),
+                    image: registrationProvider.cnincFrontImage,
                     buttonText: 'take_photo_front'.tr(),
-                    defaultAssetPath: 'assets/auth/cnic-front.png',
+                    retakeText: _t('retake_photo', 'گرفتن دوباره'),
+                    placeholderIcon: Icons.badge_outlined,
                     onPressed: () => _pickLightImage(true, registrationProvider),
                   ),
                   const SizedBox(height: 16),
 
                   // بارگذاری تصویر پشت کارت هویت / تذکره
-                  _buildImagePicker(
-                    context: context,
+                  PhotoCaptureCard(
                     label: 'cnic_back_hint'.tr(),
-                    imageFile: registrationProvider.cnincBackImage,
+                    image: registrationProvider.cnincBackImage,
                     buttonText: 'take_photo_back'.tr(),
-                    defaultAssetPath: 'assets/auth/cnic-back.png',
+                    retakeText: _t('retake_photo', 'گرفتن دوباره'),
+                    placeholderIcon: Icons.badge_outlined,
                     onPressed: () => _pickLightImage(false, registrationProvider),
                   ),
                   const SizedBox(height: 16),
 
                   // فیلد شماره تذکره/کارت هویت
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade200),
-                      borderRadius: BorderRadius.circular(20),
-                      color: AppColors.cardBackground,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          offset: const Offset(0, 4),
-                          blurRadius: 12.0,
-                        ),
-                      ],
-                    ),
-                    child: Directionality(
+                  _formCard(
+                    Directionality(
                       textDirection: TextDirection.ltr,
                       child: TextFormField(
                         controller: registrationProvider.cnicController,
-                        decoration: InputDecoration(
-                          labelText: 'cnic_number_label'.tr(),
-                          labelStyle: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                          focusedBorder: const OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(12)),
-                            borderSide: BorderSide(color: AppColors.primaryBrand, width: 2),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: const BorderRadius.all(Radius.circular(12)),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        style: TextStyle(color: AppColors.textPrimary),
+                        decoration: _fieldDecoration(
+                          'cnic_number_label'.tr(),
                         ),
                         keyboardType: TextInputType.number,
                         maxLength: 13,
+                        inputFormatters: [_AsciiDigitsFormatter()],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'err_cnic_required'.tr();
@@ -156,42 +224,16 @@ class _CNICScreenState extends State<CNICScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 24),
 
                   // دکمه تایید نهایی مدارک
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: registrationProvider.isFormValidCninc
-                          ? () async {
-                              if (_formKey.currentState?.validate() == true) {
-                                try {
-                                  Navigator.pop(context, true);
-                                } catch (e) {
-                                  debugPrint("Error while saving data: $e");
-                                }
-                              }
-                            }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: registrationProvider.isFormValidCninc
-                            ? AppColors.primaryButton
-                            : Colors.grey.shade400,
-                        foregroundColor: AppColors.buttonText,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'confirm_and_save'.tr(),
-                        style: const TextStyle(
-                          fontSize: 16, 
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                  _confirmButton(
+                    enabled: registrationProvider.isFormValidCninc,
+                    onTap: () {
+                      if (_formKey.currentState?.validate() == true) {
+                        Navigator.pop(context, true);
+                      }
+                    },
                   ),
                 ],
               ),
@@ -201,81 +243,36 @@ class _CNICScreenState extends State<CNICScreen> {
       ),
     );
   }
+}
 
-  Widget _buildImagePicker({
-    required BuildContext context,
-    required String label,
-    required XFile? imageFile,
-    required String buttonText,
-    required String defaultAssetPath,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(20),
-        color: AppColors.cardBackground,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04), 
-            offset: const Offset(0, 4), 
-            blurRadius: 12.0,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13, 
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          imageFile != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(imageFile.path), 
-                    height: 150, 
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Image.asset(
-                  defaultAssetPath, 
-                  height: 150,
-                  errorBuilder: (c, e, s) => Icon(Icons.credit_card, size: 100, color: Colors.grey.shade300),
-                ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            height: 42,
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.primaryBrand),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TextButton.icon(
-              onPressed: onPressed,
-              icon: const Icon(Icons.camera_alt, color: AppColors.primaryBrand),
-              label: Text(
-                buttonText,
-                style: const TextStyle(
-                  color: AppColors.primaryBrand, 
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
+/// ارقام فارسی/عربی را به لاتین تبدیل می‌کند و فقط رقم می‌پذیرد؛ تا شماره همیشه
+/// یک‌شکل ذخیره شود (قبلاً شمارهٔ فارسی‌تایپ‌شده همان‌طور ذخیره می‌شد).
+class _AsciiDigitsFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    const String fa = '۰۱۲۳۴۵۶۷۸۹';
+    const String ar = '٠١٢٣٤٥٦٧٨٩';
+    final StringBuffer out = StringBuffer();
+    for (final int r in newValue.text.runes) {
+      final String c = String.fromCharCode(r);
+      final int fi = fa.indexOf(c);
+      final int ai = ar.indexOf(c);
+      if (fi >= 0) {
+        out.write(fi);
+      } else if (ai >= 0) {
+        out.write(ai);
+      } else if (RegExp(r'[0-9]').hasMatch(c)) {
+        out.write(c);
+      }
+    }
+    final String text = out.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(
+        offset: newValue.selection.baseOffset.clamp(0, text.length),
       ),
     );
   }
