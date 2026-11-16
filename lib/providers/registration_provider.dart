@@ -17,6 +17,7 @@ import 'package:safir_drivers/methods/image_picker_service.dart';
 import 'package:safir_drivers/models/driver.dart';
 import 'package:safir_drivers/models/vehicle_info.dart';
 import 'package:safir_drivers/providers/authentication_provider.dart';
+import 'package:safir_drivers/utils/afghan_locations.dart';
 import 'package:safir_drivers/utils/lang_helper.dart';
 
 class RegistrationProvider extends ChangeNotifier {
@@ -49,6 +50,12 @@ class RegistrationProvider extends ChangeNotifier {
   XFile? _vehicleRegistrationBackImage;
 
   String? _selectedVehicle;
+  String _province = '';
+  String _city = '';
+
+  // آدرس تصویرهایی که از سرور آمده‌اند (مسیر فایل موقت ← آدرس اصلی)؛ تا هنگام
+  // ویرایش، همان تصویر بدون تغییر دوباره آپلود نشود.
+  final Map<String, String> _remoteUrls = <String, String>{};
   String _plateProvince = 'کابل';
   String _plateCategory = 'ش';
   String _plateType = 'شخصی';
@@ -60,7 +67,7 @@ class RegistrationProvider extends ChangeNotifier {
 
   final CommonMethods commonMethods = CommonMethods();
 
-  final RegExp licenseRegExp = RegExp(r'^[A-Z]{2}-d{2}-d{4}$');
+  final RegExp licenseRegExp = RegExp(r'^[A-Z]{2}-\d{2}-\d{4}$');
 
   final TextEditingController firstNameController =
       TextEditingController();
@@ -124,6 +131,23 @@ class RegistrationProvider extends ChangeNotifier {
       _vehicleRegistrationBackImage;
 
   String? get selectedVehicle => _selectedVehicle;
+  String get province => _province;
+  String get city => _city;
+
+  static final RegExp _emailRe =
+      RegExp(r'^[\w.+\-]+@[\w\-]+(\.[\w\-]+)+$');
+
+  static bool isValidEmail(String email) => _emailRe.hasMatch(email.trim());
+
+  /// مرحلهٔ سلفی با کارت ملی کامل است؟
+  bool get isSelfieStepComplete => _cnicWithSelfieImage != null;
+
+  /// مرحلهٔ وسیله: فرم + عکس موتر + هر دو عکس سند
+  bool get isVehicleStepComplete =>
+      _isVehicleBasicFormValid &&
+      _vehicleImage != null &&
+      _vehicleRegistrationFrontImage != null &&
+      _vehicleRegistrationBackImage != null;
   String get plateProvince => _plateProvince;
   String get plateCategory => _plateCategory;
   String get plateType => _plateType;
@@ -273,12 +297,17 @@ class RegistrationProvider extends ChangeNotifier {
   void initFields(
     AuthenticationProvider authProvider,
   ) {
+    // فقط فیلدهای خالی پر می‌شوند؛ قبلاً با هر بار باز شدن صفحه، آنچه راننده
+    // تایپ کرده بود پاک می‌شد.
     if (!authProvider.isGoogleSignedIn) {
-      phoneController.text = authProvider.phoneNumber ?? '';
+      if (phoneController.text.trim().isEmpty) {
+        phoneController.text = authProvider.phoneNumber ?? '';
+      }
     } else {
-      emailController.text =
-          authProvider.firebaseAuth.currentUser?.email ?? '';
-      phoneController.text = '';
+      if (emailController.text.trim().isEmpty) {
+        emailController.text =
+            authProvider.firebaseAuth.currentUser?.email ?? '';
+      }
     }
 
     checkBasicFormValidity();
@@ -309,8 +338,9 @@ class RegistrationProvider extends ChangeNotifier {
         final bool isValid =
             firstNameController.text.trim().isNotEmpty &&
             lastNameController.text.trim().isNotEmpty &&
-            email.isNotEmpty &&
-            email.contains('@') &&
+            isValidEmail(email) &&
+            _province.isNotEmpty &&
+            _city.isNotEmpty &&
             addressController.text.trim().length >= 5 &&
             phoneController.text.trim().length >= 9 &&
             dobController.text.trim().isNotEmpty;
@@ -418,6 +448,30 @@ class RegistrationProvider extends ChangeNotifier {
 
     _plateType = value;
     checkVehicleBasicFormValidity();
+    notifyListeners();
+  }
+
+  void setProvince(String value) {
+    if (_province == value) {
+      return;
+    }
+
+    _province = value;
+    // شهر ولایت قبلی دیگر معتبر نیست
+    if (!AfghanLocations.hasCity(value, _city)) {
+      _city = '';
+    }
+    checkBasicFormValidity();
+    notifyListeners();
+  }
+
+  void setCity(String value) {
+    if (_city == value) {
+      return;
+    }
+
+    _city = value;
+    checkBasicFormValidity();
     notifyListeners();
   }
 
@@ -619,6 +673,12 @@ class RegistrationProvider extends ChangeNotifier {
       return photo.path;
     }
 
+    // تصویر بدون تغییر از سرور: همان آدرس قبلی، بدون مصرف اینترنت
+    final String? knownUrl = _remoteUrls[photo.path];
+    if (knownUrl != null) {
+      return knownUrl;
+    }
+
     const String cloudName = 'mhjpeymi';
     const String uploadPreset = 'safir_preset';
 
@@ -626,43 +686,54 @@ class RegistrationProvider extends ChangeNotifier {
       'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
     );
 
-    try {
-      final http.MultipartRequest request =
-          http.MultipartRequest('POST', url);
+    // اینترنت ضعیف: هر آپلود حداکثر ۹۰ ثانیه، و یک بار تلاش دوباره
+    Object? lastError;
 
-      request.fields['upload_preset'] = uploadPreset;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final http.MultipartRequest request =
+            http.MultipartRequest('POST', url);
 
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'file',
-          photo.path,
-        ),
-      );
+        request.fields['upload_preset'] = uploadPreset;
 
-      final http.StreamedResponse streamedResponse =
-          await request.send();
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'file',
+            photo.path,
+          ),
+        );
 
-      final http.Response response =
-          await http.Response.fromStream(streamedResponse);
+        final http.StreamedResponse streamedResponse =
+            await request.send().timeout(const Duration(seconds: 90));
 
-      if (response.statusCode == 200 ||
-          response.statusCode == 201) {
-        final Map<String, dynamic> responseData =
-            jsonDecode(response.body) as Map<String, dynamic>;
+        final http.Response response =
+            await http.Response.fromStream(streamedResponse);
 
-        return responseData['secure_url'].toString();
+        if (response.statusCode == 200 ||
+            response.statusCode == 201) {
+          final Map<String, dynamic> responseData =
+              jsonDecode(response.body) as Map<String, dynamic>;
+
+          final String uploaded = responseData['secure_url'].toString();
+          _remoteUrls[photo.path] = uploaded;
+          return uploaded;
+        }
+
+        throw Exception(
+          'Upload failed: ${response.statusCode}',
+        );
+      } catch (error) {
+        lastError = error;
+        debugPrint('Cloudinary Upload Error (try ${attempt + 1}): $error');
       }
-
-      throw Exception(
-        'Upload failed: ${response.statusCode}',
-      );
-    } catch (error) {
-      debugPrint('Cloudinary Upload Error: $error');
-      rethrow;
     }
+
+    throw lastError ?? Exception('Upload failed');
   }
 
-  Future<void> saveUserData(
+  /// true یعنی ثبت کامل شد. قبلاً در هر شکستی (آپلود، اینترنت، ...) فقط لاگ
+  /// می‌شد و صفحه فکر می‌کرد موفق بوده و راننده را به داشبورد می‌برد.
+  Future<bool> saveUserData(
     BuildContext context,
   ) async {
     if (!isFormValidBasic ||
@@ -673,14 +744,20 @@ class RegistrationProvider extends ChangeNotifier {
         tr(context, 'err_fill_all_fields'),
         context,
       );
-      return;
+      return false;
     }
 
     final User? currentUser = _auth.currentUser;
 
     if (currentUser == null) {
       debugPrint('Error saving driver data: user is not signed in.');
-      return;
+      if (context.mounted) {
+        commonMethods.displaySnackBar(
+          'ورود شما منقضی شده است. دوباره وارد شوید.',
+          context,
+        );
+      }
+      return false;
     }
 
     try {
@@ -794,16 +871,35 @@ class RegistrationProvider extends ChangeNotifier {
       final DocumentReference<Map<String, dynamic>> driverRef =
           _firestore.collection('drivers').doc(currentUser.uid);
 
-      await driverRef.set(
-        driver.toMap(),
-        SetOptions(merge: true),
-      );
-
       final DocumentSnapshot<Map<String, dynamic>> currentDriverSnapshot =
           await driverRef.get();
 
       final Map<String, dynamic> currentDriverData =
           currentDriverSnapshot.data() ?? <String, dynamic>{};
+
+      final Map<String, dynamic> driverMap = driver.toMap();
+
+      // ولایت و شهر کنار آدرس ذخیره می‌شوند (مدل Driver این فیلدها را ندارد)
+      driverMap['province'] = _province;
+      driverMap['city'] = _city;
+
+      // اگر سند راننده از قبل هست (ثبت‌نام ناتمام یا دوباره)، وضعیت بلاک،
+      // درآمد، امتیاز و توکن اعلان نباید به مقدار اولیه برگردد.
+      if (currentDriverSnapshot.exists) {
+        for (final String key in <String>[
+          'blockStatus',
+          'earnings',
+          'driverRatings',
+          'deviceToken',
+        ]) {
+          driverMap.remove(key);
+        }
+      }
+
+      await driverRef.set(
+        driverMap,
+        SetOptions(merge: true),
+      );
 
       final bool hasEarnings =
           currentDriverData.containsKey('earnings') ||
@@ -821,9 +917,17 @@ class RegistrationProvider extends ChangeNotifier {
 
       await retrieveCurrentDriverInfo();
       await fetchDriverEarnings();
+      return true;
     } catch (error, stackTrace) {
       debugPrint('Error saving driver data: $error');
       debugPrintStack(stackTrace: stackTrace);
+      if (context.mounted) {
+        commonMethods.displaySnackBar(
+          'ثبت اطلاعات انجام نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.',
+          context,
+        );
+      }
+      return false;
     } finally {
       stopLoading();
     }
@@ -854,6 +958,8 @@ class RegistrationProvider extends ChangeNotifier {
       lastNameController.text = data['secondName']?.toString() ?? '';
       phoneController.text = data['phoneNumber']?.toString() ?? '';
       addressController.text = data['address']?.toString() ?? '';
+      _province = data['province']?.toString() ?? '';
+      _city = data['city']?.toString() ?? '';
       dobController.text = data['dob']?.toString() ?? '';
       emailController.text = data['email']?.toString() ?? '';
       cnicController.text = data['cnicNumber']?.toString() ?? '';
@@ -880,45 +986,32 @@ class RegistrationProvider extends ChangeNotifier {
       _plateType =
           vehicleData['plateType']?.toString() ?? 'شخصی';
 
-      _profilePhoto = await _fetchImageFromUrl(
-        data['profilePicture']?.toString() ?? '',
-      );
+      // نُه تصویر هم‌زمان دانلود می‌شود (قبلاً یکی‌یکی، و کند)
+      final List<XFile?> images = await Future.wait<XFile?>(<Future<XFile?>>[
+        _fetchImageFromUrl(data['profilePicture']?.toString() ?? ''),
+        _fetchImageFromUrl(data['cnicFrontImage']?.toString() ?? ''),
+        _fetchImageFromUrl(data['cnicBackImage']?.toString() ?? ''),
+        _fetchImageFromUrl(data['driverFaceWithCnic']?.toString() ?? ''),
+        _fetchImageFromUrl(data['drivingLicenseFrontImage']?.toString() ?? ''),
+        _fetchImageFromUrl(data['drivingLicenseBackImage']?.toString() ?? ''),
+        _fetchImageFromUrl(vehicleData['vehiclePicture']?.toString() ?? ''),
+        _fetchImageFromUrl(
+          vehicleData['registrationCertificateFrontImage']?.toString() ?? '',
+        ),
+        _fetchImageFromUrl(
+          vehicleData['registrationCertificateBackImage']?.toString() ?? '',
+        ),
+      ]);
 
-      _cnicFrontImage = await _fetchImageFromUrl(
-        data['cnicFrontImage']?.toString() ?? '',
-      );
-
-      _cnicBackImage = await _fetchImageFromUrl(
-        data['cnicBackImage']?.toString() ?? '',
-      );
-
-      _cnicWithSelfieImage = await _fetchImageFromUrl(
-        data['driverFaceWithCnic']?.toString() ?? '',
-      );
-
-      _drivingLicenseFrontImage = await _fetchImageFromUrl(
-        data['drivingLicenseFrontImage']?.toString() ?? '',
-      );
-
-      _drivingLicenseBackImage = await _fetchImageFromUrl(
-        data['drivingLicenseBackImage']?.toString() ?? '',
-      );
-
-      _vehicleImage = await _fetchImageFromUrl(
-        vehicleData['vehiclePicture']?.toString() ?? '',
-      );
-
-      _vehicleRegistrationFrontImage = await _fetchImageFromUrl(
-        vehicleData['registrationCertificateFrontImage']
-                ?.toString() ??
-            '',
-      );
-
-      _vehicleRegistrationBackImage = await _fetchImageFromUrl(
-        vehicleData['registrationCertificateBackImage']
-                ?.toString() ??
-            '',
-      );
+      _profilePhoto = images[0];
+      _cnicFrontImage = images[1];
+      _cnicBackImage = images[2];
+      _cnicWithSelfieImage = images[3];
+      _drivingLicenseFrontImage = images[4];
+      _drivingLicenseBackImage = images[5];
+      _vehicleImage = images[6];
+      _vehicleRegistrationFrontImage = images[7];
+      _vehicleRegistrationBackImage = images[8];
 
       _isPhotoAdded = _profilePhoto != null;
       _isVehiclePhotoAdded = _vehicleImage != null;
@@ -941,8 +1034,9 @@ class RegistrationProvider extends ChangeNotifier {
     _isFormValidBasic =
         firstNameController.text.trim().isNotEmpty &&
             lastNameController.text.trim().isNotEmpty &&
-            email.isNotEmpty &&
-            email.contains('@') &&
+            isValidEmail(email) &&
+            _province.isNotEmpty &&
+            _city.isNotEmpty &&
             addressController.text.trim().length >= 5 &&
             phoneController.text.trim().length >= 9 &&
             dobController.text.trim().isNotEmpty;
@@ -975,7 +1069,9 @@ class RegistrationProvider extends ChangeNotifier {
     }
 
     try {
-      final http.Response response = await http.get(Uri.parse(url));
+      final http.Response response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode != 200) {
         return null;
@@ -989,6 +1085,8 @@ class RegistrationProvider extends ChangeNotifier {
       final File file = File(filePath);
 
       await file.writeAsBytes(response.bodyBytes);
+
+      _remoteUrls[file.path] = url;
 
       return XFile(file.path);
     } catch (error) {
@@ -1194,7 +1292,7 @@ class RegistrationProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateBasicDriverInfo(
+  Future<bool> updateBasicDriverInfo(
     BuildContext context,
   ) async {
     try {
@@ -1212,6 +1310,8 @@ class RegistrationProvider extends ChangeNotifier {
         'secondName': lastNameController.text.trim(),
         'email': emailController.text.trim(),
         'address': addressController.text.trim(),
+        'province': _province,
+        'city': _city,
         'phoneNumber': phoneController.text.trim(),
         'dob': dobController.text.trim(),
         'profilePicture': newProfilePicture,
@@ -1226,14 +1326,22 @@ class RegistrationProvider extends ChangeNotifier {
       );
 
       await retrieveCurrentDriverInfo();
+      return true;
     } catch (error) {
       debugPrint('Error updating basic driver info: $error');
+      if (context.mounted) {
+        commonMethods.displaySnackBar(
+          'ذخیره اطلاعات انجام نشد. دوباره تلاش کنید.',
+          context,
+        );
+      }
+      return false;
     } finally {
       stopLoading();
     }
   }
 
-  Future<void> updateCnincInfo(
+  Future<bool> updateCnincInfo(
     BuildContext context,
   ) async {
     try {
@@ -1264,14 +1372,22 @@ class RegistrationProvider extends ChangeNotifier {
         },
         SetOptions(merge: true),
       );
+      return true;
     } catch (error) {
       debugPrint('Error updating CNIC info: $error');
+      if (context.mounted) {
+        commonMethods.displaySnackBar(
+          'ذخیره مدارک کارت ملی انجام نشد. دوباره تلاش کنید.',
+          context,
+        );
+      }
+      return false;
     } finally {
       stopLoading();
     }
   }
 
-  Future<void> updateSelfieWithCnincInfo(
+  Future<bool> updateSelfieWithCnincInfo(
     BuildContext context,
   ) async {
     try {
@@ -1293,14 +1409,22 @@ class RegistrationProvider extends ChangeNotifier {
         },
         SetOptions(merge: true),
       );
+      return true;
     } catch (error) {
       debugPrint('Error updating selfie with CNIC: $error');
+      if (context.mounted) {
+        commonMethods.displaySnackBar(
+          'ذخیره عکس سلفی انجام نشد. دوباره تلاش کنید.',
+          context,
+        );
+      }
+      return false;
     } finally {
       stopLoading();
     }
   }
 
-  Future<void> updatedriverLicenseInfo(
+  Future<bool> updatedriverLicenseInfo(
     BuildContext context,
   ) async {
     try {
@@ -1334,14 +1458,22 @@ class RegistrationProvider extends ChangeNotifier {
         },
         SetOptions(merge: true),
       );
+      return true;
     } catch (error) {
       debugPrint('Error updating driver license info: $error');
+      if (context.mounted) {
+        commonMethods.displaySnackBar(
+          'ذخیره مدارک گواهینامه انجام نشد. دوباره تلاش کنید.',
+          context,
+        );
+      }
+      return false;
     } finally {
       stopLoading();
     }
   }
 
-  Future<void> updateVehicleBasicInfo(
+  Future<bool> updateVehicleBasicInfo(
     BuildContext context,
   ) async {
     try {
@@ -1370,19 +1502,22 @@ class RegistrationProvider extends ChangeNotifier {
       );
 
       await retrieveCurrentDriverInfo();
+      return true;
     } catch (error) {
       debugPrint('Error updating vehicle basic info: $error');
-
-      commonMethods.displaySnackBar(
-        'خطا در ذخیره اطلاعات وسیله',
-        context,
-      );
+      if (context.mounted) {
+        commonMethods.displaySnackBar(
+          'خطا در ذخیره اطلاعات وسیله',
+          context,
+        );
+      }
+      return false;
     } finally {
       stopLoading();
     }
   }
 
-  Future<void> updateVehicleImage(
+  Future<bool> updateVehicleImage(
     BuildContext context,
   ) async {
     try {
@@ -1413,19 +1548,22 @@ class RegistrationProvider extends ChangeNotifier {
       );
 
       await retrieveCurrentDriverInfo();
+      return true;
     } catch (error) {
       debugPrint('Error updating vehicle image: $error');
-
-      commonMethods.displaySnackBar(
-        'خطا در آپلود عکس وسیله',
-        context,
-      );
+      if (context.mounted) {
+        commonMethods.displaySnackBar(
+          'خطا در آپلود عکس وسیله',
+          context,
+        );
+      }
+      return false;
     } finally {
       stopLoading();
     }
   }
 
-  Future<void> updateVehicleRegistraionImages(
+  Future<bool> updateVehicleRegistraionImages(
     BuildContext context,
   ) async {
     try {
@@ -1469,15 +1607,18 @@ class RegistrationProvider extends ChangeNotifier {
       );
 
       await retrieveCurrentDriverInfo();
+      return true;
     } catch (error) {
       debugPrint(
         'Error updating vehicle registration images: $error',
       );
-
-      commonMethods.displaySnackBar(
-        'خطا در آپلود عکس‌های سند وسیله',
-        context,
-      );
+      if (context.mounted) {
+        commonMethods.displaySnackBar(
+          'خطا در آپلود عکس‌های سند وسیله',
+          context,
+        );
+      }
+      return false;
     } finally {
       stopLoading();
     }
