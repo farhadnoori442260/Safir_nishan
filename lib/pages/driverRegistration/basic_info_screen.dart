@@ -9,6 +9,7 @@ import 'package:shamsi_date/shamsi_date.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/registration_provider.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/province_city_fields.dart';
 
 class BasicInfoScreen extends StatefulWidget {
   const BasicInfoScreen({super.key});
@@ -675,6 +676,8 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
         registrationProvider.firstNameController.text.trim().isNotEmpty &&
             registrationProvider.lastNameController.text.trim().isNotEmpty &&
             _emailRe.hasMatch(email) &&
+            registrationProvider.province.isNotEmpty &&
+            registrationProvider.city.isNotEmpty &&
             registrationProvider.addressController.text.trim().length >= 5 &&
             registrationProvider.phoneController.text.trim().length >= 9 &&
             registrationProvider.dobController.text.trim().isNotEmpty;
@@ -910,6 +913,8 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                 registrationProvider.checkBasicFormValidity();
               },
             ),
+            const SizedBox(height: 16),
+            const ProvinceCityFields(),
             const SizedBox(height: 16),
             TextFormField(
               controller: registrationProvider.addressController,
