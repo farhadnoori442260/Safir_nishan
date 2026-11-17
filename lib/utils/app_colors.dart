@@ -55,6 +55,14 @@ class AppColors {
   static Color get iconPrimary => _p(0xFF1A1D29, 0xFFECEEF1);
   static Color get iconSecondary => _p(0xFF6B7280, 0xFF9BA1AA);
 
+  // 🧩 سطح‌های نرم برای هشدار/اطلاع/چیپ و رنگ دکمه پایان سفر
+  static Color get endTrip => _p(0xFFC2570C, 0xFFE0701F);
+  static Color get neutralSoft => _p(0xFFF1F5F9, 0xFF24272B);
+  static Color get successSoft => _p(0xFFDCFCE7, 0xFF11301E);
+  static Color get infoSoft => _p(0xFFEFF6FF, 0xFF16243A);
+  static Color get infoBorder => _p(0xFFBFDBFE, 0xFF254468);
+  static Color get infoText => _p(0xFF1E3A8A, 0xFF9DC2FF);
+
   // 📍 نقشه
   static Color get originBlue => _p(0xFF2563EB, 0xFF5B8DEF);
 
