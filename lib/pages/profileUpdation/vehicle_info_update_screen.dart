@@ -1,105 +1,96 @@
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import 'package:safir_drivers/pages/profileUpdation/vehicleUpdation/driver_car_image_update_screen.dart';
 import 'package:safir_drivers/pages/profileUpdation/vehicleUpdation/vehicle_basic_info_update_screen.dart';
 import 'package:safir_drivers/pages/profileUpdation/vehicleUpdation/vehicle_registration_update_screen.dart';
-import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
 
-class VehicleInfoUpdateScreen extends StatefulWidget {
+class VehicleInfoUpdateScreen extends StatelessWidget {
   const VehicleInfoUpdateScreen({super.key});
 
   @override
-  State<VehicleInfoUpdateScreen> createState() =>
-      _VehicleInfoUpdateScreenState();
-}
-
-class _VehicleInfoUpdateScreenState extends State<VehicleInfoUpdateScreen> {
-  @override
   Widget build(BuildContext context) {
-    // آرایه زیرمجموعه‌های بخش اطلاعات موتر
+    // زیرمجموعه‌های بخش اطلاعات موتر
     final List<Map<String, dynamic>> subSteps = [
       {
         'title': 'vehicle_basic_info_title'.tr(),
         'subtitle': 'vehicle_basic_info_subtitle'.tr(),
+        'icon': Icons.directions_car_filled_outlined,
+        'color': AppColors.originBlue,
         'screen': const VehicleBasicInfoUpdateScreen(),
       },
       {
         'title': 'vehicle_image_title'.tr(),
         'subtitle': 'vehicle_image_subtitle'.tr(),
+        'icon': Icons.photo_camera_outlined,
+        'color': AppColors.accentTeal,
         'screen': const DriverCarImageUpdateScreen(),
       },
       {
         'title': 'vehicle_doc_title'.tr(),
         'subtitle': 'vehicle_doc_subtitle'.tr(),
+        'icon': Icons.description_outlined,
+        'color': AppColors.accentPurple,
         'screen': const VehicleRegistrationUpdateScreen(),
       },
     ];
 
-    return Consumer<RegistrationProvider>(
-      builder: (context, registrationProvider, child) => Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: Text(
-            'vehicle_info_title'.tr(),
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: AppColors.textPrimary,
-            ),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(
+          'vehicle_info_title'.tr(),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: AppColors.textPrimary,
           ),
-          centerTitle: true,
-          backgroundColor: AppColors.cardBackground,
-          elevation: 0,
         ),
-        body: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Center(
+        centerTitle: true,
+        backgroundColor: AppColors.cardBackground,
+        surfaceTintColor: AppColors.cardBackground,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            color: AppColors.cardBackground,
+            border: Border.all(color: AppColors.borderLight),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
             child: Column(
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: AppColors.cardBackground,
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        offset: Offset(0, 2),
-                        blurRadius: 6.0,
-                      ),
-                    ],
-                  ),
-                  width: MediaQuery.of(context).size.width * 0.92,
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: subSteps.length,
-                    separatorBuilder: (context, index) => const Divider(
-                      color: Colors.black12,
-                      thickness: 0.5,
-                      height: 1,
-                      indent: 16,
-                      endIndent: 16,
-                    ),
-                    itemBuilder: (context, index) {
-                      final item = subSteps[index];
-                      return _buildListTile(
-                        title: item['title'],
-                        subtitle: item['subtitle'],
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => item['screen'],
-                            ),
-                          );
-                        },
+                for (int i = 0; i < subSteps.length; i++) ...[
+                  _buildTile(
+                    context,
+                    title: subSteps[i]['title'] as String,
+                    subtitle: subSteps[i]['subtitle'] as String,
+                    icon: subSteps[i]['icon'] as IconData,
+                    color: subSteps[i]['color'] as Color,
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => subSteps[i]['screen'] as Widget,
+                        ),
                       );
                     },
                   ),
-                ),
+                  if (i != subSteps.length - 1)
+                    Divider(
+                      color: AppColors.borderLight,
+                      thickness: 1,
+                      height: 1,
+                      indent: 64,
+                      endIndent: 16,
+                    ),
+                ],
               ],
             ),
           ),
@@ -108,15 +99,21 @@ class _VehicleInfoUpdateScreenState extends State<VehicleInfoUpdateScreen> {
     );
   }
 
-  Widget _buildListTile({
+  Widget _buildTile(
+    BuildContext context, {
     required String title,
     required String subtitle,
+    required IconData icon,
+    required Color color,
     required VoidCallback onTap,
   }) {
+    final bool isRtl = Directionality.of(context) == TextDirection.rtl;
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Icon(icon, color: color, size: 24),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.bold,
           color: AppColors.textPrimary,
@@ -126,15 +123,15 @@ class _VehicleInfoUpdateScreenState extends State<VehicleInfoUpdateScreen> {
         padding: const EdgeInsets.only(top: 4.0),
         child: Text(
           subtitle,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             color: AppColors.textSecondary,
           ),
         ),
       ),
-      trailing: const Icon(
-        Icons.chevron_left_rounded,
-        size: 20,
+      trailing: Icon(
+        isRtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+        size: 22,
         color: AppColors.iconSecondary,
       ),
       onTap: onTap,
