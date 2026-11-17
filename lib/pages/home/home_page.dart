@@ -724,7 +724,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _navTraveledLine = await mapController!.addLine(
         LineOptions(
           geometry: grey,
-          lineColor: '#B0B7C3',
+          lineColor: AppColors.routeTraveledHex,
           lineWidth: 6.0,
           lineJoin: 'round',
         ),
@@ -733,7 +733,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _navRemainingLine = await mapController!.addLine(
         LineOptions(
           geometry: remaining,
-          lineColor: '#2B59D9',
+          lineColor: AppColors.routeLineHex,
           lineWidth: 6.0,
           lineOpacity: 0.85,
           lineJoin: 'round',
@@ -1981,11 +1981,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 horizontal: 24,
                 vertical: 20,
               ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(32),
                 ),
+                border: Border(top: BorderSide(color: AppColors.borderLight)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1994,7 +1995,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     width: 48,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: AppColors.handle,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -2004,9 +2005,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ? 'change_to_online_title'.tr()
                         : 'change_to_offline_title'.tr(),
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -2078,8 +2080,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isDriverAvailable
-                                ? const Color(0xFFE53935)
+                                ? AppColors.danger
                                 : AppColors.primaryButton,
+                            disabledBackgroundColor: AppColors.borderLight,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -2088,10 +2091,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ),
                           child: Text(
                             'btn_confirm'.tr(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: AppColors.buttonText,
                             ),
                           ),
                         ),
@@ -2104,7 +2107,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               : () => Navigator.pop(modalContext),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: BorderSide(color: Colors.grey.shade300),
+                            side: BorderSide(color: AppColors.fieldBorder),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -2114,7 +2117,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade700,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -2164,7 +2167,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ),
                             zoom: 15,
                           ),
-                      styleString: 'assets/map/style.json',
+                      styleString: AppColors.mapStyleAsset,
                       rotateGesturesEnabled: false,
                       tiltGesturesEnabled: false,
                       myLocationEnabled: !_isNavArrowVisible,
@@ -2205,11 +2208,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               child: FloatingActionButton.small(
                 heroTag: 'recenter_btn',
                 elevation: 1,
-                backgroundColor: Colors.white,
+                backgroundColor: AppColors.cardBackground,
                 onPressed: _centerMapOnDriver,
-                child: const Icon(
+                child: Icon(
                   Icons.my_location_rounded,
-                  color: AppColors.primaryBrand,
+                  color: AppColors.iconPrimary,
                 ),
               ),
             ),
@@ -2218,6 +2221,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               left: 16,
               child: Material(
                 elevation: 4,
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(30),
                 child: InkWell(
                   onTap: isLoading ? null : _showStatusChangeModal,
@@ -2229,25 +2233,35 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ),
                     decoration: BoxDecoration(
                       color: isDriverAvailable
-                          ? const Color(0xFFE53935)
+                          ? AppColors.danger
                           : AppColors.primaryButton,
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.circle,
-                          color: Colors.white,
-                          size: 10,
-                        ),
+                        // هنگام تغییر وضعیت، چرخان نشان می‌دهد که درخواست در جریان است
+                        isLoading
+                            ? SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.buttonText,
+                                ),
+                              )
+                            : Icon(
+                                Icons.circle,
+                                color: AppColors.buttonText,
+                                size: 10,
+                              ),
                         const SizedBox(width: 8),
                         Text(
                           isDriverAvailable
                               ? 'go_offline'.tr()
                               : 'go_online'.tr(),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: AppColors.buttonText,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
