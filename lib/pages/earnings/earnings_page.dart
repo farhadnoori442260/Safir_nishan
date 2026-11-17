@@ -21,9 +21,9 @@ class EarningsPage extends StatefulWidget {
 }
 
 class _EarningsPageState extends State<EarningsPage> {
-  static const Color _paidColor = Color(0xFF16A34A);
-  static const Color _pendingColor = Color(0xFFD97706);
-  static const Color _settledColor = Color(0xFF2563EB);
+  Color get _paidColor => AppColors.success;
+  Color get _pendingColor => AppColors.accentOrange;
+  Color get _settledColor => AppColors.originBlue;
 
   Stream<QuerySnapshot<Map<String, dynamic>>>? _ridesStream;
 
@@ -92,7 +92,7 @@ class _EarningsPageState extends State<EarningsPage> {
       appBar: AppBar(
         title: Text(
           'earnings_screen_title'.tr(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -102,6 +102,7 @@ class _EarningsPageState extends State<EarningsPage> {
         backgroundColor: AppColors.cardBackground,
         surfaceTintColor: AppColors.cardBackground,
         elevation: 0,
+        scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
       ),
       body: RefreshIndicator(
@@ -129,44 +130,23 @@ class _EarningsPageState extends State<EarningsPage> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: <Color>[
-            AppColors.primaryBrand,
-            AppColors.primaryBrand.withOpacity(0.82),
-          ],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryBrand.withOpacity(0.25),
-            offset: const Offset(0, 8),
-            blurRadius: 18,
-          ),
-        ],
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.account_balance_wallet_rounded,
-              size: 32,
-              color: Colors.white,
-            ),
+          Icon(
+            Icons.account_balance_wallet_rounded,
+            size: 34,
+            color: AppColors.success,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Text(
             'total_earnings_title'.tr(),
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
+              color: AppColors.textSecondary,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -175,14 +155,15 @@ class _EarningsPageState extends State<EarningsPage> {
           Consumer<RegistrationProvider>(
             builder: (context, provider, child) {
               if (provider.isFetchLoading) {
-                return const Padding(
-                  padding: EdgeInsets.all(10),
+                return Padding(
+                  padding: const EdgeInsets.all(10),
                   child: SizedBox(
                     width: 26,
                     height: 26,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.6,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppColors.primaryBrand),
                     ),
                   ),
                 );
@@ -198,8 +179,8 @@ class _EarningsPageState extends State<EarningsPage> {
                       fit: BoxFit.scaleDown,
                       child: Text(
                         _formatAmount(provider.driverEarnings),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
                           fontSize: 38,
                           fontWeight: FontWeight.w800,
                         ),
@@ -209,8 +190,8 @@ class _EarningsPageState extends State<EarningsPage> {
                   const SizedBox(width: 8),
                   Text(
                     'currency_unit'.tr(),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -242,7 +223,7 @@ class _EarningsPageState extends State<EarningsPage> {
         }
 
         if (!snapshot.hasData) {
-          return const Padding(
+          return Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: SizedBox(
@@ -321,7 +302,7 @@ class _EarningsPageState extends State<EarningsPage> {
             const SizedBox(height: 20),
             Text(
               _t('earnings_recent_trips', 'آخرین سفرها'),
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
@@ -349,25 +330,17 @@ class _EarningsPageState extends State<EarningsPage> {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 18, color: color),
-          ),
+          Icon(icon, size: 22, color: color),
           const SizedBox(height: 8),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               _formatAmount(value),
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
@@ -410,7 +383,7 @@ class _EarningsPageState extends State<EarningsPage> {
         label = _t('payment_status_awaiting', 'منتظر تایید شما');
         break;
       default:
-        color = Colors.grey.shade600;
+        color = AppColors.textSecondary;
         label = _t('payment_status_unpaid_short', 'تایید نشده');
     }
 
@@ -429,20 +402,12 @@ class _EarningsPageState extends State<EarningsPage> {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.local_taxi_rounded, size: 21, color: color),
-          ),
-          const SizedBox(width: 10),
+          Icon(Icons.local_taxi_rounded, size: 24, color: color),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -451,7 +416,7 @@ class _EarningsPageState extends State<EarningsPage> {
                   destination,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -462,7 +427,7 @@ class _EarningsPageState extends State<EarningsPage> {
                   Text(
                     dateText,
                     textDirection: TextDirection.ltr,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 11,
                     ),
@@ -477,7 +442,7 @@ class _EarningsPageState extends State<EarningsPage> {
             children: [
               Text(
                 '${_formatAmount(_rideFare(ride))} ${'currency_unit'.tr()}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
@@ -514,16 +479,16 @@ class _EarningsPageState extends State<EarningsPage> {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         children: [
           Icon(Icons.receipt_long_rounded,
-              size: 36, color: Colors.grey.shade400),
+              size: 36, color: AppColors.iconSecondary),
           const SizedBox(height: 8),
           Text(
             _t('earnings_no_trips', 'هنوز سفر تمام‌شده‌ای ندارید'),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 13,
             ),
