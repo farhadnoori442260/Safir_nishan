@@ -33,8 +33,12 @@
             
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
+              android:resource="@style/NormalTheme" />
+
+             <!-- لینک فقط اپ را باز کند؛ مسیر جدیدی وارد Flutter نشود -->
+           <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false" />
             
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
