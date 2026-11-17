@@ -84,68 +84,93 @@ class _DashboardState extends State<Dashboard> {
       (provider) => provider.selectedIndex,
     );
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F8F7),
-      extendBody: true,
-      body: IndexedStack(
-        index: selectedIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.97),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: AppColors.primaryBrand.withOpacity(0.10),
+    // دکمهٔ برگشت در تب‌های دیگر: اول به تب «خانه» برمی‌گردد، نه اینکه مستقیم
+    // از برنامه خارج شود (در خانه، برگشت مثل قبل عمل می‌کند).
+    return PopScope(
+      canPop: selectedIndex == 0,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop && selectedIndex != 0) {
+          context.read<DashboardProvider>().setIndex(0);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        extendBody: true,
+        body: IndexedStack(
+          index: selectedIndex,
+          children: _pages,
+        ),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(24),
+              // بدون سایه: در حالت تاریک کثیف دیده می‌شود؛ یک خط نازک کافی است
+              border: Border.all(color: AppColors.borderLight),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.10),
-                blurRadius: 22,
-                offset: const Offset(0, 8),
+            child: NavigationBarTheme(
+              data: NavigationBarThemeData(
+                iconTheme: WidgetStateProperty.resolveWith((states) {
+                  return IconThemeData(
+                    size: 24,
+                    color: states.contains(WidgetState.selected)
+                        ? AppColors.primaryBrand
+                        : AppColors.iconSecondary,
+                  );
+                }),
+                labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                  final bool on = states.contains(WidgetState.selected);
+                  return TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: on ? FontWeight.bold : FontWeight.w500,
+                    color: on
+                        ? AppColors.primaryBrand
+                        : AppColors.textSecondary,
+                  );
+                }),
               ),
-            ],
-          ),
-          child: NavigationBar(
-            selectedIndex: selectedIndex,
-            onDestinationSelected: _onDestinationSelected,
-            height: 68,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            indicatorColor: AppColors.primaryBrand.withOpacity(0.14),
-            labelBehavior:
-                NavigationDestinationLabelBehavior.alwaysShow,
-            animationDuration: const Duration(milliseconds: 280),
-            destinations: [
-              NavigationDestination(
-                icon: const Icon(Icons.map_outlined),
-                selectedIcon: const Icon(Icons.map_rounded),
-                label: 'nav_home'.tr(),
+              child: NavigationBar(
+                selectedIndex: selectedIndex,
+                onDestinationSelected: _onDestinationSelected,
+                height: 68,
+                backgroundColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                indicatorColor: AppColors.primaryBrand.withOpacity(0.14),
+                labelBehavior:
+                    NavigationDestinationLabelBehavior.alwaysShow,
+                animationDuration: const Duration(milliseconds: 280),
+                destinations: [
+                  NavigationDestination(
+                    icon: const Icon(Icons.map_outlined),
+                    selectedIcon: const Icon(Icons.map_rounded),
+                    label: 'nav_home'.tr(),
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(
+                      Icons.account_balance_wallet_outlined,
+                    ),
+                    selectedIcon: const Icon(
+                      Icons.account_balance_wallet_rounded,
+                    ),
+                    label: 'nav_earnings'.tr(),
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.route_outlined),
+                    selectedIcon: const Icon(Icons.route_rounded),
+                    label: 'nav_trips'.tr(),
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.person_outline_rounded),
+                    selectedIcon: const Icon(Icons.person_rounded),
+                    label: 'nav_profile'.tr(),
+                  ),
+                ],
               ),
-              NavigationDestination(
-                icon: const Icon(
-                  Icons.account_balance_wallet_outlined,
-                ),
-                selectedIcon: const Icon(
-                  Icons.account_balance_wallet_rounded,
-                ),
-                label: 'nav_earnings'.tr(),
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.route_outlined),
-                selectedIcon: const Icon(Icons.route_rounded),
-                label: 'nav_trips'.tr(),
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.person_outline_rounded),
-                selectedIcon: const Icon(Icons.person_rounded),
-                label: 'nav_profile'.tr(),
-              ),
-            ],
+            ),
           ),
         ),
       ),
