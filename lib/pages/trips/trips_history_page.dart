@@ -33,12 +33,18 @@ String _toFaDigits(Object value) {
   return result;
 }
 
+// اگر ترجمه وجود نداشت، .tr() خود کلید را برمی‌گرداند؛ در این حالت متن پیش‌فرض
+String _tr(String key, String fallback) {
+  final String v = key.tr();
+  return v == key ? fallback : v;
+}
+
 double? _toNumber(Object? value) {
   if (value == null) return null;
   if (value is num) return value.toDouble();
 
   String text = _toEnglishDigits(value.toString().trim());
-  text = text.replaceAll(RegExp(r'[,،٬s]'), '').replaceAll('٫', '.');
+  text = text.replaceAll(RegExp(r'[,،٬\s]'), '').replaceAll('٫', '.');
   text = text.replaceAll(RegExp(r'[^0-9.-]'), '');
 
   return double.tryParse(text);
@@ -117,7 +123,7 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
       appBar: AppBar(
         title: Text(
           'trips_history_title'.tr(),
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 17,
             color: AppColors.textPrimary,
@@ -125,9 +131,10 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
         ),
         centerTitle: true,
         backgroundColor: AppColors.cardBackground,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: true,
-        iconTheme: const IconThemeData(
+        iconTheme: IconThemeData(
           color: AppColors.iconPrimary,
         ),
         actions: [
@@ -139,7 +146,7 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
         ],
       ),
       body: tripProvider.isLoading && trips.isEmpty
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(
                   AppColors.primaryBrand,
@@ -178,18 +185,10 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
       children: [
         SizedBox(height: MediaQuery.of(context).size.height * 0.28),
         Center(
-          child: Container(
-            width: 92,
-            height: 92,
-            decoration: BoxDecoration(
-              color: AppColors.primaryBrand.withOpacity(0.10),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.route_rounded,
-              size: 46,
-              color: AppColors.primaryBrand,
-            ),
+          child: Icon(
+            Icons.route_rounded,
+            size: 64,
+            color: AppColors.handle,
           ),
         ),
         const SizedBox(height: 18),
@@ -197,7 +196,7 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
           child: Text(
             'no_trips_history'.tr(),
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -211,7 +210,7 @@ class _TripsHistoryPageState extends State<TripsHistoryPage> {
             child: Text(
               'empty_trips_history_desc'.tr(),
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
                 height: 1.5,
@@ -320,7 +319,7 @@ class _TripCard extends StatelessWidget {
     final String formatted =
         _toFaDigits(km.toStringAsFixed(1)).replaceAll('.', '٫');
 
-    return '$formatted ${'unit_km'.tr()}';
+    return '$formatted ${_tr('unit_km', 'کیلومتر')}';
   }
 
   String _duration() {
@@ -330,7 +329,7 @@ class _TripCard extends StatelessWidget {
     if (raw == null) return '--';
 
     if (raw is num) {
-      return '${_toFaDigits(raw.round())} ${'unit_min'.tr()}';
+      return '${_toFaDigits(raw.round())} ${_tr('unit_min', 'دقیقه')}';
     }
 
     final String text = _text(raw);
@@ -362,13 +361,7 @@ class _TripCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -376,18 +369,10 @@ class _TripCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBrand.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.local_taxi_rounded,
-                    color: AppColors.primaryBrand,
-                    size: 23,
-                  ),
+                Icon(
+                  Icons.local_taxi_rounded,
+                  color: AppColors.textSecondary,
+                  size: 26,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -396,7 +381,7 @@ class _TripCard extends StatelessWidget {
                     children: [
                       Text(
                         'trip_number_format'.tr(args: ['$tripNumber']),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -405,7 +390,7 @@ class _TripCard extends StatelessWidget {
                       const SizedBox(height: 5),
                       Text(
                         _formatDate(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textSecondary,
                         ),
@@ -419,22 +404,22 @@ class _TripCard extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.10),
+                    color: AppColors.successSoft,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.check_circle_rounded,
                         size: 14,
-                        color: Colors.green,
+                        color: AppColors.successDark,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         _statusText(),
-                        style: const TextStyle(
-                          color: Colors.green,
+                        style: TextStyle(
+                          color: AppColors.successDark,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
@@ -447,14 +432,14 @@ class _TripCard extends StatelessWidget {
             const SizedBox(height: 18),
             _LocationRow(
               icon: Icons.radio_button_checked_rounded,
-              iconColor: Colors.blue,
+              iconColor: AppColors.originBlue,
               label: 'origin_label_text'.tr(),
               value: origin,
               isLast: false,
             ),
             _LocationRow(
               icon: Icons.location_on_rounded,
-              iconColor: Colors.redAccent,
+              iconColor: AppColors.danger,
               label: 'destination_label_text'.tr(),
               value: destination,
               isLast: true,
@@ -462,7 +447,7 @@ class _TripCard extends StatelessWidget {
             const SizedBox(height: 15),
             Container(
               height: 1,
-              color: Colors.grey.withOpacity(0.14),
+              color: AppColors.borderLight,
             ),
             const SizedBox(height: 14),
             Row(
@@ -506,15 +491,15 @@ class _TripCard extends StatelessWidget {
     final double? earnings = _toNumber(trip['driver_earnings']);
 
     final Color statusColor =
-        _isCommissionSettled ? Colors.green : Colors.orange.shade800;
+        _isCommissionSettled ? AppColors.successDark : AppColors.warningIcon;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F9F8),
+        color: AppColors.neutralSoft,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.withOpacity(0.18)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Row(
         children: [
@@ -524,7 +509,7 @@ class _TripCard extends StatelessWidget {
               children: [
                 Text(
                   'driver_earnings_label'.tr(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     color: AppColors.textSecondary,
                   ),
@@ -534,7 +519,7 @@ class _TripCard extends StatelessWidget {
                   earnings == null
                       ? '--'
                       : '${_formatMoney(earnings)} ${_currencyLabel()}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
@@ -549,7 +534,7 @@ class _TripCard extends StatelessWidget {
               children: [
                 Text(
                   'commission_label'.tr(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10.5,
                     color: AppColors.textSecondary,
                   ),
@@ -557,7 +542,7 @@ class _TripCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   '${_formatMoney(commission)} ${_currencyLabel()}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
@@ -626,7 +611,7 @@ class _LocationRow extends StatelessWidget {
                   width: 1,
                   height: 27,
                   margin: const EdgeInsets.only(top: 3),
-                  color: Colors.grey.withOpacity(0.35),
+                  color: AppColors.handle,
                 ),
             ],
           ),
@@ -640,7 +625,7 @@ class _LocationRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
                   ),
@@ -650,7 +635,7 @@ class _LocationRow extends StatelessWidget {
                   value,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     height: 1.35,
                     color: AppColors.textPrimary,
@@ -686,12 +671,12 @@ class _InfoItem extends StatelessWidget {
         Icon(
           icon,
           size: 19,
-          color: AppColors.primaryBrand,
+          color: valueColor ?? AppColors.iconSecondary,
         ),
         const SizedBox(height: 5),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
             color: AppColors.textSecondary,
           ),
