@@ -10,6 +10,7 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 
 import 'package:safir_drivers/constants/trip_status.dart';
 import 'package:safir_drivers/pages/chat_page.dart';
+import 'package:safir_drivers/utils/app_colors.dart';
 import 'package:safir_drivers/utils/trip_extras.dart';
 
 String _t(String key, String fallback) {
@@ -59,16 +60,6 @@ class ActiveTripSheet extends StatelessWidget {
     required this.onOpenExternalMap,
     required this.getNavigationTarget,
   });
-
-  static const Color _primary = Color(0xFF0F766E);
-  static const Color _primaryDark = Color(0xFF115E59);
-  static const Color _surface = Color(0xFFF8FAFC);
-  static const Color _card = Colors.white;
-  static const Color _text = Color(0xFF172033);
-  static const Color _mutedText = Color(0xFF64748B);
-  static const Color _danger = Color(0xFFDC2626);
-  static const Color _blue = Color(0xFF2563EB);
-  static const Color _endTrip = Color(0xFFEA580C);
 
   String _firstText(List<String> keys, String fallback) {
     for (final String key in keys) {
@@ -160,9 +151,9 @@ class ActiveTripSheet extends StatelessWidget {
         ),
         title: Text(
           _t('end_trip_confirm_title', 'پایان سفر'),
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: _text,
+            color: AppColors.textPrimary,
           ),
         ),
         content: Text(
@@ -174,7 +165,7 @@ class ActiveTripSheet extends StatelessWidget {
                   'end_trip_confirm_msg',
                   'آیا سفر به مقصد رسیده و می‌خواهید آن را تمام کنید؟',
                 ),
-          style: const TextStyle(color: _mutedText, height: 1.5),
+          style: TextStyle(color: AppColors.textSecondary, height: 1.5),
         ),
         actionsOverflowDirection: VerticalDirection.down,
         actions: <Widget>[
@@ -187,15 +178,15 @@ class ActiveTripSheet extends StatelessWidget {
               onPressed: () => Navigator.pop(ctx, 'end'),
               child: Text(
                 _t('end_trip_without_confirm', 'پایان بدون تایید پول'),
-                style: const TextStyle(color: _danger),
+                style: TextStyle(color: AppColors.danger),
               ),
             ),
           ElevatedButton(
             onPressed: () =>
                 Navigator.pop(ctx, awaiting ? 'pay_and_end' : 'end'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: awaiting ? _primary : _endTrip,
-              foregroundColor: Colors.white,
+              backgroundColor: awaiting ? AppColors.primaryButton : AppColors.endTrip,
+              foregroundColor: AppColors.buttonText,
             ),
             child: Text(
               awaiting
@@ -214,7 +205,7 @@ class ActiveTripSheet extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              backgroundColor: _danger,
+              backgroundColor: AppColors.danger,
               content: Text(
                 _t(
                   'payment_confirm_failed',
@@ -266,8 +257,9 @@ class ActiveTripSheet extends StatelessWidget {
     String passengerPhone,
     VoidCallback openChat,
   ) {
+    // قبلاً اگر امتیازی نبود، عدد ساختگی «4.8» نشان داده می‌شد؛ حالا خالی می‌ماند
     final String passengerRating =
-        '${tripData['userRating'] ?? tripData['rating'] ?? '4.8'}';
+        (tripData['userRating'] ?? tripData['rating'] ?? '').toString().trim();
 
     final String originAddress = _firstText(
       <String>['origin_address', 'originAddress', 'pickup_address'],
@@ -320,11 +312,12 @@ class ActiveTripSheet extends StatelessWidget {
         ScrollController scrollController,
       ) {
         return Container(
-          decoration: const BoxDecoration(
-            color: _surface,
-            borderRadius: BorderRadius.vertical(
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: const BorderRadius.vertical(
               top: Radius.circular(28),
             ),
+            border: Border(top: BorderSide(color: AppColors.borderLight)),
           ),
           child: SafeArea(
             top: false,
@@ -339,7 +332,7 @@ class ActiveTripSheet extends StatelessWidget {
                     height: 5,
                     margin: const EdgeInsets.only(bottom: 14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFCBD5E1),
+                      color: AppColors.handle,
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -380,49 +373,29 @@ class ActiveTripSheet extends StatelessWidget {
     );
   }
 
+  Color _statusColor() {
+    if (status == TripStatus.onTrip) return AppColors.primaryBrand;
+    if (status == TripStatus.arrived) return AppColors.warningIcon;
+    return AppColors.originBlue;
+  }
+
+  // هدر وضعیت: کارت خنثی؛ رنگ فقط روی آیکن (آبی: در راه، نارنجی: رسیدم،
+  // سبز: در سفر) تا شیت سبز و شلوغ نشود.
   Widget _buildStatusHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: <Color>[_primary, _primaryDark],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: _primary.withOpacity(0.22),
-            blurRadius: 16,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
+    final Color accent = _statusColor();
+    return _cardContainer(
       child: Row(
         children: <Widget>[
-          Container(
-            height: 40,
-            width: 40,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.16),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              _getStatusIcon(),
-              color: Colors.white,
-              size: 23,
-            ),
-          ),
-          const SizedBox(width: 11),
+          Icon(_getStatusIcon(), color: accent, size: 26),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
                   _getStatusText(),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -430,18 +403,18 @@ class ActiveTripSheet extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'active_trip_header_subtitle'.tr(),
-                  style: const TextStyle(
-                    color: Color(0xFFD1FAE5),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
                     fontSize: 11,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(
-            Icons.verified_rounded,
-            color: Color(0xFFD1FAE5),
-            size: 21,
+          Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
           ),
         ],
       ),
@@ -460,12 +433,13 @@ class ActiveTripSheet extends StatelessWidget {
             height: 50,
             width: 50,
             decoration: BoxDecoration(
-              color: const Color(0xFFCCFBF1),
-              borderRadius: BorderRadius.circular(16),
+              color: AppColors.neutralSoft,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.borderLight),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.person_rounded,
-              color: _primary,
+              color: AppColors.textSecondary,
               size: 28,
             ),
           ),
@@ -478,30 +452,32 @@ class ActiveTripSheet extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
-                    color: _text,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 5),
                 Row(
                   children: <Widget>[
-                    const Icon(
-                      Icons.star_rounded,
-                      color: Color(0xFFF59E0B),
-                      size: 17,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      rating,
-                      style: const TextStyle(
-                        color: _text,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                    if (rating.isNotEmpty && rating != 'null') ...<Widget>[
+                      Icon(
+                        Icons.star_rounded,
+                        color: AppColors.warning,
+                        size: 17,
                       ),
-                    ),
-                    const SizedBox(width: 10),
+                      const SizedBox(width: 3),
+                      Text(
+                        rating,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
                     Expanded(
                       child: Text(
                         phone.isEmpty
@@ -510,8 +486,8 @@ class ActiveTripSheet extends StatelessWidget {
                         textDirection: ui.TextDirection.ltr,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _mutedText,
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -542,12 +518,10 @@ class ActiveTripSheet extends StatelessWidget {
       label: label,
       button: true,
       child: Material(
-        color: hasPhone
-            ? const Color(0xFFDCFCE7)
-            : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(14),
+        color: hasPhone ? AppColors.successSoft : AppColors.neutralSoft,
+        shape: const CircleBorder(),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          customBorder: const CircleBorder(),
           onTap: hasPhone ? () => onMakePhoneCall(phone.trim()) : null,
           child: SizedBox(
             width: size,
@@ -555,8 +529,8 @@ class ActiveTripSheet extends StatelessWidget {
             child: Icon(
               Icons.phone_in_talk_rounded,
               color: hasPhone
-                  ? const Color(0xFF15803D)
-                  : const Color(0xFF94A3B8),
+                  ? AppColors.successDark
+                  : AppColors.textSecondary,
               size: 22,
             ),
           ),
@@ -572,20 +546,20 @@ class ActiveTripSheet extends StatelessWidget {
         children: <Widget>[
           Column(
             children: <Widget>[
-              const Icon(
+              Icon(
                 Icons.circle,
                 size: 18,
-                color: Color(0xFF16A34A),
+                color: AppColors.successDark,
               ),
               Container(
                 width: 2,
                 height: 38,
-                color: const Color(0xFFCBD5E1),
+                color: AppColors.borderLight,
               ),
-              const Icon(
+              Icon(
                 Icons.location_on_rounded,
                 size: 18,
-                color: _danger,
+                color: AppColors.danger,
               ),
             ],
           ),
@@ -597,13 +571,13 @@ class ActiveTripSheet extends StatelessWidget {
                 _buildAddressText(
                   'origin_label'.tr(),
                   origin,
-                  const Color(0xFF15803D),
+                  AppColors.successDark,
                 ),
                 const SizedBox(height: 16),
                 _buildAddressText(
                   'destination_label'.tr(),
                   destination,
-                  _danger,
+                  AppColors.danger,
                 ),
               ],
             ),
@@ -634,11 +608,11 @@ class ActiveTripSheet extends StatelessWidget {
           value,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             height: 1.35,
             fontWeight: FontWeight.w600,
-            color: _text,
+            color: AppColors.textPrimary,
           ),
         ),
       ],
@@ -652,27 +626,19 @@ class ActiveTripSheet extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Container(
-                height: 36,
-                width: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFCCFBF1),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(
-                  extras.serviceIcon,
-                  color: _primary,
-                  size: 20,
-                ),
+              Icon(
+                extras.serviceIcon,
+                color: AppColors.primaryBrand,
+                size: 24,
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   extras.serviceLabel,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14.5,
-                    color: _text,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -690,23 +656,23 @@ class ActiveTripSheet extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
+                    color: AppColors.neutralSoft,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Icon(item.icon, size: 15, color: _primary),
+                      Icon(item.icon, size: 15, color: AppColors.primaryBrand),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
                           item.text,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: _text,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ),
@@ -718,7 +684,7 @@ class ActiveTripSheet extends StatelessWidget {
           ],
           for (final TripParty party in extras.parties) ...<Widget>[
             const SizedBox(height: 12),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            Divider(height: 1, color: AppColors.borderLight),
             const SizedBox(height: 12),
             _buildPartyRow(party),
           ],
@@ -741,8 +707,8 @@ class ActiveTripSheet extends StatelessWidget {
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: party.isSender
-                      ? const Color(0xFF15803D)
-                      : _danger,
+                      ? AppColors.successDark
+                      : AppColors.danger,
                 ),
               ),
               const SizedBox(height: 3),
@@ -752,27 +718,27 @@ class ActiveTripSheet extends StatelessWidget {
                     : party.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: _text,
+                  color: AppColors.textPrimary,
                 ),
               ),
               if (party.phone.isNotEmpty)
                 Text(
                   party.phone,
                   textDirection: ui.TextDirection.ltr,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: _mutedText,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               if (party.detail.isNotEmpty)
                 Text(
                   party.detail,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: _mutedText,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               if (party.note.isNotEmpty)
@@ -782,10 +748,10 @@ class ActiveTripSheet extends StatelessWidget {
                   ),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     height: 1.35,
-                    color: _mutedText,
+                    color: AppColors.textSecondary,
                   ),
                 ),
             ],
@@ -819,8 +785,7 @@ class ActiveTripSheet extends StatelessWidget {
                 : 'active_trip_minutes'.tr(
                     namedArgs: <String, String>{'value': duration},
                   ),
-            const Color(0xFFF97316),
-            const Color(0xFFFFEDD5),
+            AppColors.accentOrange,
           ),
         ),
         const SizedBox(width: 8),
@@ -833,8 +798,7 @@ class ActiveTripSheet extends StatelessWidget {
                 : 'active_trip_kilometers'.tr(
                     namedArgs: <String, String>{'value': distance},
                   ),
-            _blue,
-            const Color(0xFFDBEAFE),
+            AppColors.originBlue,
           ),
         ),
         const SizedBox(width: 8),
@@ -847,8 +811,7 @@ class ActiveTripSheet extends StatelessWidget {
                 : 'active_trip_afghanis'.tr(
                     namedArgs: <String, String>{'value': price},
                   ),
-            _primary,
-            const Color(0xFFCCFBF1),
+            AppColors.primaryBrand,
           ),
         ),
       ],
@@ -860,43 +823,34 @@ class ActiveTripSheet extends StatelessWidget {
     String label,
     String value,
     Color color,
-    Color backgroundColor,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
       decoration: BoxDecoration(
-        color: _card,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         children: <Widget>[
-          Container(
-            width: 29,
-            height: 29,
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(icon, size: 17, color: color),
-          ),
+          Icon(icon, size: 22, color: color),
           const SizedBox(height: 7),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 12.5,
-              color: _text,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(
-              color: _mutedText,
+            style: TextStyle(
+              color: AppColors.textSecondary,
               fontSize: 11,
             ),
           ),
@@ -910,23 +864,23 @@ class ActiveTripSheet extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
+        color: AppColors.infoSoft,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFBFDBFE)),
+        border: Border.all(color: AppColors.infoBorder),
       ),
       child: Row(
         children: <Widget>[
-          const Icon(
+          Icon(
             Icons.info_outline_rounded,
-            color: _blue,
+            color: AppColors.originBlue,
             size: 19,
           ),
           const SizedBox(width: 9),
           Expanded(
             child: Text(
               'msg_follow_navigation'.tr(),
-              style: const TextStyle(
-                color: Color(0xFF1E3A8A),
+              style: TextStyle(
+                color: AppColors.infoText,
                 fontSize: 12,
                 height: 1.35,
                 fontWeight: FontWeight.w600,
@@ -939,7 +893,8 @@ class ActiveTripSheet extends StatelessWidget {
   }
 
   Widget _buildMainActionButton(BuildContext context) {
-    final Color color = status == TripStatus.onTrip ? _endTrip : _primary;
+    final Color color =
+        status == TripStatus.onTrip ? AppColors.endTrip : AppColors.primaryButton;
 
     return SizedBox(
       width: double.infinity,
@@ -949,26 +904,26 @@ class ActiveTripSheet extends StatelessWidget {
             ? null
             : () => _handleTripAction(context),
         icon: isTripActionLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.4,
-                  color: Colors.white,
+                  color: AppColors.buttonText,
                 ),
               )
             : Icon(
                 status == TripStatus.onTrip
                     ? Icons.flag_rounded
                     : Icons.arrow_forward_rounded,
-                color: Colors.white,
+                color: AppColors.buttonText,
               ),
         label: Text(
           _getActionButtonTitle(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: AppColors.buttonText,
           ),
         ),
         style: ElevatedButton.styleFrom(
@@ -993,8 +948,8 @@ class ActiveTripSheet extends StatelessWidget {
           child: _buildOutlineActionButton(
             icon: Icons.chat_bubble_outline_rounded,
             label: 'btn_sms_chat'.tr(),
-            color: _blue,
-            backgroundColor: const Color(0xFFEFF6FF),
+            color: AppColors.originBlue,
+            backgroundColor: AppColors.infoSoft,
             onPressed: isTripActionLoading ? null : openChat,
           ),
         ),
@@ -1004,8 +959,8 @@ class ActiveTripSheet extends StatelessWidget {
             child: _buildOutlineActionButton(
               icon: Icons.close_rounded,
               label: 'btn_cancel_trip'.tr(),
-              color: _danger,
-              backgroundColor: const Color(0xFFFEF2F2),
+              color: AppColors.danger,
+              backgroundColor: AppColors.dangerSoft,
               onPressed: isTripActionLoading
                   ? null
                   : () => onCancelTrip(tripId),
@@ -1074,9 +1029,9 @@ class ActiveTripSheet extends StatelessWidget {
 
                 onOpenExternalMap(target.latitude, target.longitude);
               },
-        icon: const Icon(
+        icon: Icon(
           Icons.navigation_rounded,
-          color: Colors.white,
+          color: AppColors.buttonText,
           size: 20,
         ),
         label: Text(
@@ -1089,9 +1044,9 @@ class ActiveTripSheet extends StatelessWidget {
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: _blue,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: _blue.withOpacity(0.5),
+          backgroundColor: AppColors.originBlue,
+          foregroundColor: AppColors.buttonText,
+          disabledBackgroundColor: AppColors.originBlue.withOpacity(0.5),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -1106,16 +1061,9 @@ class ActiveTripSheet extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _card,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: const Color(0xFF0F172A).withOpacity(0.035),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: child,
     );
@@ -1318,7 +1266,7 @@ class _ActiveTripChatHostState extends State<_ActiveTripChatHost>
                   children: <Widget>[
                     Container(
                       height: 48,
-                      color: const Color(0xFF12304F),
+                      color: AppColors.cardBackground,
                       padding: const EdgeInsetsDirectional.only(
                         start: 14,
                         end: 4,
@@ -1328,8 +1276,8 @@ class _ActiveTripChatHostState extends State<_ActiveTripChatHost>
                           Expanded(
                             child: Text(
                               _t('chat', 'گفتگو'),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1340,9 +1288,9 @@ class _ActiveTripChatHostState extends State<_ActiveTripChatHost>
                             onPressed: () {
                               Navigator.of(dialogContext).pop();
                             },
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.close_rounded,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
@@ -1446,16 +1394,16 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
           ),
           title: Text(
             _t('payment_confirm_title', 'تایید دریافت پول'),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w800,
-              color: ActiveTripSheet._text,
+              color: AppColors.textPrimary,
             ),
           ),
           content: Text(
             '${_t('payment_confirm_msg', 'آیا مبلغ')} $amountText '
             '${_t('payment_confirm_msg_tail', 'را نقداً از مسافر دریافت کرده‌اید؟')}',
-            style: const TextStyle(
-              color: ActiveTripSheet._mutedText,
+            style: TextStyle(
+              color: AppColors.textSecondary,
               height: 1.5,
             ),
           ),
@@ -1467,8 +1415,8 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: ActiveTripSheet._primary,
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.primaryButton,
+                foregroundColor: AppColors.buttonText,
               ),
               child: Text(
                 _t('payment_confirm_yes', 'بله، دریافت کردم'),
@@ -1491,8 +1439,7 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor:
-            ok ? const Color(0xFF16A34A) : ActiveTripSheet._danger,
+        backgroundColor: ok ? AppColors.successDark : AppColors.danger,
         content: Text(
           ok
               ? _t('payment_confirmed_ok', 'دریافت پول تایید شد.')
@@ -1536,10 +1483,10 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
         final bool settled = status == 'settled';
 
         final Color color = paid || settled
-            ? const Color(0xFF16A34A)
+            ? AppColors.successDark
             : awaiting
-                ? const Color(0xFFD97706)
-                : ActiveTripSheet._mutedText;
+                ? AppColors.warningIcon
+                : AppColors.textSecondary;
 
         final IconData icon = paid || settled
             ? Icons.check_circle_rounded
@@ -1593,8 +1540,8 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
                     child: Text(
                       amountText,
                       textAlign: TextAlign.end,
-                      style: const TextStyle(
-                        color: ActiveTripSheet._text,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1609,8 +1556,8 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
                     'payment_awaiting_hint',
                     'بعد از دریافت پول نقد، تایید کنید تا پرداخت ثبت و برای تسویه ارسال شود.',
                   ),
-                  style: const TextStyle(
-                    color: ActiveTripSheet._mutedText,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
                     fontSize: 12,
                     height: 1.45,
                   ),
@@ -1624,12 +1571,12 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
                         ? null
                         : () => _onConfirm(amountText),
                     icon: _busy
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.2,
-                              color: Colors.white,
+                              color: AppColors.buttonText,
                             ),
                           )
                         : const Icon(Icons.check_rounded, size: 20),
@@ -1641,11 +1588,11 @@ class _PaymentConfirmCardState extends State<_PaymentConfirmCard> {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: ActiveTripSheet._primary,
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.primaryButton,
+                      foregroundColor: AppColors.buttonText,
                       disabledBackgroundColor:
-                          ActiveTripSheet._primary.withOpacity(0.5),
-                      disabledForegroundColor: Colors.white,
+                          AppColors.primaryButton.withOpacity(0.5),
+                      disabledForegroundColor: AppColors.buttonText,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
