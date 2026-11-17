@@ -40,6 +40,22 @@ class _ChatPageState extends State<ChatPage> {
 
   bool _isSending = false;
 
+  // اگر ترجمه وجود نداشت، .tr() خود کلید را برمی‌گرداند؛ در این حالت متن پیش‌فرض
+  String _t(String key, String fallback) {
+    final String v = key.tr();
+    return v == key ? fallback : v;
+  }
+
+  // پاسخ‌های سریع: راننده با یک لمس پیام رایج را می‌فرستد (حین رانندگی تایپ
+  // خطرناک و کند است)
+  List<String> get _quickReplies => <String>[
+        _t('chat_quick_on_way', 'در راه هستم'),
+        _t('chat_quick_arrived', 'رسیدم، منتظر شما هستم'),
+        _t('chat_quick_few_min', 'چند دقیقه دیگر می‌رسم'),
+        _t('chat_quick_come_out', 'لطفاً بیرون بیایید'),
+        _t('chat_quick_where', 'دقیقاً کجا هستید؟'),
+      ];
+
   /// استریم فقط یک‌بار ساخته می‌شود. اگر در build ساخته شود، با هر بازسازی
   /// (مثلاً هر فریم انیمیشن کیبورد) StreamBuilder دوباره subscribe می‌کند
   /// و لیست پیام‌ها چشمک می‌زند.
@@ -152,8 +168,8 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  Future<void> sendMessage() async {
-    final String text = _messageController.text.trim();
+  Future<void> sendMessage({String? preset}) async {
+    final String text = (preset ?? _messageController.text).trim();
     final String driverId = _currentDriverId;
 
     if (text.isEmpty ||
@@ -179,7 +195,7 @@ class _ChatPageState extends State<ChatPage> {
         return;
       }
 
-      _messageController.clear();
+      if (preset == null) _messageController.clear();
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToLatestMessage();
@@ -199,7 +215,7 @@ class _ChatPageState extends State<ChatPage> {
           content: Text(
             error.message ?? 'ارسال پیام انجام نشد. دوباره تلاش کنید.',
           ),
-          backgroundColor: Colors.red.shade700,
+          backgroundColor: AppColors.danger,
         ),
       );
     } catch (error) {
@@ -210,9 +226,9 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ارسال پیام انجام نشد. دوباره تلاش کنید.'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('ارسال پیام انجام نشد. دوباره تلاش کنید.'),
+          backgroundColor: AppColors.danger,
         ),
       );
     } finally {
@@ -329,27 +345,30 @@ class _ChatPageState extends State<ChatPage> {
         : 'passenger'.tr();
 
     return AppBar(
-      backgroundColor: AppColors.primaryBrand,
-      foregroundColor: Colors.white,
+      backgroundColor: AppColors.cardBackground,
+      foregroundColor: AppColors.textPrimary,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
+      shape: Border(bottom: BorderSide(color: AppColors.borderLight)),
       centerTitle: false,
       titleSpacing: 0,
       leading: IconButton(
         onPressed: () => Navigator.pop(context),
+        // arrow_back در راست‌به‌چپ خودکار برعکس می‌شود
         icon: const Icon(
-          Icons.arrow_back_ios_new_rounded,
-          size: 20,
+          Icons.arrow_back_rounded,
+          size: 22,
         ),
       ),
       title: Row(
         children: <Widget>[
-          const CircleAvatar(
-            radius: 21,
-            backgroundColor: Colors.white24,
+          CircleAvatar(
+            radius: 19,
+            backgroundColor: AppColors.neutralSoft,
             child: Icon(
               Icons.person_rounded,
-              color: Colors.white,
-              size: 25,
+              color: AppColors.textSecondary,
+              size: 23,
             ),
           ),
           const SizedBox(width: 11),
@@ -358,8 +377,8 @@ class _ChatPageState extends State<ChatPage> {
               displayName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppColors.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -369,13 +388,13 @@ class _ChatPageState extends State<ChatPage> {
       ),
       actions: <Widget>[
         IconButton(
-          tooltip: 'تماس',
+          tooltip: _t('call', 'تماس'),
           onPressed: () {
             _makePhoneCall(widget.passengerPhone);
           },
-          icon: const Icon(
+          icon: Icon(
             Icons.phone_enabled_rounded,
-            color: Colors.white,
+            color: AppColors.primaryBrand,
           ),
         ),
         const SizedBox(width: 5),
@@ -402,7 +421,7 @@ class _ChatPageState extends State<ChatPage> {
       ) {
         if (snapshot.connectionState == ConnectionState.waiting &&
             !snapshot.hasData) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(
               color: AppColors.primaryBrand,
             ),
@@ -486,13 +505,7 @@ class _ChatPageState extends State<ChatPage> {
             bottomLeft: Radius.circular(isMe ? 16 : 4),
             bottomRight: Radius.circular(isMe ? 4 : 16),
           ),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: isMe ? null : Border.all(color: AppColors.borderLight),
         ),
         child: Column(
           crossAxisAlignment: isMe
@@ -506,7 +519,7 @@ class _ChatPageState extends State<ChatPage> {
                 fontSize: 14,
                 height: 1.4,
                 color: isMe
-                    ? Colors.white
+                    ? AppColors.buttonText
                     : AppColors.textPrimary,
               ),
             ),
@@ -519,16 +532,16 @@ class _ChatPageState extends State<ChatPage> {
                   style: TextStyle(
                     fontSize: 10,
                     color: isMe
-                        ? Colors.white70
+                        ? AppColors.buttonText.withOpacity(0.75)
                         : AppColors.textSecondary,
                   ),
                 ),
                 if (isMe) ...<Widget>[
                   const SizedBox(width: 4),
-                  const Icon(
+                  Icon(
                     Icons.done_all_rounded,
                     size: 13,
-                    color: Colors.white70,
+                    color: AppColors.buttonText.withOpacity(0.75),
                   ),
                 ],
               ],
@@ -544,7 +557,7 @@ class _ChatPageState extends State<ChatPage> {
       child: Text(
         'no_chat_messages'.tr(),
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.textSecondary,
           fontSize: 14,
         ),
@@ -562,14 +575,14 @@ class _ChatPageState extends State<ChatPage> {
             Icon(
               Icons.cloud_off_rounded,
               size: 54,
-              color: Colors.grey.shade400,
+              color: AppColors.handle,
             ),
             const SizedBox(height: 12),
             Text(
               message,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.grey.shade600,
+                color: AppColors.textSecondary,
                 fontSize: 14,
               ),
             ),
@@ -579,82 +592,125 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildMessageComposer() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 8,
-      ),
-      color: AppColors.cardBackground,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: <Widget>[
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              focusNode: _messageFocusNode,
-              minLines: 1,
-              maxLines: 4,
-              textDirection: ui.TextDirection.rtl,
-              textInputAction: TextInputAction.newline,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: 'chat_type_hint'.tr(),
-                hintTextDirection: ui.TextDirection.rtl,
-                hintStyle: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                fillColor: AppColors.background,
-                filled: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-              ),
-              onSubmitted: (_) {
-                if (!_isSending) {
-                  sendMessage();
-                }
-              },
+  Widget _buildQuickReplies() {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        itemCount: _quickReplies.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (BuildContext context, int i) {
+          final String text = _quickReplies[i];
+          return ActionChip(
+            label: Text(
+              text,
+              style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
             ),
-          ),
-          const SizedBox(width: 8),
-          CircleAvatar(
-            backgroundColor: _isSending
-                ? Colors.grey
-                : AppColors.primaryBrand,
-            child: IconButton(
-              onPressed: _isSending ? null : sendMessage,
-              icon: _isSending
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(
-                      Icons.send_rounded,
-                      color: Colors.white,
-                      size: 20,
+            backgroundColor: AppColors.neutralSoft,
+            side: BorderSide(color: AppColors.borderLight),
+            shape: const StadiumBorder(),
+            onPressed: _isSending ? null : () => sendMessage(preset: text),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMessageComposer() {
+    final bool rtl = Directionality.of(context) == ui.TextDirection.rtl;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        border: Border(top: BorderSide(color: AppColors.borderLight)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const SizedBox(height: 8),
+          _buildQuickReplies(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    focusNode: _messageFocusNode,
+                    minLines: 1,
+                    maxLines: 4,
+                    textDirection: ui.TextDirection.rtl,
+                    textInputAction: TextInputAction.newline,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
                     ),
+                    decoration: InputDecoration(
+                      hintText: 'chat_type_hint'.tr(),
+                      hintTextDirection: ui.TextDirection.rtl,
+                      hintStyle: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide(
+                          color: AppColors.primaryBrand,
+                          width: 1.2,
+                        ),
+                      ),
+                      fillColor: AppColors.background,
+                      filled: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                    ),
+                    onSubmitted: (_) {
+                      if (!_isSending) {
+                        sendMessage();
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  backgroundColor: _isSending
+                      ? AppColors.borderLight
+                      : AppColors.primaryButton,
+                  child: IconButton(
+                    onPressed: _isSending ? null : () => sendMessage(),
+                    icon: _isSending
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.buttonText,
+                            ),
+                          )
+                        // آیکن ارسال در راست‌به‌چپ باید به سمت چپ اشاره کند
+                        : Transform.flip(
+                            flipX: rtl,
+                            child: Icon(
+                              Icons.send_rounded,
+                              color: AppColors.buttonText,
+                              size: 20,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
