@@ -31,13 +31,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (BuildContext sheetContext) {
         return SafeArea(
           top: false,
           child: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.cardBackground,
-              borderRadius: BorderRadius.vertical(
+              borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(24),
               ),
             ),
@@ -49,14 +50,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   width: 38,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: AppColors.handle,
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'select_language'.tr(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
@@ -101,14 +102,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Container(
       margin: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
-        color: isSelected
-            ? AppColors.primaryBrand.withOpacity(0.08)
-            : Colors.grey.shade50,
+        color: isSelected ? AppColors.neutralSoft : AppColors.background,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isSelected
               ? AppColors.primaryBrand
-              : Colors.grey.shade200,
+              : AppColors.borderLight,
         ),
       ),
       child: ListTile(
@@ -136,12 +135,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
         trailing: isSelected
-            ? const Icon(
+            ? Icon(
                 Icons.check_circle_rounded,
                 color: AppColors.primaryBrand,
                 size: 21,
               )
-            : const Icon(
+            : Icon(
                 Icons.radio_button_unchecked_rounded,
                 color: AppColors.textSecondary,
                 size: 21,
@@ -236,7 +235,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String _phoneDigits() {
     return _normalizeDigits(phoneController.text)
-        .replaceAll(RegExp(r'D'), '');
+        .replaceAll(RegExp(r'\D'), '');
   }
 
   bool _isValidAfghanMobile(String digits) {
@@ -318,34 +317,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             return Stack(
               fit: StackFit.expand,
               children: <Widget>[
-                Positioned(
-                  top: -85,
-                  right: -75,
-                  child: IgnorePointer(
-                    child: Container(
-                      width: 210,
-                      height: 210,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.primaryBrand.withOpacity(0.08),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 105,
-                  left: -115,
-                  child: IgnorePointer(
-                    child: Container(
-                      width: 190,
-                      height: 190,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.primaryBrand.withOpacity(0.04),
-                      ),
-                    ),
-                  ),
-                ),
                 SingleChildScrollView(
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
@@ -432,25 +403,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
             vertical: 7,
           ),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
+            color: AppColors.cardBackground,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: AppColors.primaryBrand.withOpacity(0.22),
-            ),
+            border: Border.all(color: AppColors.borderLight),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              const Icon(
+              Icon(
                 Icons.language_rounded,
-                color: AppColors.primaryBrand,
+                color: AppColors.iconPrimary,
                 size: 17,
               ),
               const SizedBox(width: 6),
               Text(
                 'language_button'.tr(),
-                style: const TextStyle(
-                  color: AppColors.primaryBrand,
+                style: TextStyle(
+                  color: AppColors.textPrimary,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -474,18 +443,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         height: logoSize,
         decoration: BoxDecoration(
           color: AppColors.primaryBrand,
-          borderRadius: BorderRadius.circular(21),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: AppColors.primaryBrand.withOpacity(0.20),
-              blurRadius: 15,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          shape: BoxShape.circle,
         ),
         child: Icon(
           Icons.local_taxi_rounded,
-          color: Colors.white,
+          color: AppColors.buttonText,
           size: iconSize,
         ),
       ),
@@ -496,18 +458,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.grey.shade100,
-        ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withOpacity(0.035),
-            blurRadius: 13,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: ValueListenableBuilder<TextEditingValue>(
         valueListenable: phoneController,
@@ -517,7 +470,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           Widget? child,
         ) {
           final String digits = _normalizeDigits(value.text)
-              .replaceAll(RegExp(r'D'), '');
+              .replaceAll(RegExp(r'\D'), '');
 
           final bool isValid = _isValidAfghanMobile(digits);
           final bool badStart =
@@ -528,7 +481,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: <Widget>[
               Text(
                 'mobile_number'.tr(),
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
@@ -557,7 +510,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       sendPhoneNumber();
                     }
                   },
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     letterSpacing: 1.1,
                     fontWeight: FontWeight.w700,
@@ -589,7 +542,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
-                          const Text(
+                          Text(
                             '+93',
                             style: TextStyle(
                               color: AppColors.textPrimary,
@@ -601,40 +554,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           Container(
                             width: 1,
                             height: 21,
-                            color: Colors.grey.shade300,
+                            color: AppColors.borderLight,
                           ),
                         ],
                       ),
                     ),
                     suffixIcon: isValid
-                        ? Container(
-                            width: 22,
-                            height: 22,
-                            margin: const EdgeInsets.all(11),
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.primaryBrand,
-                            ),
-                            child: const Icon(
-                              Icons.check_rounded,
-                              color: Colors.white,
-                              size: 15,
-                            ),
+                        ? Icon(
+                            Icons.check_circle_rounded,
+                            color: AppColors.success,
+                            size: 22,
                           )
                         : null,
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(13),
                       borderSide: BorderSide(
                         color: badStart
-                            ? Colors.red.shade300
-                            : Colors.grey.shade200,
+                            ? AppColors.danger.withOpacity(0.6)
+                            : AppColors.fieldBorder,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(13),
                       borderSide: BorderSide(
                         color: badStart
-                            ? Colors.red.shade400
+                            ? AppColors.danger
                             : AppColors.primaryBrand,
                         width: 1.6,
                       ),
@@ -651,7 +595,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: Text(
                           'invalid_phone_error'.tr(),
                           style: TextStyle(
-                            color: Colors.red.shade600,
+                            color: AppColors.danger,
                             fontSize: 11,
                           ),
                         ),
@@ -681,7 +625,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                   child: isLoading
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
@@ -720,7 +664,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       children: <Widget>[
         Expanded(
           child: Divider(
-            color: Colors.grey.shade300,
+            color: AppColors.borderLight,
             height: 1,
           ),
         ),
@@ -728,7 +672,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 11),
           child: Text(
             'or_label'.tr(),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 12,
             ),
@@ -736,7 +680,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         Expanded(
           child: Divider(
-            color: Colors.grey.shade300,
+            color: AppColors.borderLight,
             height: 1,
           ),
         ),
@@ -756,17 +700,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ? null
             : _handleGoogleSignIn,
         style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.cardBackground,
           foregroundColor: AppColors.textPrimary,
-          side: BorderSide(
-            color: Colors.grey.shade300,
-          ),
+          side: BorderSide(color: AppColors.fieldBorder),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(13),
           ),
         ),
         child: isGoogleLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
@@ -785,10 +727,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Object error,
                       StackTrace? stackTrace,
                     ) {
-                      return const Icon(
+                      return Icon(
                         Icons.g_mobiledata_rounded,
                         size: 25,
-                        color: Colors.red,
+                        color: AppColors.danger,
                       );
                     },
                   ),
@@ -834,7 +776,7 @@ class _AfghanPhoneFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     String digits = _normalizeDigits(newValue.text)
-        .replaceAll(RegExp(r'D'), '');
+        .replaceAll(RegExp(r'\D'), '');
 
     if (digits.startsWith('0093')) {
       digits = digits.substring(4);
