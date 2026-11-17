@@ -25,6 +25,11 @@ class _TripsPageState extends State<TripsPage> {
     });
   }
 
+  Future<void> _refresh() async {
+    await Provider.of<TripProvider>(context, listen: false)
+        .getCurrentDriverTotalNumberOfTripsCompleted();
+  }
+
   @override
   Widget build(BuildContext context) {
     final tripProvider = Provider.of<TripProvider>(context);
@@ -34,7 +39,7 @@ class _TripsPageState extends State<TripsPage> {
       appBar: AppBar(
         title: Text(
           'trips_report_title'.tr(),
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
             color: AppColors.textPrimary,
@@ -42,136 +47,112 @@ class _TripsPageState extends State<TripsPage> {
         ),
         centerTitle: true,
         backgroundColor: AppColors.cardBackground,
+        surfaceTintColor: AppColors.cardBackground,
         elevation: 0,
+        scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
       ),
       body: tripProvider.isLoading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryBrand),
               ),
             )
-          : SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 24,
-                  horizontal: 20,
+          : RefreshIndicator(
+              color: AppColors.primaryBrand,
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
                 ),
-                child: Column(
-                  children: [
-                    // کارت نمایش مجموع سفرها
-                    Center(
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: AppColors.cardBackground,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black12,
-                              offset: Offset(0, 4),
-                              blurRadius: 12,
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                children: [
+                  // کارت مجموع سفرها
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBackground,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.borderLight),
+                    ),
+                    child: Column(
+                      children: [
+                        Image.asset(
+                          'assets/images/totaltrips.png',
+                          width: 90,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.route_rounded,
+                            size: 64,
+                            color: AppColors.iconSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'total_completed_trips'.tr(),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          tripProvider.currentDriverTotalTripsCompleted,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 36,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // دکمه تاریخچه سفرها
+                  Material(
+                    color: AppColors.primaryButton,
+                    borderRadius: BorderRadius.circular(18),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (c) => const TripsHistoryPage(),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 18, horizontal: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.history_rounded,
+                                color: AppColors.buttonText, size: 22),
+                            const SizedBox(width: 10),
+                            Text(
+                              'view_trips_history'.tr(),
+                              style: TextStyle(
+                                color: AppColors.buttonText,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.chevron_left_rounded,
+                              color: AppColors.buttonText,
+                              size: 22,
                             ),
                           ],
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            children: [
-                              Image.asset(
-                                "assets/images/totaltrips.png",
-                                width: 90,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'total_completed_trips'.tr(),
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                tripProvider.currentDriverTotalTripsCompleted,
-                                style: const TextStyle(
-                                  color: AppColors.primaryBrand,
-                                  fontSize: 34,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                     ),
-
-                    const SizedBox(height: 20),
-
-                    // دکمه هدایت به تاریخچه سفرها
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (c) => const TripsHistoryPage(),
-                            ),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryBrand,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primaryBrand.withOpacity(0.3),
-                                offset: const Offset(0, 6),
-                                blurRadius: 12,
-                              ),
-                            ],
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(20.0),
-                            child: Column(
-                              children: [
-                                Image.asset(
-                                  "assets/images/tripscompleted.png",
-                                  width: 90,
-                                  color: AppColors.buttonText,
-                                  colorBlendMode: BlendMode.modulate,
-                                ),
-                                const SizedBox(height: 14),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'view_trips_history'.tr(),
-                                      style: const TextStyle(
-                                        color: AppColors.buttonText,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Icon(
-                                      Icons.chevron_left_rounded,
-                                      color: AppColors.buttonText,
-                                      size: 20,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
     );
