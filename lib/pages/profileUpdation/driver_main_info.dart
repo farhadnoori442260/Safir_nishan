@@ -1,4 +1,4 @@
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -56,26 +56,36 @@ class _DriverMainInfoState extends State<DriverMainInfo> {
         {
           'title': 'step_basic_info_title'.tr(),
           'subtitle': 'step_basic_info_sub'.tr(),
+          'icon': Icons.person_outline_rounded,
+          'color': AppColors.originBlue,
           'screen': const BasicDriverInfoUpdateScreen(),
         },
         {
           'title': 'step_cnic_title'.tr(),
           'subtitle': 'step_cnic_sub'.tr(),
+          'icon': Icons.badge_outlined,
+          'color': AppColors.accentPurple,
           'screen': const CnincUpdateScreen(),
         },
         {
           'title': 'step_selfie_title'.tr(),
           'subtitle': 'step_selfie_sub'.tr(),
+          'icon': Icons.face_retouching_natural_outlined,
+          'color': AppColors.accentTeal,
           'screen': const SelfieWithCnincUpdateScreen(),
         },
         {
           'title': 'step_license_title'.tr(),
           'subtitle': 'step_license_sub'.tr(),
+          'icon': Icons.credit_card_outlined,
+          'color': AppColors.accentOrange,
           'screen': const DrivingLicenseUpdateScreen(),
         },
         {
           'title': 'step_vehicle_title'.tr(),
           'subtitle': 'step_vehicle_sub'.tr(),
+          'icon': Icons.directions_car_filled_outlined,
+          'color': AppColors.success,
           'screen': const VehicleInfoUpdateScreen(),
         },
       ];
@@ -84,10 +94,13 @@ class _DriverMainInfoState extends State<DriverMainInfo> {
         backgroundColor: AppColors.background,
         appBar: AppBar(
           backgroundColor: AppColors.cardBackground,
+          surfaceTintColor: AppColors.cardBackground,
           elevation: 0,
+          scrolledUnderElevation: 0,
+          iconTheme: IconThemeData(color: AppColors.textPrimary),
           title: Text(
             'reg_steps_title'.tr(),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
               color: AppColors.textPrimary,
@@ -102,66 +115,58 @@ class _DriverMainInfoState extends State<DriverMainInfo> {
                   children: [
                     Text(
                       'please_wait'.tr(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         color: AppColors.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const CircularProgressIndicator(
+                    CircularProgressIndicator(
                       color: AppColors.primaryBrand,
                     ),
                   ],
                 ),
               )
-            : Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Column(
-                  children: [
-                    Center(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          color: AppColors.cardBackground,
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black12,
-                              offset: Offset(0, 2),
-                              blurRadius: 6.0,
-                            ),
-                          ],
-                        ),
-                        width: MediaQuery.of(context).size.width * 0.92,
-                        child: ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: steps.length,
-                          separatorBuilder: (context, index) => const Divider(
-                            color: Colors.black12,
-                            thickness: 0.5,
-                            height: 1,
-                            indent: 16,
-                            endIndent: 16,
+            : SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    color: AppColors.cardBackground,
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Column(
+                      children: [
+                        for (int i = 0; i < steps.length; i++) ...[
+                          _buildListTile(
+                            title: steps[i]['title'] as String,
+                            subtitle: steps[i]['subtitle'] as String,
+                            icon: steps[i]['icon'] as IconData,
+                            color: steps[i]['color'] as Color,
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      steps[i]['screen'] as Widget,
+                                ),
+                              );
+                            },
                           ),
-                          itemBuilder: (context, index) {
-                            final step = steps[index];
-                            return _buildListTile(
-                              title: step['title'],
-                              subtitle: step['subtitle'],
-                              onTap: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => step['screen'],
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
+                          if (i != steps.length - 1)
+                            Divider(
+                              color: AppColors.borderLight,
+                              thickness: 1,
+                              height: 1,
+                              indent: 64,
+                              endIndent: 16,
+                            ),
+                        ],
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
       );
@@ -171,12 +176,17 @@ class _DriverMainInfoState extends State<DriverMainInfo> {
   Widget _buildListTile({
     required String title,
     required String subtitle,
+    required IconData icon,
+    required Color color,
     required VoidCallback onTap,
   }) {
+    final bool isRtl = Directionality.of(context) == TextDirection.rtl;
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Icon(icon, color: color, size: 24),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.bold,
           color: AppColors.textPrimary,
@@ -184,14 +194,14 @@ class _DriverMainInfoState extends State<DriverMainInfo> {
       ),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           color: AppColors.textSecondary,
         ),
       ),
-      trailing: const Icon(
-        Icons.chevron_left_rounded,
-        size: 20,
+      trailing: Icon(
+        isRtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+        size: 22,
         color: AppColors.iconSecondary,
       ),
       onTap: onTap,
