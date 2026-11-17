@@ -73,8 +73,9 @@ class _ProfilePageState extends State<ProfilePage> {
             final String address = driver['address']?.toString().trim() ?? '';
             final String photo = driver['photo']?.toString().trim() ?? '';
 
+            // امتیاز ساختگی نشان داده نمی‌شود؛ بدون امتیاز واقعی ردیف مخفی است.
             final double rating =
-                double.tryParse(driver['rating']?.toString() ?? '5.0') ?? 5.0;
+                double.tryParse(driver['rating']?.toString() ?? '') ?? 0.0;
 
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 105),
@@ -100,6 +101,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     [
                       _MenuItem(
                         icon: Icons.directions_car_filled_outlined,
+                        iconColor: AppColors.originBlue,
                         title: 'profile_menu_vehicle'.tr(),
                         subtitle: 'profile_menu_vehicle_subtitle'.tr(),
                         onTap: () => _open(const VehicleBasicInfoScreen()),
@@ -115,12 +117,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     [
                       _MenuItem(
                         icon: Icons.badge_outlined,
+                        iconColor: AppColors.accentPurple,
                         title: 'profile_menu_license'.tr(),
                         subtitle: 'profile_menu_license_subtitle'.tr(),
                         onTap: () => _open(const DrivingLicenseUpdateScreen()),
                       ),
                       _MenuItem(
                         icon: Icons.description_outlined,
+                        iconColor: AppColors.accentTeal,
                         title: 'profile_menu_vehicle_registration'.tr(),
                         subtitle:
                             'profile_menu_vehicle_registration_subtitle'.tr(),
@@ -151,12 +155,14 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       _MenuItem(
                         icon: Icons.help_outline_rounded,
+                        iconColor: AppColors.originBlue,
                         title: 'profile_menu_support'.tr(),
                         subtitle: 'profile_menu_support_subtitle'.tr(),
                         onTap: () => _showSupportDialog(context),
                       ),
                       _MenuItem(
                         icon: Icons.privacy_tip_outlined,
+                        iconColor: AppColors.success,
                         title: 'profile_menu_privacy'.tr(),
                         subtitle: 'profile_menu_privacy_subtitle'.tr(),
                         onTap: () => _showPrivacyPage(context),
@@ -171,6 +177,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       // روی نوار پایین و محتوا نیفتد.
                       _MenuItem(
                         icon: Icons.logout_rounded,
+                        iconColor: AppColors.accentOrange,
                         title: 'profile_logout'.tr(),
                         onTap: () {
                           if (authProvider.isLoading) return;
@@ -217,15 +224,8 @@ class _ProfilePageState extends State<ProfilePage> {
       color: AppColors.cardBackground,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
-        color: AppColors.textSecondary.withOpacity(0.10),
+        color: AppColors.borderLight,
       ),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.03),
-          offset: const Offset(0, 3),
-          blurRadius: 10,
-        ),
-      ],
     );
   }
 
@@ -251,7 +251,7 @@ class _ProfilePageState extends State<ProfilePage> {
             phone,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               color: AppColors.textPrimary,
             ),
@@ -265,7 +265,7 @@ class _ProfilePageState extends State<ProfilePage> {
             email,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               color: AppColors.textPrimary,
             ),
@@ -278,7 +278,7 @@ class _ProfilePageState extends State<ProfilePage> {
             address,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               color: AppColors.textPrimary,
             ),
@@ -311,9 +311,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: AppColors.primaryBrand
-                                        .withOpacity(0.25),
-                                    width: 2,
+                                    color: AppColors.borderLight,
+                                    width: 1.5,
                                   ),
                                   image: DecorationImage(
                                     image: imageProvider,
@@ -321,7 +320,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   ),
                                 ),
                               ),
-                              placeholder: (_, __) => const Center(
+                              placeholder: (_, __) => Center(
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   color: AppColors.primaryBrand,
@@ -342,14 +341,16 @@ class _ProfilePageState extends State<ProfilePage> {
                             name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          RatingStars(ratting: rating.toStringAsFixed(1)),
+                          if (rating > 0) ...[
+                            const SizedBox(height: 6),
+                            RatingStars(ratting: rating.toStringAsFixed(1)),
+                          ],
                         ],
                       ),
                     ),
@@ -358,17 +359,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     Semantics(
                       button: true,
                       label: 'profile_menu_account'.tr(),
-                      child: Container(
-                        height: 38,
-                        width: 38,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primaryBrand.withOpacity(0.10),
-                        ),
-                        child: const Icon(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(
                           Icons.edit_outlined,
-                          size: 19,
-                          color: AppColors.primaryBrand,
+                          size: 21,
+                          color: AppColors.iconSecondary,
                         ),
                       ),
                     ),
@@ -378,7 +374,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 Divider(
                   height: 1,
                   thickness: 1,
-                  color: AppColors.textSecondary.withOpacity(0.10),
+                  color: AppColors.borderLight,
                 ),
                 const SizedBox(height: 12),
                 Align(
@@ -407,7 +403,7 @@ class _ProfilePageState extends State<ProfilePage> {
         color: AppColors.background,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.textSecondary.withOpacity(0.12),
+          color: AppColors.borderLight,
         ),
       ),
       child: Row(
@@ -426,11 +422,15 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildAvatarPlaceholder() {
-    return CircleAvatar(
-      backgroundColor: AppColors.background,
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.background,
+        border: Border.all(color: AppColors.borderLight, width: 1.5),
+      ),
       child: Icon(
         Icons.person_rounded,
-        color: AppColors.textSecondary.withOpacity(0.6),
+        color: AppColors.iconSecondary,
         size: 38,
       ),
     );
@@ -476,9 +476,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   Divider(
                     height: 1,
                     thickness: 1,
-                    indent: 66,
+                    indent: 58,
                     endIndent: 16,
-                    color: AppColors.textSecondary.withOpacity(0.10),
+                    color: AppColors.borderLight,
                   ),
               ],
             ],
@@ -493,7 +493,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _MenuItem item,
   ) {
     final bool isRtl = Directionality.of(context) == TextDirection.rtl;
-    final Color color = item.iconColor ?? AppColors.primaryBrand;
+    final Color color = item.iconColor ?? AppColors.iconSecondary;
 
     return InkWell(
       onTap: item.onTap,
@@ -504,17 +504,12 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         child: Row(
           children: [
-            Container(
-              height: 36,
-              width: 36,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.10),
-                borderRadius: BorderRadius.circular(10),
-              ),
+            SizedBox(
+              width: 28,
               child: Icon(
                 item.icon,
                 color: color,
-                size: 20,
+                size: 23,
               ),
             ),
             const SizedBox(width: 14),
@@ -524,7 +519,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   Text(
                     item.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
@@ -536,7 +531,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       item.subtitle!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
                         color: AppColors.textSecondary,
                       ),
@@ -572,7 +567,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           title: Text(
             'profile_logout'.tr(),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 16,
@@ -613,7 +608,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           title: Text(
             'profile_menu_support'.tr(),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 16,
@@ -621,7 +616,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           content: Text(
             'support_dialog_message'.tr(),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textSecondary,
               height: 1.5,
             ),
@@ -653,16 +648,16 @@ class _ProfilePageState extends State<ProfilePage> {
       // TODO(release): نسخه را از package_info_plus بخوانید تا با نسخهٔ
       // پلی‌استور همیشه یکی باشد.
       applicationVersion: '1.0.0',
-      applicationIcon: const Icon(
+      applicationIcon: Icon(
         Icons.local_taxi_rounded,
-        color: AppColors.primaryBrand,
+        color: AppColors.textPrimary,
         size: 44,
       ),
       children: [
         const SizedBox(height: 12),
         Text(
           'profile_about_description'.tr(),
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textSecondary,
             height: 1.5,
           ),
@@ -690,7 +685,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               title: Text(
                 'profile_menu_delete_account'.tr(),
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.error,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -698,7 +693,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               content: Text(
                 'delete_account_confirmation'.tr(),
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textSecondary,
                   height: 1.5,
                 ),
@@ -760,7 +755,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     elevation: 0,
                   ),
                   child: isDeleting
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 18,
                           width: 18,
                           child: CircularProgressIndicator(
@@ -810,16 +805,16 @@ class PrivacyPolicyPage extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         shape: Border(
           bottom: BorderSide(
-            color: AppColors.textSecondary.withOpacity(0.10),
+            color: AppColors.borderLight,
           ),
         ),
         centerTitle: true,
-        iconTheme: const IconThemeData(
+        iconTheme: IconThemeData(
           color: AppColors.textPrimary,
         ),
         title: Text(
           'profile_menu_privacy'.tr(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -835,12 +830,12 @@ class PrivacyPolicyPage extends StatelessWidget {
             color: AppColors.cardBackground,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppColors.textSecondary.withOpacity(0.10),
+              color: AppColors.borderLight,
             ),
           ),
           child: Text(
             'privacy_policy_text'.tr(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               height: 1.8,
               color: AppColors.textPrimary,
@@ -864,7 +859,7 @@ class SettingsPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'settings_title'.tr(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -877,10 +872,10 @@ class SettingsPage extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         shape: Border(
           bottom: BorderSide(
-            color: AppColors.textSecondary.withOpacity(0.10),
+            color: AppColors.borderLight,
           ),
         ),
-        iconTheme: const IconThemeData(
+        iconTheme: IconThemeData(
           color: AppColors.textPrimary,
         ),
       ),
@@ -930,18 +925,18 @@ class SettingsPage extends StatelessWidget {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: AppColors.textSecondary.withOpacity(0.10),
+          color: AppColors.borderLight,
         ),
       ),
       child: ListTile(
         onTap: onTap,
         leading: Icon(
           icon,
-          color: AppColors.primaryBrand,
+          color: AppColors.originBlue,
         ),
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
             fontSize: 14,
@@ -949,7 +944,7 @@ class SettingsPage extends StatelessWidget {
         ),
         subtitle: Text(
           subtitle,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 12,
           ),
@@ -986,7 +981,7 @@ class _LanguagePageState extends State<LanguagePage> {
       appBar: AppBar(
         title: Text(
           'select_language_title'.tr(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -999,10 +994,10 @@ class _LanguagePageState extends State<LanguagePage> {
         surfaceTintColor: Colors.transparent,
         shape: Border(
           bottom: BorderSide(
-            color: AppColors.textSecondary.withOpacity(0.10),
+            color: AppColors.borderLight,
           ),
         ),
-        iconTheme: const IconThemeData(
+        iconTheme: IconThemeData(
           color: AppColors.textPrimary,
         ),
       ),
@@ -1013,7 +1008,7 @@ class _LanguagePageState extends State<LanguagePage> {
           children: [
             Text(
               'select_language_title'.tr(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
@@ -1086,7 +1081,7 @@ class _LanguagePageState extends State<LanguagePage> {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isSelected ? AppColors.primaryBrand : Colors.transparent,
+          color: isSelected ? AppColors.primaryBrand : AppColors.borderLight,
           width: 2,
         ),
       ),
@@ -1099,11 +1094,11 @@ class _LanguagePageState extends State<LanguagePage> {
           ),
         ),
         trailing: isSelected
-            ? const Icon(
+            ? Icon(
                 Icons.check_circle,
                 color: AppColors.primaryBrand,
               )
-            : const Icon(
+            : Icon(
                 Icons.radio_button_unchecked,
                 color: AppColors.textSecondary,
               ),
