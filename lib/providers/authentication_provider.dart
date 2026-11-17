@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +50,8 @@ class AuthenticationProvider extends ChangeNotifier {
   bool _isGoogleSignedIn = false;
   bool _isGoogleSignInLoading = false;
 
+  int? _resendToken;
+
   String? _uid;
   String? _phoneNumber;
   Driver? _driverModel;
@@ -62,6 +65,35 @@ class AuthenticationProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isGoogleSignedIn => _isGoogleSignedIn;
   bool get isGoogleSigInLoading => _isGoogleSignInLoading;
+
+  /// پیام‌های خطای قابل‌فهم برای راننده (به‌جای متن انگلیسی فایربیس)
+  String _authErrorText(FirebaseAuthException e) {
+    String t(String key, String fallback) {
+      final String v = key.tr();
+      return (v.trim().isEmpty || v == key) ? fallback : v;
+    }
+
+    switch (e.code) {
+      case 'invalid-phone-number':
+        return t('auth_invalid_phone', 'شمارهٔ تلفن معتبر نیست');
+      case 'too-many-requests':
+        return t('auth_too_many_requests',
+            'درخواست‌های زیادی ارسال شده؛ کمی بعد دوباره تلاش کنید');
+      case 'quota-exceeded':
+        return t('auth_quota_exceeded',
+            'سقف ارسال پیامک تکمیل شده؛ بعداً دوباره تلاش کنید');
+      case 'network-request-failed':
+        return t('auth_network_error', 'اتصال اینترنت را بررسی کنید');
+      case 'invalid-verification-code':
+        return t('auth_wrong_code', 'کد وارد شده اشتباه است');
+      case 'session-expired':
+        return t('auth_code_expired',
+            'کد منقضی شده است؛ دوباره درخواست کد کنید');
+      case 'user-disabled':
+        return t('auth_user_disabled', 'این حساب غیرفعال شده است');
+    }
+    return e.message ?? e.toString();
+  }
 
   void startLoading() {
     _isLoading = true;
@@ -83,15 +115,20 @@ class AuthenticationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// [replaceCurrent] = true هنگام «ارسال مجدد» از صفحهٔ کد: صفحهٔ کد قبلی
+  /// با صفحهٔ جدید جایگزین می‌شود (به‌جای انباشته شدن روی هم).
   void signInWithPhone({
     required BuildContext context,
     required String phoneNumber,
+    bool replaceCurrent = false,
   }) async {
     startLoading();
 
     try {
       await firebaseAuth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
+        timeout: const Duration(seconds: 60),
+        forceResendingToken: replaceCurrent ? _resendToken : null,
         verificationCompleted: (PhoneAuthCredential credential) async {
           try {
             final UserCredential result =
@@ -105,7 +142,7 @@ class AuthenticationProvider extends ChangeNotifier {
           } on FirebaseAuthException catch (e) {
             if (context.mounted) {
               commonMethods.displaySnackBar(
-                e.message ?? tr(context, 'err_phone_verify'),
+                _authErrorText(e),
                 context,
               );
             }
@@ -118,27 +155,32 @@ class AuthenticationProvider extends ChangeNotifier {
 
           if (context.mounted) {
             commonMethods.displaySnackBar(
-              '${tr(context, 'err_phone_verify')}: ${e.message ?? ''}',
+              _authErrorText(e),
               context,
             );
           }
         },
         codeSent: (String verificationId, int? resendToken) {
           _phoneNumber = phoneNumber;
+          _resendToken = resendToken;
           stopLoading();
           notifyListeners();
 
           Future.delayed(const Duration(seconds: 1), () {
             if (!context.mounted) return;
 
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => OTPScreen(
-                  verificationId: verificationId,
-                ),
+            final Route<dynamic> route = MaterialPageRoute(
+              builder: (context) => OTPScreen(
+                verificationId: verificationId,
+                phoneNumber: phoneNumber,
               ),
             );
+
+            if (replaceCurrent) {
+              Navigator.pushReplacement(context, route);
+            } else {
+              Navigator.push(context, route);
+            }
           });
         },
         codeAutoRetrievalTimeout: (String verificationId) {
@@ -185,10 +227,10 @@ class AuthenticationProvider extends ChangeNotifier {
         notifyListeners();
         onSuccess();
       }
-    } on FirebaseAuthException {
+    } on FirebaseAuthException catch (e) {
       if (context.mounted) {
         commonMethods.displaySnackBar(
-          tr(context, 'err_invalid_otp'),
+          _authErrorText(e),
           context,
         );
       }
@@ -390,14 +432,15 @@ class AuthenticationProvider extends ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       if (context.mounted) {
         commonMethods.displaySnackBar(
-          'Firebase Auth Error: ${e.message ?? ''}',
+          _authErrorText(e),
           context,
         );
       }
     } catch (e) {
+      debugPrint('Google Sign-In Error: $e');
       if (context.mounted) {
         commonMethods.displaySnackBar(
-          'Google Sign-In Error: $e',
+          tr(context, 'err_generic'),
           context,
         );
       }
@@ -508,10 +551,11 @@ class AuthenticationProvider extends ChangeNotifier {
           (route) => false,
         );
       }
-    } on FirebaseAuthException catch (e) {
+    } catch (e) {
+      debugPrint('Sign out error: $e');
       if (context.mounted) {
         commonMethods.displaySnackBar(
-          e.message ?? tr(context, 'err_sign_out'),
+          tr(context, 'err_sign_out'),
           context,
         );
       }
@@ -526,6 +570,7 @@ class AuthenticationProvider extends ChangeNotifier {
     _driverModel = null;
     _isGoogleSignedIn = false;
     _isSuccessful = false;
+    _resendToken = null;
 
     notifyListeners();
   }
