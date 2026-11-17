@@ -1,13 +1,15 @@
 import 'dart:io';
 
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
 import 'package:safir_drivers/methods/common_method.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
+import 'package:safir_drivers/widgets/province_city_fields.dart';
 
 class BasicDriverInfoUpdateScreen extends StatefulWidget {
   const BasicDriverInfoUpdateScreen({super.key});
@@ -20,6 +22,16 @@ class BasicDriverInfoUpdateScreen extends StatefulWidget {
 class _BasicDriverInfoUpdateScreenState
     extends State<BasicDriverInfoUpdateScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  String _t(String key, String fallback) {
+    final String v = key.tr();
+    return (v.trim().isEmpty || v == key) ? fallback : v;
+  }
+
+  // حداقل سن برای راننده شدن
+  static const int _minAge = 18;
+
+  int get _maxBirthYear => Jalali.now().year - _minAge;
 
   static const List<String> _afghanMonths = <String>[
     'حمل',
@@ -88,7 +100,8 @@ class _BasicDriverInfoUpdateScreenState
   }
 
   Jalali _getInitialJalaliDate(String savedDate) {
-    final Jalali today = Jalali.now();
+    // پیش‌فرض: حدود ۳۰ ساله (قبلاً امروز بود و کاربر باید ۳۰ سال عقب می‌رفت)
+    final Jalali today = Jalali(Jalali.now().year - 30, 1, 1);
 
     try {
       final List<String> parts = savedDate.trim().split('/');
@@ -102,7 +115,7 @@ class _BasicDriverInfoUpdateScreenState
       final int day = int.parse(parts[2]);
 
       if (year < 1300 ||
-          year > today.year ||
+          year > _maxBirthYear ||
           month < 1 ||
           month > 12 ||
           day < 1) {
@@ -138,14 +151,14 @@ class _BasicDriverInfoUpdateScreenState
             BuildContext context,
             StateSetter setSheetState,
           ) {
-            final int currentJalaliYear = Jalali.now().year;
+            final int currentJalaliYear = _maxBirthYear;
 
             return SafeArea(
               top: false,
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.cardBackground,
-                  borderRadius: BorderRadius.vertical(
+                  borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(28),
                   ),
                 ),
@@ -164,7 +177,7 @@ class _BasicDriverInfoUpdateScreenState
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: AppColors.textSecondary.withOpacity(0.25),
+                          color: AppColors.handle,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -172,7 +185,7 @@ class _BasicDriverInfoUpdateScreenState
                     const SizedBox(height: 16),
                     Text(
                       'dob_picker_title'.tr(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -186,15 +199,15 @@ class _BasicDriverInfoUpdateScreenState
                         vertical: 14,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryBrand.withOpacity(0.10),
+                        color: AppColors.neutralSoft,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         _formatJalaliDate(selectedDate),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
-                          color: AppColors.primaryBrand,
+                          color: AppColors.textPrimary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -387,8 +400,7 @@ class _BasicDriverInfoUpdateScreenState
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.textPrimary,
                               side: BorderSide(
-                                color: AppColors.textSecondary
-                                    .withOpacity(0.25),
+                                color: AppColors.fieldBorder,
                               ),
                               padding: const EdgeInsets.symmetric(
                                 vertical: 14,
@@ -451,7 +463,7 @@ class _BasicDriverInfoUpdateScreenState
       children: <Widget>[
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: AppColors.textSecondary,
@@ -462,7 +474,7 @@ class _BasicDriverInfoUpdateScreenState
           height: 160,
           decoration: BoxDecoration(
             border: Border.all(
-              color: AppColors.textSecondary.withOpacity(0.14),
+              color: AppColors.borderLight,
             ),
             borderRadius: BorderRadius.circular(16),
             color: AppColors.background,
@@ -477,7 +489,7 @@ class _BasicDriverInfoUpdateScreenState
                     height: 40,
                     margin: const EdgeInsets.symmetric(horizontal: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryBrand.withOpacity(0.08),
+                      color: AppColors.neutralSoft,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -501,11 +513,11 @@ class _BasicDriverInfoUpdateScreenState
     final OutlineInputBorder baseBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(
-        color: AppColors.textSecondary.withOpacity(0.30),
+        color: AppColors.fieldBorder,
       ),
     );
 
-    const Color errorColor = Color(0xFFD64545);
+    final Color errorColor = AppColors.danger;
 
     // مهم: اندازه و ضخامت فونت برچسب در حالت عادی و شناور یکی است، وگرنه
     // عرض بریدگی خط با عرض متن نمی‌خواند و خط از روی برچسب رد می‌شود.
@@ -519,13 +531,13 @@ class _BasicDriverInfoUpdateScreenState
       labelText: labelText,
       hintText: hintText,
       labelStyle: labelBase,
-      floatingLabelStyle: MaterialStateTextStyle.resolveWith(
-        (Set<MaterialState> states) {
-          if (states.contains(MaterialState.error)) {
+      floatingLabelStyle: WidgetStateTextStyle.resolveWith(
+        (Set<WidgetState> states) {
+          if (states.contains(WidgetState.error)) {
             return labelBase.copyWith(color: errorColor);
           }
 
-          if (states.contains(MaterialState.focused)) {
+          if (states.contains(WidgetState.focused)) {
             return labelBase.copyWith(color: AppColors.primaryBrand);
           }
 
@@ -533,9 +545,9 @@ class _BasicDriverInfoUpdateScreenState
         },
       ),
       prefixIcon: icon == null ? null : Icon(icon, size: 20),
-      prefixIconColor: MaterialStateColor.resolveWith(
-        (Set<MaterialState> states) {
-          return states.contains(MaterialState.focused)
+      prefixIconColor: WidgetStateColor.resolveWith(
+        (Set<WidgetState> states) {
+          return states.contains(WidgetState.focused)
               ? AppColors.primaryBrand
               : AppColors.textSecondary;
         },
@@ -544,20 +556,20 @@ class _BasicDriverInfoUpdateScreenState
       enabledBorder: baseBorder,
       disabledBorder: baseBorder.copyWith(
         borderSide: BorderSide(
-          color: AppColors.textSecondary.withOpacity(0.15),
+          color: AppColors.borderLight,
         ),
       ),
       focusedBorder: baseBorder.copyWith(
-        borderSide: const BorderSide(
+        borderSide: BorderSide(
           color: AppColors.primaryBrand,
           width: 2,
         ),
       ),
       errorBorder: baseBorder.copyWith(
-        borderSide: const BorderSide(color: errorColor),
+        borderSide: BorderSide(color: errorColor),
       ),
       focusedErrorBorder: baseBorder.copyWith(
-        borderSide: const BorderSide(color: errorColor, width: 2),
+        borderSide: BorderSide(color: errorColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 14,
@@ -567,21 +579,14 @@ class _BasicDriverInfoUpdateScreenState
     );
   }
 
-  /// ظاهر مشترک کارت‌ها؛ سایه‌ی سبک تا هنگام باز شدن کیبورد سنگین نشود.
+  /// ظاهر مشترک کارت‌ها؛ بدون سایه تا هنگام باز شدن کیبورد سنگین نشود.
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: AppColors.cardBackground,
       borderRadius: BorderRadius.circular(24),
       border: Border.all(
-        color: AppColors.textSecondary.withOpacity(0.10),
+        color: AppColors.borderLight,
       ),
-      boxShadow: <BoxShadow>[
-        BoxShadow(
-          color: Colors.black.withOpacity(0.03),
-          offset: const Offset(0, 3),
-          blurRadius: 10,
-        ),
-      ],
     );
   }
 
@@ -602,9 +607,11 @@ class _BasicDriverInfoUpdateScreenState
     }
 
     try {
-      await registrationProvider.updateBasicDriverInfo(context);
+      final bool saved =
+          await registrationProvider.updateBasicDriverInfo(context);
 
-      if (!mounted) {
+      // پیام خطا را خود provider نشان می‌دهد؛ موفقیت فقط وقتی واقعاً ذخیره شد
+      if (!saved || !mounted) {
         return;
       }
 
@@ -633,31 +640,25 @@ class _BasicDriverInfoUpdateScreenState
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
         shape: Border(
           bottom: BorderSide(
-            color: AppColors.textSecondary.withOpacity(0.10),
+            color: AppColors.borderLight,
           ),
         ),
         title: Text(
           'basic_info_title'.tr(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
         centerTitle: true,
-        leading: TextButton(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
-          child: Text(
-            'close'.tr(),
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
         ),
-        leadingWidth: 70,
       ),
       body: _KeyboardAwareBody(
         child: SafeArea(
@@ -702,9 +703,8 @@ class _BasicDriverInfoUpdateScreenState
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: AppColors.primaryBrand
-                                              .withOpacity(0.35),
-                                          width: 2,
+                                          color: AppColors.borderLight,
+                                          width: 1.5,
                                         ),
                                       ),
                                       child: CircleAvatar(
@@ -725,9 +725,8 @@ class _BasicDriverInfoUpdateScreenState
                                   onPressed: registrationProvider
                                       .pickProfileImageFromGallary,
                                   style: TextButton.styleFrom(
-                                    backgroundColor: AppColors.primaryBrand
-                                        .withOpacity(0.10),
-                                    foregroundColor: AppColors.primaryBrand,
+                                    backgroundColor: AppColors.neutralSoft,
+                                    foregroundColor: AppColors.textPrimary,
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 18,
                                       vertical: 10,
@@ -818,8 +817,8 @@ class _BasicDriverInfoUpdateScreenState
                                       final String email =
                                           value?.trim() ?? '';
 
-                                      if (email.isEmpty ||
-                                          !email.contains('@')) {
+                                      if (!RegistrationProvider.isValidEmail(
+                                          email)) {
                                         return 'invalid_email_error'.tr();
                                       }
 
@@ -856,6 +855,8 @@ class _BasicDriverInfoUpdateScreenState
                                     },
                                   ),
                                   const SizedBox(height: 16),
+                                  const ProvinceCityFields(),
+                                  const SizedBox(height: 16),
                                   TextFormField(
                                     controller: registrationProvider
                                         .phoneController,
@@ -878,16 +879,26 @@ class _BasicDriverInfoUpdateScreenState
                                       hintText:
                                           'dob_jalali_hint'.tr(),
                                       icon: Icons.cake_outlined,
-                                      suffixIcon: const Icon(
+                                      suffixIcon: Icon(
                                         Icons.calendar_month_outlined,
                                         size: 20,
-                                        color: AppColors.primaryBrand,
+                                        color: AppColors.iconSecondary,
                                       ),
                                     ),
                                     validator: (String? value) {
                                       if (value == null ||
                                           value.trim().isEmpty) {
                                         return 'err_dob_required'.tr();
+                                      }
+
+                                      final List<String> p =
+                                          value.trim().split('/');
+                                      final int? y = p.isNotEmpty
+                                          ? int.tryParse(p.first)
+                                          : null;
+                                      if (y == null || y > _maxBirthYear) {
+                                        return _t('err_dob_age',
+                                            'سن راننده باید حداقل ۱۸ سال باشد');
                                       }
 
                                       return null;
@@ -940,10 +951,8 @@ class _BasicDriverInfoUpdateScreenState
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryButton,
                             foregroundColor: AppColors.buttonText,
-                            disabledBackgroundColor:
-                                AppColors.textSecondary.withOpacity(0.15),
-                            disabledForegroundColor:
-                                AppColors.textSecondary.withOpacity(0.6),
+                            disabledBackgroundColor: AppColors.borderLight,
+                            disabledForegroundColor: AppColors.textSecondary,
                             elevation: 0,
                             shadowColor: Colors.transparent,
                             shape: RoundedRectangleBorder(
@@ -951,7 +960,7 @@ class _BasicDriverInfoUpdateScreenState
                             ),
                           ),
                           child: state.isLoading
-                              ? const SizedBox(
+                              ? SizedBox(
                                   height: 24,
                                   width: 24,
                                   child: CircularProgressIndicator(
@@ -961,7 +970,7 @@ class _BasicDriverInfoUpdateScreenState
                                 )
                               : Text(
                                   'driver_info_update_btn'.tr(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: AppColors.buttonText,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
