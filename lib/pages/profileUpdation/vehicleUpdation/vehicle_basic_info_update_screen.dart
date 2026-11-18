@@ -1,10 +1,11 @@
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:safir_drivers/methods/common_method.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
+import 'package:safir_drivers/utils/afghan_locations.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
 
 class VehicleBasicInfoUpdateScreen extends StatefulWidget {
@@ -19,19 +20,14 @@ class _VehicleBasicInfoUpdateScreenState
     extends State<VehicleBasicInfoUpdateScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  final List<String> afghanistanProvinces = <String>[
-    'کابل',
-    'هرات',
-    'بلخ',
-    'قندهار',
-    'ننگرهار',
-    'غزنی',
-    'پکتیا',
-    'پروان',
-    'کندز',
-    'دایکندی',
-    'بامیان',
-  ];
+  // همهٔ ۳۴ ولایت (قبلاً فقط ۱۱ ولایت بود و راننده‌های بقیه ولایت‌ها نمی‌توانستند
+  // پلاک درست ثبت کنند). همان فهرست ولایت‌های ثبت‌نام است.
+  final List<String> afghanistanProvinces = AfghanLocations.provinces;
+
+  // املای قدیمی ذخیره‌شده → املای فهرست فعلی
+  static const Map<String, String> _provinceAlias = <String, String>{
+    'کندهار': 'قندهار',
+  };
 
   final List<String> plateCategories = <String>[
     'ش',
@@ -80,6 +76,29 @@ class _VehicleBasicInfoUpdateScreenState
       'label': 'vehicle_cargo',
       'icon': 'assets/vehicles/cargo.png',
     },
+  ];
+
+  // پیشنهاد سریع برند/مدل و رنگ؛ تایپ را کم می‌کند و املای یکسان می‌دهد
+  static const Map<String, List<String>> _brandSuggestions =
+      <String, List<String>>{
+    'Car': <String>[
+      'تویوتا کرولا',
+      'تویوتا پروبکس',
+      'تویوتا کمری',
+      'تویوتا ویتز',
+      'هیوندای',
+      'نیسان',
+    ],
+    'Bike': <String>['هوندا', 'یاماها', 'سوزوکی'],
+  };
+
+  static const List<String> _colorSuggestions = <String>[
+    'سفید',
+    'نقره‌ای',
+    'خاکستری',
+    'مشکی',
+    'آبی',
+    'قرمز',
   ];
 
   String _toEnglishNumbers(String input) {
@@ -132,7 +151,10 @@ class _VehicleBasicInfoUpdateScreenState
 
   TextInputFormatter _englishNumberFormatter() {
     return TextInputFormatter.withFunction(
-      (TextEditingValue oldValue, TextEditingValue newValue) {
+      (
+        TextEditingValue oldValue,
+        TextEditingValue newValue,
+      ) {
         if (!newValue.composing.isCollapsed) {
           return newValue;
         }
@@ -170,8 +192,8 @@ class _VehicleBasicInfoUpdateScreenState
 
     return Image.asset(
       assetPath,
-      height: 32,
-      width: 56,
+      height: 36,
+      width: 60,
       fit: BoxFit.contain,
       errorBuilder: (
         BuildContext context,
@@ -180,8 +202,8 @@ class _VehicleBasicInfoUpdateScreenState
       ) {
         return Icon(
           fallbackIcon,
-          size: 28,
-          color: AppColors.primaryBrand,
+          size: 30,
+          color: AppColors.textPrimary,
         );
       },
     );
@@ -208,11 +230,11 @@ class _VehicleBasicInfoUpdateScreenState
     final OutlineInputBorder baseBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(
-        color: AppColors.textSecondary.withOpacity(0.30),
+        color: AppColors.fieldBorder,
       ),
     );
 
-    const Color errorColor = Color(0xFFD64545);
+    final Color errorColor = AppColors.danger;
 
     // مهم: اندازه و ضخامت فونت برچسب در حالت عادی و شناور یکی است، وگرنه
     // عرض بریدگی خط با عرض متن نمی‌خواند و خط از روی برچسب رد می‌شود.
@@ -226,13 +248,13 @@ class _VehicleBasicInfoUpdateScreenState
       labelText: labelText,
       hintText: hintText,
       labelStyle: labelBase,
-      floatingLabelStyle: MaterialStateTextStyle.resolveWith(
-        (Set<MaterialState> states) {
-          if (states.contains(MaterialState.error)) {
+      floatingLabelStyle: WidgetStateTextStyle.resolveWith(
+        (Set<WidgetState> states) {
+          if (states.contains(WidgetState.error)) {
             return labelBase.copyWith(color: errorColor);
           }
 
-          if (states.contains(MaterialState.focused)) {
+          if (states.contains(WidgetState.focused)) {
             return labelBase.copyWith(color: AppColors.primaryBrand);
           }
 
@@ -240,9 +262,9 @@ class _VehicleBasicInfoUpdateScreenState
         },
       ),
       prefixIcon: icon == null ? null : Icon(icon, size: 20),
-      prefixIconColor: MaterialStateColor.resolveWith(
-        (Set<MaterialState> states) {
-          return states.contains(MaterialState.focused)
+      prefixIconColor: WidgetStateColor.resolveWith(
+        (Set<WidgetState> states) {
+          return states.contains(WidgetState.focused)
               ? AppColors.primaryBrand
               : AppColors.textSecondary;
         },
@@ -250,7 +272,7 @@ class _VehicleBasicInfoUpdateScreenState
       border: baseBorder,
       enabledBorder: baseBorder,
       focusedBorder: baseBorder.copyWith(
-        borderSide: const BorderSide(
+        borderSide: BorderSide(
           color: AppColors.primaryBrand,
           width: 2,
         ),
@@ -268,25 +290,22 @@ class _VehicleBasicInfoUpdateScreenState
     );
   }
 
-  /// ظاهر مشترک کارت‌ها؛ سایه‌ی سبک تا هنگام باز شدن کیبورد سنگین نشود.
+  /// ظاهر مشترک کارت‌ها؛ بدون سایه (سبک‌تر است و در حالت تاریک تمیز می‌ماند).
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: AppColors.cardBackground,
       borderRadius: BorderRadius.circular(24),
-      border: Border.all(
-        color: AppColors.textSecondary.withOpacity(0.10),
-      ),
-      boxShadow: <BoxShadow>[
-        BoxShadow(
-          color: Colors.black.withOpacity(0.03),
-          offset: const Offset(0, 3),
-          blurRadius: 10,
-        ),
-      ],
+      border: Border.all(color: AppColors.borderLight),
     );
   }
 
-  Future<void> _saveVehicleInfo() async {
+  // سال ساخت: چهار رقم، میلادی (مثلاً ۲۰۱۵)، از ۱۹۷۰ تا سال آینده
+  bool _yearOk(String raw) {
+    final int? y = int.tryParse(_toEnglishNumbers(raw.trim()));
+    return y != null && y >= 1970 && y <= DateTime.now().year + 1;
+  }
+
+  Future<void> _confirmVehicleInfo() async {
     FocusScope.of(context).unfocus();
 
     if (_formKey.currentState?.validate() != true) {
@@ -296,9 +315,8 @@ class _VehicleBasicInfoUpdateScreenState
     final RegistrationProvider registrationProvider =
         context.read<RegistrationProvider>();
 
-    registrationProvider.checkVehicleBasicFormValidity();
-
-    final bool canSave =
+    final bool isValid = _yearOk(
+            registrationProvider.productionYearController.text) &&
         registrationProvider.selectedVehicle != null &&
             registrationProvider.selectedVehicle!.trim().isNotEmpty &&
             registrationProvider.brandController.text.trim().isNotEmpty &&
@@ -315,22 +333,22 @@ class _VehicleBasicInfoUpdateScreenState
             registrationProvider.plateCategory.trim().isNotEmpty &&
             registrationProvider.plateType.trim().isNotEmpty;
 
-    if (!canSave) {
+    registrationProvider.checkVehicleBasicFormValidity();
+
+    if (!isValid) {
       return;
     }
 
     try {
-      await registrationProvider.updateVehicleBasicInfo(context);
+      final bool saved =
+          await registrationProvider.updateVehicleBasicInfo(context);
 
-      if (!mounted) {
+      // پیام خطا را خود provider نشان می‌دهد؛ موفقیت فقط وقتی واقعاً ذخیره شد
+      if (!saved || !mounted) {
         return;
       }
 
-      CommonMethods().displaySnackBar(
-        'save_success'.tr(),
-        context,
-      );
-
+      CommonMethods().displaySnackBar('save_success'.tr(), context);
       Navigator.pop(context);
     } catch (error, stackTrace) {
       debugPrint('Error while saving vehicle info: $error');
@@ -348,35 +366,27 @@ class _VehicleBasicInfoUpdateScreenState
       resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.cardBackground,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        shape: Border(
-          bottom: BorderSide(
-            color: AppColors.textSecondary.withOpacity(0.10),
-          ),
-        ),
         title: Text(
           'vehicle_info_title'.tr(),
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
+          style: TextStyle(
             fontSize: 17,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
         centerTitle: true,
-        leading: TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(
-            'close'.tr(),
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: AppColors.cardBackground,
+        shape: Border(
+          bottom: BorderSide(color: AppColors.borderLight),
         ),
-        leadingWidth: 70,
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: _KeyboardAwareBody(
         child: Padding(
@@ -389,13 +399,13 @@ class _VehicleBasicInfoUpdateScreenState
                   child: SingleChildScrollView(
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.manual,
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         _buildVehicleTypeSelector(),
                         const SizedBox(height: 10),
-                        _buildVehicleDetailsCard(
+                        _buildVehicleInformationCard(
                           registrationProvider,
                         ),
                       ],
@@ -403,7 +413,7 @@ class _VehicleBasicInfoUpdateScreenState
                   ),
                 ),
                 const SizedBox(height: 10),
-                _buildSaveButton(),
+                _buildConfirmButton(),
               ],
             ),
           ),
@@ -412,105 +422,180 @@ class _VehicleBasicInfoUpdateScreenState
     );
   }
 
+  String _typeFallbackLabel(String value) => value == 'Car'
+      ? 'تاکسی (سواری)'
+      : value == 'Bike'
+          ? 'موترسایکل'
+          : 'باربری';
+
+  /// انتخاب نوع وسیله: سه کارت کنار هم، همیشه دیده می‌شود (به‌جای منوی بازشو)
   Widget _buildVehicleTypeSelector() {
-    return Selector<RegistrationProvider, String?>(
-      selector: (
-        BuildContext context,
-        RegistrationProvider provider,
-      ) {
-        return provider.selectedVehicle;
+    final RegistrationProvider registrationProvider =
+        context.read<RegistrationProvider>();
+
+    return FormField<String>(
+      validator: (String? _) {
+        final String? v = registrationProvider.selectedVehicle;
+        final bool ok = v != null &&
+            _vehicleOptions.any((Map<String, String> o) => o['value'] == v);
+        return ok ? null : 'نوع وسیله را انتخاب کنید';
       },
-      builder: (
-        BuildContext context,
-        String? selectedVehicle,
-        Widget? child,
-      ) {
-        final RegistrationProvider registrationProvider =
-            context.read<RegistrationProvider>();
-
-        final String? dropdownValue = _vehicleOptions.any(
-          (Map<String, String> option) =>
-              option['value'] == selectedVehicle,
-        )
-            ? selectedVehicle
-            : null;
-
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
-          decoration: _cardDecoration(),
-          child: DropdownButtonFormField<String>(
-            value: dropdownValue,
-            decoration: InputDecoration(
-              labelText: 'vehicle_type_label'.tr(),
-              labelStyle: const TextStyle(fontSize: 13),
-              border: InputBorder.none,
-            ),
-            icon: const Icon(
-              Icons.keyboard_arrow_down_rounded,
-            ),
-            isExpanded: true,
-            dropdownColor: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(14),
-            items: _vehicleOptions.map(
-              (Map<String, String> option) {
-                final String value = option['value']!;
-
-                final String fallbackLabel = value == 'Car'
-                    ? 'تاکسی (سواری)'
-                    : value == 'Bike'
-                        ? 'موترسایکل'
-                        : 'باربری';
-
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Row(
+      builder: (FormFieldState<String> field) {
+        return Selector<RegistrationProvider, String?>(
+          selector: (BuildContext context, RegistrationProvider provider) =>
+              provider.selectedVehicle,
+          builder: (BuildContext context, String? selectedVehicle, Widget? _) {
+            return Container(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.all(16),
+              decoration: _cardDecoration(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'vehicle_type_label'.tr(),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
                     children: <Widget>[
-                      _vehicleOptionIcon(
-                        option['icon']!,
-                        value,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        _vehicleLabel(
-                          option['label']!,
-                          fallbackLabel,
+                      for (int i = 0; i < _vehicleOptions.length; i++) ...<Widget>[
+                        if (i > 0) const SizedBox(width: 10),
+                        Expanded(
+                          child: _typeCard(
+                            option: _vehicleOptions[i],
+                            selected:
+                                selectedVehicle == _vehicleOptions[i]['value'],
+                            onTap: () {
+                              registrationProvider.setSelectedVehicle(
+                                _vehicleOptions[i]['value']!,
+                              );
+                              field.didChange(_vehicleOptions[i]['value']);
+                            },
+                          ),
                         ),
-                        style: const TextStyle(
-                          fontSize: 14,
-                        ),
-                      ),
+                      ],
                     ],
                   ),
-                );
-              },
-            ).toList(),
-            validator: (String? value) {
-              if (value == null || value.isEmpty) {
-                final String errorText = 'vehicle_type_error'.tr();
-
-                return errorText == 'vehicle_type_error'
-                    ? 'نوع وسیله را انتخاب کنید'
-                    : errorText;
-              }
-
-              return null;
-            },
-            onChanged: (String? value) {
-              if (value != null) {
-                registrationProvider.setSelectedVehicle(value);
-              }
-            },
-          ),
+                  if (field.hasError)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        field.errorText!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.danger,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildVehicleDetailsCard(
+  Widget _typeCard({
+    required Map<String, String> option,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final String value = option['value']!;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primaryBrand.withOpacity(0.10)
+              : AppColors.backgroundLight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? AppColors.primaryBrand : AppColors.fieldBorder,
+            width: selected ? 1.6 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            _vehicleOptionIcon(option['icon']!, value),
+            const SizedBox(height: 8),
+            Text(
+              _vehicleLabel(option['label']!, _typeFallbackLabel(value)),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                color: selected ? AppColors.primaryBrand : AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _chips(
+    List<String> items,
+    TextEditingController controller,
+    RegistrationProvider provider,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: controller,
+        builder: (BuildContext context, TextEditingValue v, Widget? _) {
+          return Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: items.map((String item) {
+              final bool on = v.text.trim() == item;
+              return GestureDetector(
+                onTap: () {
+                  controller.text = item;
+                  provider.checkVehicleBasicFormValidity();
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: on
+                        ? AppColors.primaryBrand.withOpacity(0.10)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: on ? AppColors.primaryBrand : AppColors.fieldBorder,
+                    ),
+                  ),
+                  child: Text(
+                    item,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color:
+                          on ? AppColors.primaryBrand : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildVehicleInformationCard(
     RegistrationProvider registrationProvider,
   ) {
     return Container(
@@ -537,6 +622,19 @@ class _VehicleBasicInfoUpdateScreenState
               registrationProvider.checkVehicleBasicFormValidity();
             },
           ),
+          Selector<RegistrationProvider, String?>(
+            selector: (BuildContext c, RegistrationProvider p) =>
+                p.selectedVehicle,
+            builder: (BuildContext c, String? type, Widget? _) {
+              final List<String>? list = _brandSuggestions[type];
+              if (list == null) return const SizedBox.shrink();
+              return _chips(
+                list,
+                registrationProvider.brandController,
+                registrationProvider,
+              );
+            },
+          ),
           const SizedBox(height: 16),
           TextFormField(
             controller: registrationProvider.colorController,
@@ -556,6 +654,11 @@ class _VehicleBasicInfoUpdateScreenState
               registrationProvider.checkVehicleBasicFormValidity();
             },
           ),
+          _chips(
+            _colorSuggestions,
+            registrationProvider.colorController,
+            registrationProvider,
+          ),
           const SizedBox(height: 16),
           TextFormField(
             controller: registrationProvider.productionYearController,
@@ -568,11 +671,19 @@ class _VehicleBasicInfoUpdateScreenState
             ],
             decoration: _fieldDecoration(
               labelText: 'vehicle_year_label'.tr(),
+              hintText: '2015',
               icon: Icons.calendar_today_outlined,
             ),
             validator: (String? value) {
               if (value == null || value.trim().isEmpty) {
                 return 'vehicle_year_error'.tr();
+              }
+
+              if (!_yearOk(value)) {
+                return _vehicleLabel(
+                  'vehicle_year_invalid',
+                  'سال ساخت را میلادی و درست بنویسید (مثلاً 2015)',
+                );
               }
 
               return null;
@@ -584,14 +695,14 @@ class _VehicleBasicInfoUpdateScreenState
           const SizedBox(height: 20),
           Text(
             'plate_info_header'.tr(),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 13.5,
-              color: AppColors.primaryBrand,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
-          _buildPlateFirstRow(),
+          _buildPlateRow(),
           const SizedBox(height: 14),
           _buildPlateTypeSelector(),
         ],
@@ -599,7 +710,7 @@ class _VehicleBasicInfoUpdateScreenState
     );
   }
 
-  Widget _buildPlateFirstRow() {
+  Widget _buildPlateRow() {
     return Row(
       children: <Widget>[
         Expanded(
@@ -614,7 +725,7 @@ class _VehicleBasicInfoUpdateScreenState
         const SizedBox(width: 6),
         Expanded(
           flex: 4,
-          child: _buildPlateNumberField(),
+          child: _buildNumberPlateField(),
         ),
       ],
     );
@@ -636,13 +747,15 @@ class _VehicleBasicInfoUpdateScreenState
         final RegistrationProvider registrationProvider =
             context.read<RegistrationProvider>();
 
-        final String value = afghanistanProvinces.contains(province)
-            ? province
+        final String normalized = _provinceAlias[province] ?? province;
+        final String value = afghanistanProvinces.contains(normalized)
+            ? normalized
             : afghanistanProvinces.first;
 
         return DropdownButtonFormField<String>(
           value: value,
           isExpanded: true,
+          menuMaxHeight: 320,
           dropdownColor: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(14),
           decoration: _fieldDecoration(
@@ -655,13 +768,16 @@ class _VehicleBasicInfoUpdateScreenState
             ),
           ),
           items: afghanistanProvinces.map(
-            (String item) {
+            (String provinceName) {
               return DropdownMenuItem<String>(
-                value: item,
+                value: provinceName,
                 child: Text(
-                  item,
+                  provinceName,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               );
             },
@@ -711,13 +827,16 @@ class _VehicleBasicInfoUpdateScreenState
             ),
           ),
           items: plateCategories.map(
-            (String item) {
+            (String categoryName) {
               return DropdownMenuItem<String>(
-                value: item,
+                value: categoryName,
                 child: Text(
-                  item,
+                  categoryName,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               );
             },
@@ -732,7 +851,7 @@ class _VehicleBasicInfoUpdateScreenState
     );
   }
 
-  Widget _buildPlateNumberField() {
+  Widget _buildNumberPlateField() {
     final RegistrationProvider registrationProvider =
         context.read<RegistrationProvider>();
 
@@ -748,7 +867,6 @@ class _VehicleBasicInfoUpdateScreenState
       ],
       decoration: _fieldDecoration(
         labelText: 'plate_number'.tr(),
-        hintText: '44892',
         labelFontSize: 11,
       ).copyWith(
         contentPadding: const EdgeInsets.symmetric(
@@ -757,7 +875,7 @@ class _VehicleBasicInfoUpdateScreenState
         ),
       ),
       validator: (String? value) {
-        if (value == null || value.trim().isEmpty) {
+        if (value == null || value.trim().length < 3) {
           return 'plate_number_error'.tr();
         }
 
@@ -800,14 +918,22 @@ class _VehicleBasicInfoUpdateScreenState
           decoration: _fieldDecoration(
             labelText: 'plate_type'.tr(),
             labelFontSize: 12,
+          ).copyWith(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 10,
+            ),
           ),
           items: plateTypes.map(
-            (String item) {
+            (String type) {
               return DropdownMenuItem<String>(
-                value: item,
+                value: type,
                 child: Text(
-                  item,
-                  style: const TextStyle(fontSize: 13),
+                  type,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               );
             },
@@ -822,34 +948,35 @@ class _VehicleBasicInfoUpdateScreenState
     );
   }
 
-  Widget _buildSaveButton() {
-    return Selector<RegistrationProvider, _SaveButtonState>(
+  Widget _buildConfirmButton() {
+    return Selector<RegistrationProvider,
+        ({bool isLoading, bool isFormValid})>(
       selector: (
         BuildContext context,
         RegistrationProvider provider,
       ) {
-        return _SaveButtonState(
+        return (
           isLoading: provider.isLoading,
           isFormValid: provider.isVehicleBasicFormValid,
         );
       },
       builder: (
         BuildContext context,
-        _SaveButtonState state,
+        ({bool isLoading, bool isFormValid}) state,
         Widget? child,
       ) {
         return SizedBox(
           width: double.infinity,
           height: 54,
           child: ElevatedButton(
-            onPressed: state.isLoading ? null : _saveVehicleInfo,
+            onPressed: state.isFormValid && !state.isLoading
+                ? _confirmVehicleInfo
+                : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryButton,
               foregroundColor: AppColors.buttonText,
-              disabledBackgroundColor:
-                  AppColors.textSecondary.withOpacity(0.15),
-              disabledForegroundColor:
-                  AppColors.textSecondary.withOpacity(0.6),
+              disabledBackgroundColor: AppColors.borderLight,
+              disabledForegroundColor: AppColors.textSecondary,
               elevation: 0,
               shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
@@ -857,7 +984,7 @@ class _VehicleBasicInfoUpdateScreenState
               ),
             ),
             child: state.isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(
@@ -868,9 +995,8 @@ class _VehicleBasicInfoUpdateScreenState
                 : Text(
                     'confirm_and_submit'.tr(),
                     style: const TextStyle(
-                      color: AppColors.buttonText,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      fontSize: 15.5,
                     ),
                   ),
           ),
@@ -878,33 +1004,6 @@ class _VehicleBasicInfoUpdateScreenState
       },
     );
   }
-}
-
-class _SaveButtonState {
-  const _SaveButtonState({
-    required this.isLoading,
-    required this.isFormValid,
-  });
-
-  final bool isLoading;
-  final bool isFormValid;
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) {
-      return true;
-    }
-
-    return other is _SaveButtonState &&
-        other.isLoading == isLoading &&
-        other.isFormValid == isFormValid;
-  }
-
-  @override
-  int get hashCode => Object.hash(
-        isLoading,
-        isFormValid,
-      );
 }
 
 /// فضای کیبورد و نوار پایین سیستم را یک‌بار و با انیمیشن کوتاه حساب می‌کند.
