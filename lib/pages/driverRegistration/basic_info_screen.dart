@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 
-import '../../providers/auth_provider.dart';
+import '../../providers/authentication_provider.dart';
 import '../../providers/registration_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../widgets/province_city_fields.dart';
@@ -752,6 +752,8 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
                         RepaintBoundary(
                           child: _buildFormCard(registrationProvider),
                         ),
+                        const SizedBox(height: 8),
+                        _buildAccountSwitch(),
                       ],
                     ),
                   ),
@@ -993,6 +995,90 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
         ),
       ),
     );
+  }
+
+  /// ورود با حساب اشتباه؟ خروج و انتخاب حساب/ایمیل دیگر
+  Widget _buildAccountSwitch() {
+    final user = context.read<AuthenticationProvider>().firebaseAuth.currentUser;
+    final String who = (user?.email?.isNotEmpty ?? false)
+        ? user!.email!
+        : (user?.phoneNumber ?? '');
+
+    return Column(
+      children: <Widget>[
+        if (who.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              '${_t('signed_in_as', 'واردشده با')}: $who',
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.ltr,
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ),
+        TextButton.icon(
+          onPressed: _confirmSwitchAccount,
+          icon: Icon(Icons.swap_horiz_rounded,
+              size: 18, color: AppColors.iconSecondary),
+          label: Text(
+            _t('switch_account', 'ایمیل یا شماره اشتباه است؟ تغییر حساب'),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmSwitchAccount() async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.cardBackground,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            _t('switch_account_title', 'تغییر حساب'),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          content: Text(
+            _t('switch_account_msg',
+                'از این حساب خارج می‌شوید و اطلاعاتی که وارد کرده‌اید پاک می‌شود. با ایمیل یا شمارهٔ دیگر دوباره وارد شوید.'),
+            style: TextStyle(color: AppColors.textSecondary, height: 1.6),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(
+                _t('cancel', 'انصراف'),
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryButton,
+                foregroundColor: AppColors.buttonText,
+                elevation: 0,
+              ),
+              child: Text(_t('switch_account_btn', 'خروج و تغییر')),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (ok != true || !mounted) return;
+    await context.read<AuthenticationProvider>().signOut(context);
   }
 
   Widget _buildSubmitButton() {
