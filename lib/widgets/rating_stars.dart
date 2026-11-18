@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/app_colors.dart';
+
 class RatingStars extends StatelessWidget {
   final String ratting; // بدون تغییر در نام متغیر برای حفظ اتصال با دیتابیس
 
@@ -14,20 +16,23 @@ class RatingStars extends StatelessWidget {
     if (ratingValue > 5) ratingValue = 5.0;
     if (ratingValue < 0) ratingValue = 0.0;
 
+    // ستاره‌های فعال طلایی (در تم تاریک روشن‌تر)؛ خالی‌ها خنثی
+    final Color active = AppColors.warning;
+    final Color empty = AppColors.fieldBorder;
+
     return Directionality(
-      textDirection: Directionality.of(context), // تنظیم هوشمند جهت ستاره‌ها متناسب با زبان فعال
+      textDirection: Directionality.of(context),
       child: Row(
-        mainAxisSize: MainAxisSize.min, // جمع شدن جهت جلوگیری از کشیدگی افقی
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          // نمایش ۵ ستاره بر اساس مقدار امتیاز راننده
           for (int i = 1; i <= 5; i++)
             Icon(
-              i <= ratingValue 
-                  ? Icons.star_rounded // استفاده از آیکون‌های گردتر و مدرن‌تر فلاتر
-                  : (i - 0.5 <= ratingValue ? Icons.star_half_rounded : Icons.star_border_rounded),
-              color: i <= ratingValue || i - 0.5 <= ratingValue 
-                  ? Colors.amber // رنگ طلایی برای ستاره‌های فعال
-                  : Colors.grey.shade300, // خاکستری برای ستاره‌های خالی
+              i <= ratingValue
+                  ? Icons.star_rounded
+                  : (i - 0.5 <= ratingValue
+                      ? Icons.star_half_rounded
+                      : Icons.star_border_rounded),
+              color: i - 0.5 <= ratingValue ? active : empty,
               size: 20,
             ),
         ],
