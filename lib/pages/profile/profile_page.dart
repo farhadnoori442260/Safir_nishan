@@ -11,8 +11,15 @@ import 'package:safir_drivers/pages/profileUpdation/vehicleUpdation/vehicle_regi
 import 'package:safir_drivers/providers/authentication_provider.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
+import 'package:safir_drivers/utils/theme_controller.dart';
 
 import '../../widgets/rating_stars.dart';
+
+// اگر ترجمه نبود، .tr() خود کلید را برمی‌گرداند؛ در این حالت متن پیش‌فرض
+String _pt(String key, String fallback) {
+  final String v = key.tr();
+  return (v.trim().isEmpty || v == key) ? fallback : v;
+}
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -879,25 +886,57 @@ class SettingsPage extends StatelessWidget {
           color: AppColors.textPrimary,
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: _buildSettingsTile(
-          context,
-          icon: Icons.language_rounded,
-          title: 'settings_language'.tr(),
-          subtitle: _getCurrentLanguageName(context),
-          onTap: () {
-            Navigator.push(
+      body: ListenableBuilder(
+        listenable: ThemeController.instance,
+        builder: (context, _) => ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildSettingsTile(
               context,
-              MaterialPageRoute(
-                builder: (_) => const LanguagePage(),
-              ),
-            );
-          },
-          isRtl: isRtl,
+              icon: Icons.language_rounded,
+              title: 'settings_language'.tr(),
+              subtitle: _getCurrentLanguageName(context),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LanguagePage(),
+                  ),
+                );
+              },
+              isRtl: isRtl,
+            ),
+            const SizedBox(height: 12),
+            _buildSettingsTile(
+              context,
+              icon: Icons.brightness_6_outlined,
+              title: _pt('settings_theme', 'ظاهر برنامه'),
+              subtitle: _getCurrentThemeName(),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ThemePage(),
+                  ),
+                );
+              },
+              isRtl: isRtl,
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  String _getCurrentThemeName() {
+    switch (ThemeController.instance.mode) {
+      case ThemeMode.light:
+        return _pt('theme_light', 'روشن');
+      case ThemeMode.dark:
+        return _pt('theme_dark', 'تاریک');
+      case ThemeMode.system:
+        return _pt('theme_system', 'مطابق گوشی');
+    }
   }
 
   String _getCurrentLanguageName(BuildContext context) {
@@ -1107,6 +1146,116 @@ class _LanguagePageState extends State<LanguagePage> {
             _selectedLocale = locale;
           });
         },
+      ),
+    );
+  }
+}
+/// انتخاب ظاهر برنامه: مطابق گوشی / روشن / تاریک. با لمس فوراً اعمال می‌شود.
+class ThemePage extends StatelessWidget {
+  const ThemePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(
+          _pt('settings_theme', 'ظاهر برنامه'),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: AppColors.cardBackground,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: Border(
+          bottom: BorderSide(color: AppColors.borderLight),
+        ),
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
+      ),
+      body: ListenableBuilder(
+        listenable: ThemeController.instance,
+        builder: (context, _) {
+          final ThemeMode current = ThemeController.instance.mode;
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _option(
+                icon: Icons.phone_android_rounded,
+                title: _pt('theme_system', 'مطابق گوشی'),
+                subtitle: _pt('theme_system_sub',
+                    'با تنظیم روشن/تاریک گوشی هماهنگ می‌شود'),
+                selected: current == ThemeMode.system,
+                onTap: () =>
+                    ThemeController.instance.setMode(ThemeMode.system),
+              ),
+              _option(
+                icon: Icons.light_mode_outlined,
+                title: _pt('theme_light', 'روشن'),
+                selected: current == ThemeMode.light,
+                onTap: () =>
+                    ThemeController.instance.setMode(ThemeMode.light),
+              ),
+              _option(
+                icon: Icons.dark_mode_outlined,
+                title: _pt('theme_dark', 'تاریک'),
+                subtitle: _pt('theme_dark_sub',
+                    'برای رانندگی شب و صرفه‌جویی باتری'),
+                selected: current == ThemeMode.dark,
+                onTap: () =>
+                    ThemeController.instance.setMode(ThemeMode.dark),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _option({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: selected ? AppColors.primaryBrand : AppColors.borderLight,
+          width: selected ? 2 : 1,
+        ),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        leading: Icon(icon, color: AppColors.iconSecondary),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        subtitle: subtitle == null
+            ? null
+            : Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+        trailing: selected
+            ? Icon(Icons.check_circle, color: AppColors.primaryBrand)
+            : Icon(Icons.radio_button_unchecked,
+                color: AppColors.textSecondary),
       ),
     );
   }
