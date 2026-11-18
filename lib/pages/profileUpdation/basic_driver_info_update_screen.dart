@@ -857,6 +857,8 @@ class _BasicDriverInfoUpdateScreenState
                                   const SizedBox(height: 16),
                                   const ProvinceCityFields(),
                                   const SizedBox(height: 16),
+                                  const WorkAreaFields(),
+                                  const SizedBox(height: 16),
                                   TextFormField(
                                     controller: registrationProvider
                                         .phoneController,
