@@ -174,6 +174,7 @@ class _VehicleBasicInfoScreenState
   Widget _vehicleOptionIcon(
     String assetPath,
     String value,
+    bool selected,
   ) {
     IconData fallbackIcon;
 
@@ -194,6 +195,9 @@ class _VehicleBasicInfoScreenState
       height: 36,
       width: 60,
       fit: BoxFit.contain,
+      // آیکن‌ها سفیدند؛ برای دیده شدن در هر دو تم، رنگ‌آمیزی می‌شوند
+      color: selected ? AppColors.primaryBrand : AppColors.iconSecondary,
+      colorBlendMode: BlendMode.srcIn,
       errorBuilder: (
         BuildContext context,
         Object error,
@@ -202,7 +206,7 @@ class _VehicleBasicInfoScreenState
         return Icon(
           fallbackIcon,
           size: 30,
-          color: AppColors.textPrimary,
+          color: selected ? AppColors.primaryBrand : AppColors.iconSecondary,
         );
       },
     );
@@ -519,7 +523,7 @@ class _VehicleBasicInfoScreenState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            _vehicleOptionIcon(option['icon']!, value),
+            _vehicleOptionIcon(option['icon']!, value, selected),
             const SizedBox(height: 8),
             Text(
               _vehicleLabel(option['label']!, _typeFallbackLabel(value)),
