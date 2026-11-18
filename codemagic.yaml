@@ -1,35 +1,46 @@
-scripts:
-  - name: Show versions
-    script: |
-      flutter --version
-      dart --version
+workflows:
+  android-workflow:
+    name: Android Build
+    max_build_duration: 30
+    instance_type: mac_mini_m2
 
-  - name: Get Flutter packages
-    script: |
-      flutter pub get
+    environment:
+      groups:
+        - safir_k
+      flutter: 3.29.3
+      java: 21
 
-  - name: Generate launcher icons
-    script: |
-      dart run flutter_launcher_icons
+    scripts:
+      - name: Show versions
+        script: |
+          flutter --version
+          dart --version
 
-  - name: Set up Keystore
-    script: |
-      echo "$CM_KEYSTORE" | base64 --decode > /tmp/release.jks
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
 
-  - name: Get SHA-1
-    script: |
-      keytool -list -v \
-        -keystore /tmp/release.jks \
-        -alias "$CM_KEY_ALIAS" \
-        -storepass "$CM_KEYSTORE_PASSWORD"
+      - name: Generate launcher icons
+        script: |
+          dart run flutter_launcher_icons -f pubspec.yaml
 
-  - name: Build Release APK
-    script: |
-      cat <<EOF > android/key.properties
-      storePassword=$CM_KEYSTORE_PASSWORD
-      keyPassword=$CM_KEY_PASSWORD
-      keyAlias=$CM_KEY_ALIAS
-      storeFile=/tmp/release.jks
-      EOF
+      - name: Set up Keystore
+        script: |
+          echo $CM_KEYSTORE | base64 --decode > /tmp/release.jks
 
-      flutter build apk --release --split-per-abi
+      - name: Get SHA-1
+        script: |
+          keytool -list -v -keystore /tmp/release.jks -alias $CM_KEY_ALIAS -storepass $CM_KEYSTORE_PASSWORD
+
+      - name: Build Release APK
+        script: |
+          cat <<EOF > android/key.properties
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyPassword=$CM_KEY_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          storeFile=/tmp/release.jks
+          EOF
+          flutter build apk --release --split-per-abi
+
+    artifacts:
+      - build/app/outputs/flutter-apk/*-release.apk
