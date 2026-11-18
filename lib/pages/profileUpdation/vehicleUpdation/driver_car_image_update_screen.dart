@@ -1,5 +1,4 @@
-import 'dart:io';
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -7,8 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:safir_drivers/methods/common_method.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
-
-import '../../../global/global.dart';
+import 'package:safir_drivers/widgets/photo_capture_card.dart';
 
 class DriverCarImageUpdateScreen extends StatefulWidget {
   const DriverCarImageUpdateScreen({super.key});
@@ -20,88 +18,123 @@ class DriverCarImageUpdateScreen extends StatefulWidget {
 
 class _DriverCarImageUpdateScreenState
     extends State<DriverCarImageUpdateScreen> {
+  final CommonMethods commonMethods = CommonMethods();
+  final ImagePicker _picker = ImagePicker();
+
+  String _t(String key, String fallback) {
+    final String v = key.tr();
+    return (v.trim().isEmpty || v == key) ? fallback : v;
+  }
+
+  // عکس موتر: اندازهٔ متوسط کافی است (فقط برای شناسایی ظاهر و پلاک)
+  Future<void> _takePhoto(RegistrationProvider provider) async {
+    try {
+      final XFile? picked = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 70,
+      );
+      if (picked != null) {
+        provider.vehicleImage = picked;
+        provider.isVehiclePhotoAdded = true;
+      }
+    } catch (e) {
+      debugPrint('Error taking vehicle photo: $e');
+      if (!mounted) return;
+      commonMethods.displaySnackBar(
+        _t('camera_unavailable',
+            'دوربین باز نشد. اجازهٔ دسترسی به دوربین را در تنظیمات گوشی بدهید.'),
+        context,
+      );
+    }
+  }
+
+  Future<void> _save(RegistrationProvider provider) async {
+    try {
+      final bool ok = await provider.updateVehicleImage(context);
+      // پیام خطا را خود provider نشان می‌دهد؛ موفقیت فقط وقتی واقعاً ذخیره شد
+      if (!ok || !mounted) return;
+      commonMethods.displaySnackBar('car_img_success'.tr(), context);
+    } catch (e) {
+      debugPrint('Error while saving data: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final CommonMethods commonMethods = CommonMethods();
-
     return Consumer<RegistrationProvider>(
       builder: (context, registrationProvider, child) => Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
           backgroundColor: AppColors.cardBackground,
+          surfaceTintColor: AppColors.cardBackground,
           elevation: 0,
+          scrolledUnderElevation: 0,
+          iconTheme: IconThemeData(color: AppColors.textPrimary),
           title: Text(
             'car_img_title'.tr(),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
               color: AppColors.textPrimary,
             ),
           ),
           centerTitle: true,
-          leading: TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text(
-              'close'.tr(),
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => Navigator.pop(context),
           ),
-          leadingWidth: 70,
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
+        body: SafeArea(
           child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildImagePicker(
-                  context,
-                  'car_img_picker_label'.tr(),
-                  registrationProvider.vehicleImage,
-                  registrationProvider.pickVehicleImageFromCamera,
+                PhotoCaptureCard(
+                  label: 'car_img_picker_label'.tr(),
+                  hint: _t(
+                    'vehicle_image_tip',
+                    'موتر را از روبرو و از فاصلهٔ چند قدمی عکس بگیرید؛ کل موتر و پلاک پیدا باشد.',
+                  ),
+                  image: registrationProvider.vehicleImage,
+                  buttonText: 'car_img_take_photo'.tr(),
+                  retakeText: _t('retake_photo', 'گرفتن دوباره'),
+                  placeholderIcon: Icons.directions_car_outlined,
+                  previewHeight: 200,
+                  onPressed: () => _takePhoto(registrationProvider),
                 ),
                 const SizedBox(height: 24),
-
-                // دکمه ثبت نهایی
                 SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.9,
                   height: 52,
                   child: ElevatedButton(
                     onPressed: registrationProvider.isVehiclePhotoAdded &&
                             !registrationProvider.isLoading
-                        ? () async {
-                            try {
-                              await registrationProvider
-                                  .updateVehicleImage(context);
-                              if (context.mounted) {
-                                commonMethods.displaySnackBar(
-                                    'car_img_success'.tr(), context);
-                              }
-                            } catch (e) {
-                              debugPrint("Error while saving data: $e");
-                            }
-                          }
+                        ? () => _save(registrationProvider)
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBrand,
-                      disabledBackgroundColor: Colors.grey.shade400,
+                      backgroundColor: AppColors.primaryButton,
+                      foregroundColor: AppColors.buttonText,
+                      disabledBackgroundColor: AppColors.borderLight,
+                      disabledForegroundColor: AppColors.textSecondary,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                     child: registrationProvider.isLoading
-                        ? const CircularProgressIndicator(
-                            color: Colors.white,
+                        ? SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: AppColors.buttonText,
+                            ),
                           )
                         : Text(
                             'final_confirm'.tr(),
                             style: const TextStyle(
-                              color: AppColors.buttonText,
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
                             ),
@@ -112,86 +145,6 @@ class _DriverCarImageUpdateScreenState
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildImagePicker(
-    BuildContext context,
-    String label,
-    XFile? imageFile,
-    VoidCallback onPressed,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            offset: Offset(0, 2),
-            blurRadius: 6.0,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          imageFile != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.file(
-                    File(imageFile.path),
-                    height: 160,
-                    width: 260,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Image.asset(
-                  'assets/vehicles/civic.jpg',
-                  height: 160,
-                  width: 260,
-                  fit: BoxFit.contain,
-                ),
-          const SizedBox(height: 20),
-          Container(
-            width: 180,
-            height: 44,
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.primaryBrand),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TextButton.icon(
-              onPressed: onPressed,
-              icon: const Icon(
-                Icons.camera_alt,
-                color: AppColors.primaryBrand,
-                size: 18,
-              ),
-              label: Text(
-                'car_img_take_photo'.tr(),
-                style: const TextStyle(
-                  color: AppColors.primaryBrand,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
       ),
     );
   }
