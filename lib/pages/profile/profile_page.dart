@@ -748,56 +748,64 @@ class SettingsPage extends StatelessWidget {
 
   BoxDecoration _card() => BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppColors.isDark
+            ? null
+            : const [
+                BoxShadow(
+                  color: Color(0x14000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
       );
 
-  /// ردیف «تم» با انتخاب‌گر سه‌حالتی، بدون صفحهٔ جدا
+  /// ردیف «تم»: عنوان در یک سمت و انتخاب‌گر کوچک در سمت دیگر (مثل نمونه)
   Widget _buildThemeCard() {
     final ThemeMode current = ThemeController.instance.mode;
+    final bool dark = AppColors.isDark;
 
-    Widget seg(ThemeMode mode, IconData icon, String label) {
+    Widget seg(ThemeMode mode, IconData icon, String? label) {
       final bool on = current == mode;
-      return Expanded(
-        child: GestureDetector(
-          onTap: () => ThemeController.instance.setMode(mode),
-          behavior: HitTestBehavior.opaque,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(vertical: 9),
-            decoration: BoxDecoration(
-              color: on ? AppColors.cardBackground : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: on ? AppColors.primaryBrand : Colors.transparent,
-                width: 1.2,
-              ),
+      return GestureDetector(
+        onTap: () => ThemeController.instance.setMode(mode),
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: EdgeInsets.symmetric(
+            horizontal: label == null ? 10 : 12,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: on ? AppColors.cardBackground : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: on ? AppColors.textSecondary.withOpacity(0.55)
+                  : Colors.transparent,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 16,
-                  color: on ? AppColors.primaryBrand : AppColors.iconSecondary,
-                ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: on ? AppColors.textPrimary : AppColors.iconSecondary,
+              ),
+              if (label != null) ...[
                 const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: on ? FontWeight.bold : FontWeight.w500,
-                      color: on
-                          ? AppColors.textPrimary
-                          : AppColors.textSecondary,
-                    ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                    color:
+                        on ? AppColors.textPrimary : AppColors.textSecondary,
                   ),
                 ),
               ],
-            ),
+            ],
           ),
         ),
       );
@@ -805,41 +813,43 @@ class SettingsPage extends StatelessWidget {
 
     return Container(
       decoration: _card(),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(Icons.brightness_6_outlined,
-                  color: AppColors.accentPurple, size: 23),
-              const SizedBox(width: 14),
-              Text(
-                _pt('settings_theme', 'ظاهر برنامه'),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
+          Icon(
+            dark ? Icons.nightlight_round : Icons.wb_sunny_outlined,
+            color: AppColors.originBlue,
+            size: 23,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              _pt('settings_theme', 'ظاهر برنامه'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               color: AppColors.neutralSoft,
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.borderLight),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                seg(ThemeMode.system, Icons.phone_android_rounded,
-                    _pt('theme_system', 'مطابق گوشی')),
-                seg(ThemeMode.light, Icons.light_mode_outlined,
-                    _pt('theme_light', 'روشن')),
+                seg(ThemeMode.system, Icons.phone_android_rounded, null),
                 seg(ThemeMode.dark, Icons.dark_mode_outlined,
                     _pt('theme_dark', 'تاریک')),
+                seg(ThemeMode.light, Icons.light_mode_outlined,
+                    _pt('theme_light', 'روشن')),
               ],
             ),
           ),
