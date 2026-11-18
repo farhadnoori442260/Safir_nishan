@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 import '../../methods/common_method.dart';
 import '../../pages/dashboard.dart';
 import '../../pages/driverRegistration/driver_registration.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/authentication_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../widgets/blocked_screen.dart';
 
