@@ -53,6 +53,12 @@ class RegistrationProvider extends ChangeNotifier {
   String _province = '';
   String _city = '';
 
+  // محل فعالیت: جایی که راننده مسافر سوار می‌کند. ممکن است با محل سکونت
+  // (و ولایت پلاک) فرق داشته باشد؛ مثلاً ساکن کابل، پلاک تخار، فعال در غزنی.
+  bool _workSameAsHome = true;
+  String _workProvince = '';
+  String _workCity = '';
+
   // آدرس تصویرهایی که از سرور آمده‌اند (مسیر فایل موقت ← آدرس اصلی)؛ تا هنگام
   // ویرایش، همان تصویر بدون تغییر دوباره آپلود نشود.
   final Map<String, String> _remoteUrls = <String, String>{};
@@ -133,6 +139,15 @@ class RegistrationProvider extends ChangeNotifier {
   String? get selectedVehicle => _selectedVehicle;
   String get province => _province;
   String get city => _city;
+
+  bool get workSameAsHome => _workSameAsHome;
+  String get workProvince => _workProvince;
+  String get workCity => _workCity;
+  String get effectiveWorkProvince =>
+      _workSameAsHome ? _province : _workProvince;
+  String get effectiveWorkCity => _workSameAsHome ? _city : _workCity;
+  bool get isWorkAreaValid =>
+      _workSameAsHome || (_workProvince.isNotEmpty && _workCity.isNotEmpty);
 
   static final RegExp _emailRe =
       RegExp(r'^[\w.+\-]+@[\w\-]+(\.[\w\-]+)+$');
@@ -341,6 +356,7 @@ class RegistrationProvider extends ChangeNotifier {
             isValidEmail(email) &&
             _province.isNotEmpty &&
             _city.isNotEmpty &&
+            isWorkAreaValid &&
             addressController.text.trim().length >= 5 &&
             phoneController.text.trim().length >= 9 &&
             dobController.text.trim().isNotEmpty;
@@ -471,6 +487,39 @@ class RegistrationProvider extends ChangeNotifier {
     }
 
     _city = value;
+    checkBasicFormValidity();
+    notifyListeners();
+  }
+
+  void setWorkSameAsHome(bool value) {
+    if (_workSameAsHome == value) {
+      return;
+    }
+
+    _workSameAsHome = value;
+    checkBasicFormValidity();
+    notifyListeners();
+  }
+
+  void setWorkProvince(String value) {
+    if (_workProvince == value) {
+      return;
+    }
+
+    _workProvince = value;
+    if (!AfghanLocations.hasCity(value, _workCity)) {
+      _workCity = '';
+    }
+    checkBasicFormValidity();
+    notifyListeners();
+  }
+
+  void setWorkCity(String value) {
+    if (_workCity == value) {
+      return;
+    }
+
+    _workCity = value;
     checkBasicFormValidity();
     notifyListeners();
   }
@@ -882,6 +931,8 @@ class RegistrationProvider extends ChangeNotifier {
       // ولایت و شهر کنار آدرس ذخیره می‌شوند (مدل Driver این فیلدها را ندارد)
       driverMap['province'] = _province;
       driverMap['city'] = _city;
+      driverMap['workProvince'] = effectiveWorkProvince;
+      driverMap['workCity'] = effectiveWorkCity;
 
       // اگر سند راننده از قبل هست (ثبت‌نام ناتمام یا دوباره)، وضعیت بلاک،
       // درآمد، امتیاز و توکن اعلان نباید به مقدار اولیه برگردد.
@@ -960,6 +1011,11 @@ class RegistrationProvider extends ChangeNotifier {
       addressController.text = data['address']?.toString() ?? '';
       _province = data['province']?.toString() ?? '';
       _city = data['city']?.toString() ?? '';
+      _workProvince = data['workProvince']?.toString() ?? '';
+      _workCity = data['workCity']?.toString() ?? '';
+      // رانندهٔ قدیمی (بدون محل فعالیت) یا هم‌محل با سکونت = «همان محل»
+      _workSameAsHome = _workProvince.isEmpty ||
+          (_workProvince == _province && _workCity == _city);
       dobController.text = data['dob']?.toString() ?? '';
       emailController.text = data['email']?.toString() ?? '';
       cnicController.text = data['cnicNumber']?.toString() ?? '';
@@ -1037,6 +1093,7 @@ class RegistrationProvider extends ChangeNotifier {
             isValidEmail(email) &&
             _province.isNotEmpty &&
             _city.isNotEmpty &&
+            isWorkAreaValid &&
             addressController.text.trim().length >= 5 &&
             phoneController.text.trim().length >= 9 &&
             dobController.text.trim().isNotEmpty;
@@ -1312,6 +1369,8 @@ class RegistrationProvider extends ChangeNotifier {
         'address': addressController.text.trim(),
         'province': _province,
         'city': _city,
+        'workProvince': effectiveWorkProvince,
+        'workCity': effectiveWorkCity,
         'phoneNumber': phoneController.text.trim(),
         'dob': dobController.text.trim(),
         'profilePicture': newProfilePicture,
