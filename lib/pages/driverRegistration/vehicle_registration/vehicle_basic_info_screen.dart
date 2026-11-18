@@ -277,10 +277,10 @@ class _VehicleBasicInfoScreenState
         ),
       ),
       errorBorder: baseBorder.copyWith(
-        borderSide: const BorderSide(color: errorColor),
+        borderSide: BorderSide(color: errorColor),
       ),
       focusedErrorBorder: baseBorder.copyWith(
-        borderSide: const BorderSide(color: errorColor, width: 2),
+        borderSide: BorderSide(color: errorColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 14,
