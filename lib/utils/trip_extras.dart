@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import 'app_colors.dart';
+
 /// یک مورد کوتاه برای نمایش (آیکن + متن)
 class TripExtraItem {
   final IconData icon;
@@ -51,6 +53,22 @@ class TripExtras {
     required this.items,
     required this.parties,
   });
+
+  /// رنگ آیکن سرویس؛ هر سرویس رنگ مخصوص خودش را دارد (با تم روشن/تاریک عوض می‌شود)
+  Color get serviceColor {
+    switch (kind) {
+      case TripServiceKind.taxi:
+        return AppColors.originBlue;
+      case TripServiceKind.vip:
+        return AppColors.accentPurple;
+      case TripServiceKind.bike:
+        return AppColors.accentTeal;
+      case TripServiceKind.cargo:
+        return AppColors.accentOrange;
+      case TripServiceKind.intercity:
+        return AppColors.success;
+    }
+  }
 
   /// تاکسی معمولی بدون هیچ گزینهٔ اضافه، چیزی برای نمایش ندارد
   bool get hasContent =>
