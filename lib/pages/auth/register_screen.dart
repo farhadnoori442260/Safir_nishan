@@ -550,7 +550,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(23),
           child: Image.asset(
-            'assets/icon/ios_appstore_1024.png',
+            'assets/icon/so_appstore_1024.png',
             fit: BoxFit.cover,
             errorBuilder: (
               BuildContext context,
