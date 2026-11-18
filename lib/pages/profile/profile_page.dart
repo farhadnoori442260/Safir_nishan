@@ -180,39 +180,9 @@ class _ProfilePageState extends State<ProfilePage> {
                         subtitle: 'profile_menu_about_subtitle'.tr(),
                         onTap: () => _showAboutDialog(context),
                       ),
-                      // خروج از حساب به‌جای دکمهٔ شناور، داخل لیست آمده تا
-                      // روی نوار پایین و محتوا نیفتد.
-                      _MenuItem(
-                        icon: Icons.logout_rounded,
-                        iconColor: AppColors.accentOrange,
-                        title: 'profile_logout'.tr(),
-                        onTap: () {
-                          if (authProvider.isLoading) return;
-                          _confirmLogout(authProvider);
-                        },
-                      ),
                     ],
                   ),
 
-                  const SizedBox(height: 20),
-
-                  _buildSectionTitle(
-                    'profile_section_account_management'.tr(),
-                    color: AppColors.error,
-                  ),
-                  _buildMenuGroup(
-                    context,
-                    [
-                      _MenuItem(
-                        icon: Icons.delete_outline_rounded,
-                        iconColor: AppColors.error,
-                        title: 'profile_menu_delete_account'.tr(),
-                        subtitle: 'profile_menu_delete_account_subtitle'.tr(),
-                        onTap: () =>
-                            _showDeleteAccountDialog(context, authProvider),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             );
@@ -563,47 +533,6 @@ class _ProfilePageState extends State<ProfilePage> {
   //  دیالوگ‌ها
   // ════════════════════════════════════════════════════════════
 
-  Future<void> _confirmLogout(AuthenticationProvider authProvider) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppColors.cardBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          title: Text(
-            'profile_logout'.tr(),
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text('btn_cancel'.tr()),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryButton,
-                foregroundColor: AppColors.buttonText,
-                elevation: 0,
-              ),
-              child: Text('btn_confirm'.tr()),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    await authProvider.signOut(context);
-  }
-
   void _showSupportDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -670,113 +599,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ],
-    );
-  }
-
-  void _showDeleteAccountDialog(
-    BuildContext context,
-    AuthenticationProvider authProvider,
-  ) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        bool isDeleting = false;
-
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: AppColors.cardBackground,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              title: Text(
-                'profile_menu_delete_account'.tr(),
-                style: TextStyle(
-                  color: AppColors.error,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              content: Text(
-                'delete_account_confirmation'.tr(),
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isDeleting
-                      ? null
-                      : () => Navigator.pop(dialogContext),
-                  child: Text('btn_cancel'.tr()),
-                ),
-                ElevatedButton(
-                  onPressed: isDeleting
-                      ? null
-                      : () async {
-                          setDialogState(() {
-                            isDeleting = true;
-                          });
-
-                          final bool deleted =
-                              await authProvider.deleteCurrentDriverAccount(
-                            context,
-                          );
-
-                          if (!context.mounted) return;
-
-                          if (deleted) {
-                            if (dialogContext.mounted) {
-                              Navigator.pop(dialogContext);
-                            }
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'account_delete_success'.tr(),
-                                ),
-                              ),
-                            );
-
-                            if (context.mounted) {
-                              Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                  builder: (_) => const RegisterScreen(),
-                                ),
-                                (route) => false,
-                              );
-                            }
-                          } else {
-                            if (dialogContext.mounted) {
-                              setDialogState(() {
-                                isDeleting = false;
-                              });
-                            }
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.error,
-                    foregroundColor: AppColors.buttonText,
-                    elevation: 0,
-                  ),
-                  child: isDeleting
-                      ? SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.buttonText,
-                          ),
-                        )
-                      : Text('btn_delete'.tr()),
-                ),
-              ],
-            );
-          },
-        );
-      },
     );
   }
 }
@@ -860,6 +682,12 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isRtl = Directionality.of(context) == TextDirection.rtl;
+    final AuthenticationProvider authProvider =
+        context.watch<AuthenticationProvider>();
+    final user = authProvider.firebaseAuth.currentUser;
+    final String who = (user?.email?.isNotEmpty ?? false)
+        ? user!.email!
+        : (user?.phoneNumber ?? '');
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -877,66 +705,230 @@ class SettingsPage extends StatelessWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        shape: Border(
-          bottom: BorderSide(
-            color: AppColors.borderLight,
-          ),
-        ),
-        iconTheme: IconThemeData(
-          color: AppColors.textPrimary,
-        ),
+        shape: Border(bottom: BorderSide(color: AppColors.borderLight)),
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
       ),
       body: ListenableBuilder(
         listenable: ThemeController.instance,
         builder: (context, _) => ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
             _buildSettingsTile(
               context,
               icon: Icons.language_rounded,
+              iconColor: AppColors.originBlue,
               title: 'settings_language'.tr(),
-              subtitle: _getCurrentLanguageName(context),
+              value: _getCurrentLanguageName(context),
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const LanguagePage(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const LanguagePage()),
                 );
               },
               isRtl: isRtl,
             ),
             const SizedBox(height: 12),
+            _buildThemeCard(),
+            const SizedBox(height: 12),
             _buildSettingsTile(
               context,
-              icon: Icons.brightness_6_outlined,
-              title: _pt('settings_theme', 'ظاهر برنامه'),
-              subtitle: _getCurrentThemeName(),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ThemePage(),
-                  ),
-                );
-              },
+              icon: Icons.delete_outline_rounded,
+              iconColor: AppColors.error,
+              title: 'profile_menu_delete_account'.tr(),
+              onTap: () => _showDeleteAccountDialog(context, authProvider),
               isRtl: isRtl,
             ),
+            const SizedBox(height: 12),
+            _buildAccountCard(context, authProvider, who, isRtl),
           ],
         ),
       ),
     );
   }
 
-  String _getCurrentThemeName() {
-    switch (ThemeController.instance.mode) {
-      case ThemeMode.light:
-        return _pt('theme_light', 'روشن');
-      case ThemeMode.dark:
-        return _pt('theme_dark', 'تاریک');
-      case ThemeMode.system:
-        return _pt('theme_system', 'مطابق گوشی');
+  BoxDecoration _card() => BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.borderLight),
+      );
+
+  /// ردیف «تم» با انتخاب‌گر سه‌حالتی، بدون صفحهٔ جدا
+  Widget _buildThemeCard() {
+    final ThemeMode current = ThemeController.instance.mode;
+
+    Widget seg(ThemeMode mode, IconData icon, String label) {
+      final bool on = current == mode;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => ThemeController.instance.setMode(mode),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            decoration: BoxDecoration(
+              color: on ? AppColors.cardBackground : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: on ? AppColors.primaryBrand : Colors.transparent,
+                width: 1.2,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 16,
+                  color: on ? AppColors.primaryBrand : AppColors.iconSecondary,
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: on ? FontWeight.bold : FontWeight.w500,
+                      color: on
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
+
+    return Container(
+      decoration: _card(),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.brightness_6_outlined,
+                  color: AppColors.accentPurple, size: 23),
+              const SizedBox(width: 14),
+              Text(
+                _pt('settings_theme', 'ظاهر برنامه'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: AppColors.neutralSoft,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Row(
+              children: [
+                seg(ThemeMode.system, Icons.phone_android_rounded,
+                    _pt('theme_system', 'مطابق گوشی')),
+                seg(ThemeMode.light, Icons.light_mode_outlined,
+                    _pt('theme_light', 'روشن')),
+                seg(ThemeMode.dark, Icons.dark_mode_outlined,
+                    _pt('theme_dark', 'تاریک')),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// کارت حساب: واردشده با … و خروج
+  Widget _buildAccountCard(
+    BuildContext context,
+    AuthenticationProvider authProvider,
+    String who,
+    bool isRtl,
+  ) {
+    return Container(
+      decoration: _card(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _pt('settings_account', 'حساب کاربری'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (who.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    '${_pt('signed_in_as', 'واردشده با')} $who',
+                    textDirection: TextDirection.ltr,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Divider(height: 1, color: AppColors.borderLight),
+          ClipRRect(
+            borderRadius:
+                const BorderRadius.vertical(bottom: Radius.circular(18)),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  if (authProvider.isLoading) return;
+                  _confirmLogout(context, authProvider);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout_rounded,
+                          color: AppColors.accentOrange, size: 23),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          'profile_logout'.tr(),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accentOrange,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        isRtl ? Icons.chevron_left : Icons.chevron_right,
+                        color: AppColors.textSecondary.withOpacity(0.55),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _getCurrentLanguageName(BuildContext context) {
@@ -954,43 +946,55 @@ class SettingsPage extends StatelessWidget {
   Widget _buildSettingsTile(
     BuildContext context, {
     required IconData icon,
+    required Color iconColor,
     required String title,
-    required String subtitle,
+    String? value,
     required VoidCallback onTap,
     required bool isRtl,
   }) {
     return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+      decoration: _card(),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppColors.borderLight,
-        ),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        leading: Icon(
-          icon,
-          color: AppColors.originBlue,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-            fontSize: 14,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Row(
+                children: [
+                  Icon(icon, color: iconColor, size: 23),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  if (value != null) ...[
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Icon(
+                    isRtl ? Icons.chevron_left : Icons.chevron_right,
+                    color: AppColors.textSecondary.withOpacity(0.55),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-          ),
-        ),
-        trailing: Icon(
-          isRtl ? Icons.chevron_left : Icons.chevron_right,
-          color: AppColors.textSecondary.withOpacity(0.5),
         ),
       ),
     );
@@ -1150,113 +1154,154 @@ class _LanguagePageState extends State<LanguagePage> {
     );
   }
 }
-/// انتخاب ظاهر برنامه: مطابق گوشی / روشن / تاریک. با لمس فوراً اعمال می‌شود.
-class ThemePage extends StatelessWidget {
-  const ThemePage({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
+Future<void> _confirmLogout(
+  BuildContext context,
+  AuthenticationProvider authProvider,
+) async {
+  final bool? confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
         title: Text(
-          _pt('settings_theme', 'ظاهر برنامه'),
+          'profile_logout'.tr(),
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
           ),
         ),
-        centerTitle: true,
-        backgroundColor: AppColors.cardBackground,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        shape: Border(
-          bottom: BorderSide(color: AppColors.borderLight),
-        ),
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
-      ),
-      body: ListenableBuilder(
-        listenable: ThemeController.instance,
-        builder: (context, _) {
-          final ThemeMode current = ThemeController.instance.mode;
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _option(
-                icon: Icons.phone_android_rounded,
-                title: _pt('theme_system', 'مطابق گوشی'),
-                subtitle: _pt('theme_system_sub',
-                    'با تنظیم روشن/تاریک گوشی هماهنگ می‌شود'),
-                selected: current == ThemeMode.system,
-                onTap: () =>
-                    ThemeController.instance.setMode(ThemeMode.system),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('btn_cancel'.tr()),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryButton,
+              foregroundColor: AppColors.buttonText,
+              elevation: 0,
+            ),
+            child: Text('btn_confirm'.tr()),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (confirmed != true || !context.mounted) return;
+
+  await authProvider.signOut(context);
+}
+
+void _showDeleteAccountDialog(
+  BuildContext context,
+  AuthenticationProvider authProvider,
+) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      bool isDeleting = false;
+
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: AppColors.cardBackground,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            title: Text(
+              'profile_menu_delete_account'.tr(),
+              style: TextStyle(
+                color: AppColors.error,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
-              _option(
-                icon: Icons.light_mode_outlined,
-                title: _pt('theme_light', 'روشن'),
-                selected: current == ThemeMode.light,
-                onTap: () =>
-                    ThemeController.instance.setMode(ThemeMode.light),
+            ),
+            content: Text(
+              'delete_account_confirmation'.tr(),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                height: 1.5,
               ),
-              _option(
-                icon: Icons.dark_mode_outlined,
-                title: _pt('theme_dark', 'تاریک'),
-                subtitle: _pt('theme_dark_sub',
-                    'برای رانندگی شب و صرفه‌جویی باتری'),
-                selected: current == ThemeMode.dark,
-                onTap: () =>
-                    ThemeController.instance.setMode(ThemeMode.dark),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isDeleting
+                    ? null
+                    : () => Navigator.pop(dialogContext),
+                child: Text('btn_cancel'.tr()),
+              ),
+              ElevatedButton(
+                onPressed: isDeleting
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          isDeleting = true;
+                        });
+
+                        final bool deleted =
+                            await authProvider.deleteCurrentDriverAccount(
+                          context,
+                        );
+
+                        if (!context.mounted) return;
+
+                        if (deleted) {
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'account_delete_success'.tr(),
+                              ),
+                            ),
+                          );
+
+                          if (context.mounted) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterScreen(),
+                              ),
+                              (route) => false,
+                            );
+                          }
+                        } else {
+                          if (dialogContext.mounted) {
+                            setDialogState(() {
+                              isDeleting = false;
+                            });
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: AppColors.buttonText,
+                  elevation: 0,
+                ),
+                child: isDeleting
+                    ? SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.buttonText,
+                        ),
+                      )
+                    : Text('btn_delete'.tr()),
               ),
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _option({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: selected ? AppColors.primaryBrand : AppColors.borderLight,
-          width: selected ? 2 : 1,
-        ),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        leading: Icon(icon, color: AppColors.iconSecondary),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        subtitle: subtitle == null
-            ? null
-            : Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-        trailing: selected
-            ? Icon(Icons.check_circle, color: AppColors.primaryBrand)
-            : Icon(Icons.radio_button_unchecked,
-                color: AppColors.textSecondary),
-      ),
-    );
-  }
+      );
+    },
+  );
 }
