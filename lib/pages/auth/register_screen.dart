@@ -1,4 +1,6 @@
-import 'package:easy_localization/easy_localization.dart' hide TextDirection;
+import 'dart:ui' as ui;
+
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +12,39 @@ import '../../providers/authentication_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../widgets/blocked_screen.dart';
 
+class _AsciiDigitsFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final StringBuffer buffer = StringBuffer();
+
+    for (final int code in newValue.text.runes) {
+      if (code >= 0x30 && code <= 0x39) {
+        buffer.writeCharCode(code);
+      } else if (code >= 0x06F0 && code <= 0x06F9) {
+        buffer.writeCharCode(
+          0x30 + (code - 0x06F0),
+        );
+      } else if (code >= 0x0660 && code <= 0x0669) {
+        buffer.writeCharCode(
+          0x30 + (code - 0x0660),
+        );
+      }
+    }
+
+    final String text = buffer.toString();
+
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(
+        offset: text.length,
+      ),
+    );
+  }
+}
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -18,7 +53,9 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController phoneController =
+      TextEditingController();
+
   final CommonMethods commonMethods = CommonMethods();
 
   @override
@@ -27,58 +64,109 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  String _t(String key, String fallback) {
+    final String value = key.tr();
+
+    return value.trim().isEmpty || value == key
+        ? fallback
+        : value;
+  }
+
+  String _getLanguageCodeText(BuildContext context) {
+    switch (context.locale.languageCode) {
+      case 'ps':
+        return 'PS';
+      case 'en':
+        return 'EN';
+      case 'fa':
+      default:
+        return 'FA';
+    }
+  }
+
+  String _getPhoneSectionTitle() {
+    switch (context.locale.languageCode) {
+      case 'en':
+        return 'Phone Number';
+      case 'ps':
+        return 'د تلیفون شمېره';
+      case 'fa':
+      default:
+        return 'شماره همراه';
+    }
+  }
+
   void _showLanguageSelector() {
+    HapticFeedback.selectionClick();
+
+    final String languageCode = context.locale.languageCode;
+
+    final String bottomSheetTitle = languageCode == 'ps'
+        ? 'ژبه غوره کړئ'
+        : languageCode == 'en'
+            ? 'Select Language'
+            : 'انتخاب زبان';
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.cardBackground,
+      elevation: 0,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(28),
+        ),
+      ),
       builder: (BuildContext sheetContext) {
         return SafeArea(
           top: false,
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              20,
+              14,
+              20,
+              16,
             ),
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Container(
                   width: 38,
-                  height: 4,
+                  height: 4.5,
                   decoration: BoxDecoration(
                     color: AppColors.handle,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 22),
                 Text(
-                  'زبان',
+                  bottomSheetTitle,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
                     fontSize: 17,
-                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 18),
                 _buildLanguageTile(
-                  title: 'فارسی (دری)',
+                  title: 'دری',
                   locale: const Locale('fa'),
                   sheetContext: sheetContext,
                 ),
+                const SizedBox(height: 10),
                 _buildLanguageTile(
                   title: 'پښتو',
                   locale: const Locale('ps'),
                   sheetContext: sheetContext,
                 ),
+                const SizedBox(height: 10),
                 _buildLanguageTile(
                   title: 'English',
                   locale: const Locale('en'),
                   sheetContext: sheetContext,
                 ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -95,48 +183,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final bool isSelected =
         context.locale.languageCode == locale.languageCode;
 
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? AppColors.neutralSoft : AppColors.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isSelected
-              ? AppColors.primaryBrand
-              : AppColors.borderLight,
+    return InkWell(
+      onTap: () async {
+        HapticFeedback.selectionClick();
+
+        await context.setLocale(locale);
+
+        if (!mounted || !sheetContext.mounted) {
+          return;
+        }
+
+        Navigator.pop(sheetContext);
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 15,
         ),
-      ),
-      child: ListTile(
-        dense: true,
-        visualDensity: const VisualDensity(vertical: -1),
-        onTap: () async {
-          await context.setLocale(locale);
-
-          if (!mounted) {
-            return;
-          }
-
-          Navigator.pop(sheetContext);
-        },
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: AppColors.textPrimary,
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primaryBrand
+                : AppColors.fieldBorder,
+            width: isSelected ? 1.8 : 1,
           ),
         ),
-        trailing: isSelected
-            ? Icon(
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: isSelected
+                      ? FontWeight.w800
+                      : FontWeight.w600,
+                  fontSize: 15,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(
                 Icons.check_circle_rounded,
                 color: AppColors.primaryBrand,
-                size: 21,
-              )
-            : Icon(
-                Icons.radio_button_unchecked_rounded,
-                color: AppColors.textSecondary,
-                size: 21,
+                size: 22,
               ),
+          ],
+        ),
       ),
     );
   }
@@ -225,27 +322,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  String _phoneDigits() {
-    return _normalizeDigits(phoneController.text)
-        .replaceAll(RegExp(r'\D'), '');
-  }
-
-  bool _isValidAfghanMobile(String digits) {
-    return RegExp(r'^7[0-9]{8}$').hasMatch(digits);
+  bool _isPhoneValid(String input) {
+    return RegExp(r'^07[0-9]{8}$').hasMatch(input.trim());
   }
 
   void sendPhoneNumber() {
-    final String digits = _phoneDigits();
+    final String phoneText = phoneController.text.trim();
 
-    if (!_isValidAfghanMobile(digits)) {
+    if (!_isPhoneValid(phoneText)) {
       commonMethods.displaySnackBar(
-        'invalid_phone_error'.tr(),
+        _t(
+          'invalid_phone_error',
+          'شماره باید با 07 شروع شود و ۱۰ رقم باشد',
+        ),
         context,
       );
       return;
     }
 
     FocusScope.of(context).unfocus();
+
+    final String digits = phoneText.substring(1);
 
     final AuthenticationProvider authProvider =
         context.read<AuthenticationProvider>();
@@ -281,103 +378,97 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isLoading = context.select<
-        AuthenticationProvider,
-        bool>(
+    final bool isLoading =
+        context.select<AuthenticationProvider, bool>(
       (AuthenticationProvider provider) => provider.isLoading,
     );
 
-    final bool isGoogleLoading = context.select<
-        AuthenticationProvider,
-        bool>(
+    final bool isGoogleLoading =
+        context.select<AuthenticationProvider, bool>(
       (AuthenticationProvider provider) =>
           provider.isGoogleSigInLoading,
     );
+
+    final bool isDark =
+        Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (
-            BuildContext context,
-            BoxConstraints constraints,
-          ) {
-            final double screenHeight = constraints.maxHeight;
-            final bool isSmallScreen = screenHeight < 650;
-
-            return Stack(
-              fit: StackFit.expand,
+        child: SingleChildScrollView(
+          keyboardDismissBehavior:
+              ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 16,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                SingleChildScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.fromLTRB(
-                    20,
-                    isSmallScreen ? 10 : 16,
-                    20,
-                    18,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight -
-                          (isSmallScreen ? 28 : 34),
+                _buildLanguageButton(),
+                const SizedBox(height: 28),
+                _buildLogo(isDark: isDark),
+                const SizedBox(height: 20),
+                Center(
+                  child: Text(
+                    _t(
+                      'register_title',
+                      'به سفیر رانندگان خوش آمدید',
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        _buildLanguageButton(),
-                        SizedBox(height: isSmallScreen ? 12 : 18),
-                        _buildLogo(
-                          isSmallScreen: isSmallScreen,
-                        ),
-                        SizedBox(height: isSmallScreen ? 16 : 22),
-                        Text(
-                          'register_title'.tr(),
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: isSmallScreen ? 22 : 24,
-                            fontWeight: FontWeight.w800,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          'register_subtitle'.tr(),
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: isSmallScreen ? 13 : 14,
-                            height: 1.45,
-                          ),
-                        ),
-                        SizedBox(height: isSmallScreen ? 18 : 23),
-                        _buildPhoneCard(isLoading),
-                        SizedBox(height: isSmallScreen ? 16 : 20),
-                        _buildOrDivider(),
-                        SizedBox(height: isSmallScreen ? 14 : 17),
-                        _buildGoogleButton(
-                          isLoading,
-                          isGoogleLoading,
-                        ),
-                        SizedBox(height: isSmallScreen ? 18 : 24),
-                        Center(
-                          child: Text(
-                            'terms_and_conditions'.tr(),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: isSmallScreen ? 11 : 12,
-                              height: 1.45,
-                            ),
-                          ),
-                        ),
-                      ],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: Text(
+                    _t(
+                      'register_subtitle',
+                      'شمارهٔ همراه خود را وارد کنید تا کد تأیید برایتان ارسال شود',
+                    ),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: AppColors.textSecondary,
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                _buildPhoneSection(isLoading),
+                const SizedBox(height: 26),
+                _buildOrDivider(),
+                const SizedBox(height: 20),
+                _buildGoogleButton(
+                  isLoading: isLoading,
+                  isGoogleLoading: isGoogleLoading,
+                ),
+                const SizedBox(height: 28),
+                Center(
+                  child: Text(
+                    _t(
+                      'terms_and_conditions',
+                      'با ادامه دادن، شرایط استفاده و سیاست حریم خصوصی سفیر را می‌پذیرید.',
+                    ),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11.5,
+                      height: 1.6,
                     ),
                   ),
                 ),
               ],
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
@@ -385,266 +476,327 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildLanguageButton() {
     return Align(
-      alignment: AlignmentDirectional.topEnd,
-      child: InkWell(
-        onTap: _showLanguageSelector,
+      alignment: AlignmentDirectional.centerEnd,
+      child: Material(
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(22),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 11,
-            vertical: 7,
-          ),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: AppColors.borderLight),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(
-                Icons.language_rounded,
-                color: AppColors.iconPrimary,
-                size: 17,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: _showLanguageSelector,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 9,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: AppColors.fieldBorder,
               ),
-              const SizedBox(width: 6),
-              Text(
-                'زبان',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.language_rounded,
+                  size: 18,
+                  color: AppColors.textSecondary,
                 ),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Text(
+                  _getLanguageCodeText(context),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildLogo({
-    required bool isSmallScreen,
-  }) {
-    final double logoSize = isSmallScreen ? 66 : 72;
-
+  Widget _buildLogo({required bool isDark}) {
     return Center(
-      child: SizedBox(
-        width: logoSize,
-        height: logoSize,
-        child: ClipOval(
+      child: Container(
+        width: 88,
+        height: 88,
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: AppColors.fieldBorder,
+          ),
+          boxShadow: isDark
+              ? null
+              : <BoxShadow>[
+                  BoxShadow(
+                    color: AppColors.textPrimary.withOpacity(0.07),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(23),
           child: Image.asset(
             'assets/icon/ios_appstore_1024.png',
-            width: logoSize,
-            height: logoSize,
             fit: BoxFit.cover,
+            errorBuilder: (
+              BuildContext context,
+              Object error,
+              StackTrace? stackTrace,
+            ) {
+              return Icon(
+                Icons.local_taxi_rounded,
+                color: AppColors.primaryBrand,
+                size: 40,
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildPhoneCard(bool isLoading) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.borderLight),
-      ),
-      child: ValueListenableBuilder<TextEditingValue>(
-        valueListenable: phoneController,
-        builder: (
-          BuildContext context,
-          TextEditingValue value,
-          Widget? child,
-        ) {
-          final String digits = _normalizeDigits(value.text)
-              .replaceAll(RegExp(r'\D'), '');
+  Widget _buildPhoneSection(bool isLoading) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: phoneController,
+      builder: (
+        BuildContext context,
+        TextEditingValue value,
+        Widget? child,
+      ) {
+        final String phoneText = value.text;
+        final bool isValidPhone = _isPhoneValid(phoneText);
 
-          final bool isValid = _isValidAfghanMobile(digits);
-          final bool badStart =
-              digits.isNotEmpty && !digits.startsWith('7');
+        final bool showPhoneError =
+            phoneText.length == 10 && !isValidPhone;
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'mobile_number'.tr(),
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
+        final bool canSubmit = isValidPhone && !isLoading;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _buildSectionHeader(_getPhoneSectionTitle()),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: showPhoneError
+                      ? AppColors.danger
+                      : isValidPhone
+                          ? AppColors.primaryBrand
+                          : AppColors.fieldBorder,
+                  width: showPhoneError || isValidPhone
+                      ? 1.6
+                      : 1.2,
                 ),
               ),
-              const SizedBox(height: 8),
-              Directionality(
-                textDirection: TextDirection.ltr,
-                child: TextFormField(
-                  controller: phoneController,
-                  autofocus: true,
-                  textAlign: TextAlign.left,
-                  textInputAction: TextInputAction.done,
-                  keyboardType: TextInputType.number,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  cursorColor: AppColors.primaryBrand,
-                  scrollPadding: const EdgeInsets.only(
-                    bottom: 120,
-                  ),
-                  inputFormatters: <TextInputFormatter>[
-                    _AfghanPhoneFormatter(),
+              child: Directionality(
+                textDirection: ui.TextDirection.ltr,
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          right: BorderSide(
+                            color: AppColors.fieldBorder,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        '+93',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: TextFormField(
+                        controller: phoneController,
+                        autofocus: false,
+                        maxLength: 10,
+                        textInputAction: TextInputAction.done,
+                        keyboardType: TextInputType.phone,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        inputFormatters: <TextInputFormatter>[
+                          _AsciiDigitsFormatter(),
+                        ],
+                        cursorColor: AppColors.primaryBrand,
+                        textAlign: TextAlign.left,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
+                          color: AppColors.textPrimary,
+                        ),
+                        onFieldSubmitted: (_) {
+                          if (canSubmit) {
+                            sendPhoneNumber();
+                          }
+                        },
+                        decoration: InputDecoration(
+                          counterText: '',
+                          hintText: '0781234567',
+                          hintStyle: TextStyle(
+                            color: AppColors.textSecondary
+                                .withOpacity(0.55),
+                            fontSize: 16,
+                            letterSpacing: 1.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          focusedErrorBorder: InputBorder.none,
+                          filled: true,
+                          fillColor: AppColors.cardBackground,
+                          contentPadding:
+                              const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (isValidPhone)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          right: 14,
+                        ),
+                        child: Icon(
+                          Icons.check_circle_rounded,
+                          color: AppColors.success,
+                          size: 22,
+                        ),
+                      ),
                   ],
-                  onFieldSubmitted: (_) {
-                    if (!isLoading && isValid) {
-                      sendPhoneNumber();
-                    }
-                  },
-                  style: TextStyle(
-                    fontSize: 18,
-                    letterSpacing: 1.1,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: '7X XXX XXXX',
-                    hintStyle: TextStyle(
-                      color: AppColors.textSecondary.withOpacity(0.50),
-                      fontSize: 16,
-                      letterSpacing: 1,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 14,
-                    ),
-                    prefixIconConstraints: const BoxConstraints(
-                      minWidth: 0,
-                      minHeight: 0,
-                    ),
-                    prefixIcon: Padding(
+                ),
+              ),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 180),
+              alignment: Alignment.topCenter,
+              child: showPhoneError
+                  ? Padding(
                       padding: const EdgeInsets.only(
-                        left: 12,
-                        right: 10,
+                        top: 8,
+                        left: 4,
+                        right: 4,
                       ),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
-                          Text(
-                            '+93',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          Icon(
+                            Icons.error_outline_rounded,
+                            size: 16,
+                            color: AppColors.danger,
                           ),
-                          const SizedBox(width: 10),
-                          Container(
-                            width: 1,
-                            height: 21,
-                            color: AppColors.borderLight,
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              _t(
+                                'invalid_phone_error',
+                                'شماره باید با 07 شروع شود و ۱۰ رقم باشد',
+                              ),
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.danger,
+                              ),
+                            ),
                           ),
                         ],
                       ),
+                    )
+                  : const SizedBox(
+                      width: double.infinity,
+                      height: 0,
                     ),
-                    suffixIcon: isValid
-                        ? Icon(
-                            Icons.check_circle_rounded,
-                            color: AppColors.success,
-                            size: 22,
-                          )
-                        : null,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(13),
-                      borderSide: BorderSide(
-                        color: badStart
-                            ? AppColors.danger.withOpacity(0.6)
-                            : AppColors.fieldBorder,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(13),
-                      borderSide: BorderSide(
-                        color: badStart
-                            ? AppColors.danger
-                            : AppColors.primaryBrand,
-                        width: 1.6,
-                      ),
-                    ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: canSubmit ? sendPhoneNumber : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryButton,
+                  disabledBackgroundColor:
+                      AppColors.fieldBorder,
+                  foregroundColor: AppColors.buttonText,
+                  disabledForegroundColor:
+                      AppColors.textSecondary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 150),
-                alignment: Alignment.topCenter,
-                child: badStart
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          'invalid_phone_error'.tr(),
-                          style: TextStyle(
-                            color: AppColors.danger,
-                            fontSize: 11,
-                          ),
+                child: isLoading
+                    ? SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: AppColors.buttonText,
                         ),
                       )
-                    : const SizedBox(
-                        width: double.infinity,
-                        height: 0,
+                    : Text(
+                        _t(
+                          'btn_continue',
+                          'دریافت کد تأیید',
+                        ),
+                        style: TextStyle(
+                          color: isValidPhone
+                              ? AppColors.buttonText
+                              : AppColors.textSecondary,
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
               ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed:
-                      isLoading || !isValid ? null : sendPhoneNumber,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryButton,
-                    foregroundColor: AppColors.buttonText,
-                    disabledBackgroundColor:
-                        AppColors.primaryButton.withOpacity(0.42),
-                    disabledForegroundColor:
-                        AppColors.buttonText.withOpacity(0.82),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                  ),
-                  child: isLoading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.2,
-                            color: AppColors.buttonText,
-                          ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Text(
-                              'btn_continue'.tr(),
-                              style: const TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 7),
-                            const Icon(
-                              Icons.arrow_forward_rounded,
-                              size: 18,
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-            ],
-          );
-        },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 6,
+        vertical: 8,
+      ),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textPrimary,
+          letterSpacing: 0.2,
+        ),
       ),
     );
   }
@@ -654,82 +806,84 @@ class _RegisterScreenState extends State<RegisterScreen> {
       children: <Widget>[
         Expanded(
           child: Divider(
-            color: AppColors.borderLight,
-            height: 1,
+            color: AppColors.fieldBorder,
+            thickness: 1,
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 11),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 14,
+          ),
           child: Text(
-            'or_label'.tr(),
+            _t(
+              'or_label',
+              'یا ادامه با',
+            ),
             style: TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 12,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
         Expanded(
           child: Divider(
-            color: AppColors.borderLight,
-            height: 1,
+            color: AppColors.fieldBorder,
+            thickness: 1,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildGoogleButton(
-    bool isLoading,
-    bool isGoogleLoading,
-  ) {
+  Widget _buildGoogleButton({
+    required bool isLoading,
+    required bool isGoogleLoading,
+  }) {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 54,
       child: OutlinedButton(
         onPressed: isGoogleLoading || isLoading
             ? null
-            : _handleGoogleSignIn,
+            : () {
+                HapticFeedback.selectionClick();
+                _handleGoogleSignIn();
+              },
         style: OutlinedButton.styleFrom(
           backgroundColor: AppColors.cardBackground,
           foregroundColor: AppColors.textPrimary,
-          side: BorderSide(color: AppColors.fieldBorder),
+          side: BorderSide(
+            color: AppColors.fieldBorder,
+            width: 1.3,
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
         child: isGoogleLoading
             ? SizedBox(
-                width: 20,
-                height: 20,
+                width: 22,
+                height: 22,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2.1,
                   color: AppColors.primaryBrand,
+                  strokeWidth: 2,
                 ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  Image.asset(
-                    'assets/images/google_logo.png',
-                    height: 19,
-                    errorBuilder: (
-                      BuildContext context,
-                      Object error,
-                      StackTrace? stackTrace,
-                    ) {
-                      return Icon(
-                        Icons.g_mobiledata_rounded,
-                        size: 25,
-                        color: AppColors.danger,
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 9),
+                  const _GoogleGMark(),
+                  const SizedBox(width: 10),
                   Text(
-                    'google_sign_in'.tr(),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                    _t(
+                      'google_sign_in',
+                      'ورود با گوگل',
+                    ),
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -739,65 +893,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-String _normalizeDigits(String input) {
-  final StringBuffer buffer = StringBuffer();
+class _GoogleGMark extends StatelessWidget {
+  const _GoogleGMark();
 
-  for (final int rune in input.runes) {
-    if (rune >= 0x06F0 && rune <= 0x06F9) {
-      buffer.writeCharCode(
-        0x30 + (rune - 0x06F0),
-      );
-    } else if (rune >= 0x0660 && rune <= 0x0669) {
-      buffer.writeCharCode(
-        0x30 + (rune - 0x0660),
-      );
-    } else {
-      buffer.writeCharCode(rune);
-    }
-  }
-
-  return buffer.toString();
-}
-
-class _AfghanPhoneFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    String digits = _normalizeDigits(newValue.text)
-        .replaceAll(RegExp(r'\D'), '');
-
-    if (digits.startsWith('0093')) {
-      digits = digits.substring(4);
-    } else if (digits.startsWith('93') && digits.length > 9) {
-      digits = digits.substring(2);
-    }
-
-    if (digits.startsWith('0')) {
-      digits = digits.substring(1);
-    }
-
-    if (digits.length > 9) {
-      digits = digits.substring(0, 9);
-    }
-
-    final StringBuffer buffer = StringBuffer();
-
-    for (int index = 0; index < digits.length; index++) {
-      if (index == 2 || index == 5) {
-        buffer.write(' ');
-      }
-
-      buffer.write(digits[index]);
-    }
-
-    final String text = buffer.toString();
-
-    return TextEditingValue(
-      text: text,
-      selection: TextSelection.collapsed(
-        offset: text.length,
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (Rect bounds) {
+        return const SweepGradient(
+          colors: <Color>[
+            Color(0xFFEA4335),
+            Color(0xFFFBBC05),
+            Color(0xFF34A853),
+            Color(0xFF4285F4),
+            Color(0xFFEA4335),
+          ],
+          stops: <double>[
+            0.0,
+            0.25,
+            0.5,
+            0.75,
+            1.0,
+          ],
+        ).createShader(bounds);
+      },
+      child: const Text(
+        'G',
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w900,
+          height: 1.0,
+          color: Colors.white,
+        ),
       ),
     );
   }
