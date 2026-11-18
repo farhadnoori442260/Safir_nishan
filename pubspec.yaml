@@ -87,10 +87,11 @@ flutter:
       fonts:
         - asset: assets/fonts/Oswald-VariableFont_wght.ttf
 
-  assets:
+    assets:
     - assets/translations/
     - assets/audio/fa/
-    - assets/audio/fa/alert-sound.mp3
     - assets/fonts/
     - assets/images/
-    - assets/map/style.json
+    - assets/map/
+    - assets/auth/
+    - assets/vehicles/
