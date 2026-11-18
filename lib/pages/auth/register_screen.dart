@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import '../../methods/common_method.dart';
 import '../../pages/dashboard.dart';
 import '../../pages/driverRegistration/driver_registration.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/authentication_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../widgets/blocked_screen.dart';
 
@@ -56,7 +56,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'select_language'.tr(),
+                  'زبان',
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 17,
@@ -66,19 +66,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 8),
                 _buildLanguageTile(
                   title: 'فارسی (دری)',
-                  flag: '🇦🇫',
                   locale: const Locale('fa'),
                   sheetContext: sheetContext,
                 ),
                 _buildLanguageTile(
                   title: 'پښتو',
-                  flag: '🇦🇫',
                   locale: const Locale('ps'),
                   sheetContext: sheetContext,
                 ),
                 _buildLanguageTile(
                   title: 'English',
-                  flag: '🇬🇧',
                   locale: const Locale('en'),
                   sheetContext: sheetContext,
                 ),
@@ -92,7 +89,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildLanguageTile({
     required String title,
-    required String flag,
     required Locale locale,
     required BuildContext sheetContext,
   }) {
@@ -122,10 +118,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
           Navigator.pop(sheetContext);
         },
-        leading: Text(
-          flag,
-          style: const TextStyle(fontSize: 22),
-        ),
         title: Text(
           title,
           style: TextStyle(
@@ -417,7 +409,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                'language_button'.tr(),
+                'زبان',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 12,
@@ -435,20 +427,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required bool isSmallScreen,
   }) {
     final double logoSize = isSmallScreen ? 66 : 72;
-    final double iconSize = isSmallScreen ? 34 : 38;
 
     return Center(
-      child: Container(
+      child: SizedBox(
         width: logoSize,
         height: logoSize,
-        decoration: BoxDecoration(
-          color: AppColors.primaryBrand,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          Icons.local_taxi_rounded,
-          color: AppColors.buttonText,
-          size: iconSize,
+        child: ClipOval(
+          child: Image.asset(
+            'assets/icon/ios_appstore_1024.png',
+            width: logoSize,
+            height: logoSize,
+            fit: BoxFit.cover,
+          ),
         ),
       ),
     );
