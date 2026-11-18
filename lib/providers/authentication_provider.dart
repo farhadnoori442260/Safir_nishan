@@ -4,10 +4,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
 
 import 'package:safir_drivers/models/driver.dart';
 import 'package:safir_drivers/pages/auth/otp_screen.dart';
 import 'package:safir_drivers/pages/auth/register_screen.dart';
+import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/utils/lang_helper.dart';
 
 import '../methods/common_method.dart';
@@ -403,6 +405,11 @@ class AuthenticationProvider extends ChangeNotifier {
     startGoogleLoading();
 
     try {
+      // حساب قبلیِ ذخیره‌شده پاک می‌شود تا همیشه صفحهٔ «انتخاب ایمیل» بیاید
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
+
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) return;
@@ -500,10 +507,15 @@ class AuthenticationProvider extends ChangeNotifier {
       // اینجا فقط پروفایل Firestore و حساب Firebase Auth حذف می‌شوند.
       await firebaseFirestore.collection('drivers').doc(uid).delete();
 
-      await googleSignIn.signOut();
+      try {
+        await googleSignIn.disconnect();
+      } catch (_) {}
       await user.delete();
 
       _clearLocalSession();
+      if (context.mounted) {
+        context.read<RegistrationProvider>().resetForNewAccount();
+      }
       stopLoading();
 
       return true;
@@ -538,11 +550,19 @@ class AuthenticationProvider extends ChangeNotifier {
 
     try {
       await firebaseAuth.signOut();
-      await googleSignIn.signOut();
+      try {
+        await googleSignIn.disconnect();
+      } catch (_) {
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
+      }
 
       _clearLocalSession();
 
       if (context.mounted) {
+        // اطلاعات فرم‌های ثبت‌نام حساب قبلی هم پاک شود
+        context.read<RegistrationProvider>().resetForNewAccount();
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
