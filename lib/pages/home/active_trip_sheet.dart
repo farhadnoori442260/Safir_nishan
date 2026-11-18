@@ -628,7 +628,7 @@ class ActiveTripSheet extends StatelessWidget {
             children: <Widget>[
               Icon(
                 extras.serviceIcon,
-                color: AppColors.primaryBrand,
+                color: extras.serviceColor,
                 size: 24,
               ),
               const SizedBox(width: 10),
@@ -662,7 +662,7 @@ class ActiveTripSheet extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Icon(item.icon, size: 15, color: AppColors.primaryBrand),
+                      Icon(item.icon, size: 15, color: AppColors.iconSecondary),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
