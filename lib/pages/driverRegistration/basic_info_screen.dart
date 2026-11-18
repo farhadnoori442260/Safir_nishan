@@ -916,6 +916,8 @@ class _BasicInfoScreenState extends State<BasicInfoScreen> {
             const SizedBox(height: 16),
             const ProvinceCityFields(),
             const SizedBox(height: 16),
+            const WorkAreaFields(),
+            const SizedBox(height: 16),
             TextFormField(
               controller: registrationProvider.addressController,
               textInputAction: TextInputAction.next,
