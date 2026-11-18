@@ -761,99 +761,115 @@ class SettingsPage extends StatelessWidget {
               ],
       );
 
-  /// ردیف «تم»: عنوان در یک سمت و انتخاب‌گر کوچک در سمت دیگر (مثل نمونه)
+  /// ردیف «تم»: آیکن و عنوان سمت چپ، کلید دوحالته (تاریک | روشن) سمت راست.
+  /// مستطیل انتخاب‌شده مثل کلید برق سُر می‌خورد: روشن ← راست، تاریک ← چپ.
   Widget _buildThemeCard() {
-    final ThemeMode current = ThemeController.instance.mode;
     final bool dark = AppColors.isDark;
+    const double segW = 88;
+    const double segH = 38;
 
-    Widget seg(ThemeMode mode, IconData icon, String? label) {
-      final bool on = current == mode;
-      return GestureDetector(
-        onTap: () => ThemeController.instance.setMode(mode),
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: EdgeInsets.symmetric(
-            horizontal: label == null ? 10 : 12,
-            vertical: 8,
-          ),
-          decoration: BoxDecoration(
-            color: on ? AppColors.cardBackground : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(
-              color: on ? AppColors.textSecondary.withOpacity(0.55)
-                  : Colors.transparent,
+    Widget label(IconData icon, String text, bool on) {
+      return SizedBox(
+        width: segW,
+        height: segH,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 17,
+              color: on ? AppColors.textPrimary : AppColors.iconSecondary,
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: on ? AppColors.textPrimary : AppColors.iconSecondary,
+            const SizedBox(width: 6),
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                color: on ? AppColors.textPrimary : AppColors.textSecondary,
               ),
-              if (label != null) ...[
-                const SizedBox(width: 5),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: on ? FontWeight.w700 : FontWeight.w500,
-                    color:
-                        on ? AppColors.textPrimary : AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
 
-    return Container(
-      decoration: _card(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Icon(
-            dark ? Icons.nightlight_round : Icons.wb_sunny_outlined,
-            color: AppColors.originBlue,
-            size: 23,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              _pt('settings_theme', 'ظاهر برنامه'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Container(
+        decoration: _card(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              dark ? Icons.nightlight_round : Icons.wb_sunny_outlined,
+              color: AppColors.originBlue,
+              size: 24,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                _pt('settings_theme', 'تم'),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: AppColors.neutralSoft,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.borderLight),
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: AppColors.neutralSoft,
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: SizedBox(
+                width: segW * 2,
+                height: segH,
+                child: Stack(
+                  children: [
+                    AnimatedAlign(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      alignment:
+                          dark ? Alignment.centerLeft : Alignment.centerRight,
+                      child: Container(
+                        width: segW,
+                        height: segH,
+                        decoration: BoxDecoration(
+                          color: AppColors.cardBackground,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.textSecondary.withOpacity(0.55),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () =>
+                              ThemeController.instance.setMode(ThemeMode.dark),
+                          child: label(Icons.nightlight_round,
+                              _pt('theme_dark', 'تاریک'), dark),
+                        ),
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => ThemeController.instance
+                              .setMode(ThemeMode.light),
+                          child: label(Icons.wb_sunny,
+                              _pt('theme_light', 'روشن'), !dark),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                seg(ThemeMode.system, Icons.phone_android_rounded, null),
-                seg(ThemeMode.dark, Icons.dark_mode_outlined,
-                    _pt('theme_dark', 'تاریک')),
-                seg(ThemeMode.light, Icons.light_mode_outlined,
-                    _pt('theme_light', 'روشن')),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
