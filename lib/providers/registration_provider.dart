@@ -28,6 +28,8 @@ class RegistrationProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isFetchLoading = false;
   bool _isDataFetched = false;
+  // شناسهٔ حسابی که اطلاعات فعلی فرم‌ها مال اوست
+  String? _ownerUid;
 
   bool _isFormValidBasic = false;
   bool _isFormValidCninc = false;
@@ -309,9 +311,78 @@ class RegistrationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// همهٔ اطلاعات فرم و عکس‌ها را پاک می‌کند (هنگام خروج یا تغییر حساب).
+  void resetForNewAccount() {
+    _basicFormDebounce?.cancel();
+    _cnicFormDebounce?.cancel();
+    _licenseFormDebounce?.cancel();
+    _vehicleFormDebounce?.cancel();
+
+    for (final TextEditingController c in <TextEditingController>[
+      firstNameController,
+      lastNameController,
+      dobController,
+      addressController,
+      emailController,
+      phoneController,
+      cnicController,
+      drivingLicenseController,
+      brandController,
+      colorController,
+      numberPlateController,
+      productionYearController,
+    ]) {
+      c.clear();
+    }
+
+    _profilePhoto = null;
+    _cnicFrontImage = null;
+    _cnicBackImage = null;
+    _cnicWithSelfieImage = null;
+    _drivingLicenseFrontImage = null;
+    _drivingLicenseBackImage = null;
+    _vehicleImage = null;
+    _vehicleRegistrationFrontImage = null;
+    _vehicleRegistrationBackImage = null;
+    _remoteUrls.clear();
+
+    _selectedVehicle = null;
+    _province = '';
+    _city = '';
+    _workSameAsHome = true;
+    _workProvince = '';
+    _workCity = '';
+    _plateProvince = 'کابل';
+    _plateCategory = 'ش';
+    _plateType = 'شخصی';
+
+    _isFormValidBasic = false;
+    _isFormValidCninc = false;
+    _isFormValidDrivingLicense = false;
+    _isVehicleBasicFormValid = false;
+    _isPhotoAdded = false;
+    _isVehiclePhotoAdded = false;
+    _driverEarnings = 0.0;
+    _isDataFetched = false;
+    _ownerUid = null;
+
+    notifyListeners();
+  }
+
+  // اگر حساب فعلی با صاحب اطلاعات فرم فرق دارد، اطلاعات قبلی پاک می‌شود
+  void _syncOwner() {
+    final String? uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    if (_ownerUid != null && _ownerUid != uid) {
+      resetForNewAccount();
+    }
+    _ownerUid = uid;
+  }
+
   void initFields(
     AuthenticationProvider authProvider,
   ) {
+    _syncOwner();
     // فقط فیلدهای خالی پر می‌شوند؛ قبلاً با هر بار باز شدن صفحه، آنچه راننده
     // تایپ کرده بود پاک می‌شد.
     if (!authProvider.isGoogleSignedIn) {
@@ -985,6 +1056,7 @@ class RegistrationProvider extends ChangeNotifier {
   }
 
   Future<void> fetchUserData() async {
+    _syncOwner();
     if (_isDataFetched || _auth.currentUser == null) {
       return;
     }
