@@ -74,6 +74,108 @@ class ProvinceCityFields extends StatelessWidget {
   }
 }
 
+/// محل فعالیت راننده (جایی که مسافر سوار می‌کند). به‌طور پیش‌فرض همان محل
+/// سکونت است؛ اگر فرق دارد (مثلاً ساکن کابل ولی فعال در غزنی) خاموش می‌شود
+/// و ولایت و شهر جدا انتخاب می‌شوند.
+class WorkAreaFields extends StatelessWidget {
+  const WorkAreaFields({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<RegistrationProvider>(
+      builder: (BuildContext context, RegistrationProvider p, Widget? _) {
+        final bool hasProvince = p.workProvince.isNotEmpty;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(Icons.work_outline_rounded,
+                    size: 20, color: AppColors.textSecondary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'محل فعالیت',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'همان ولایت و شهری که در آن مسافر سوار می‌کنید',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              activeColor: AppColors.primaryBrand,
+              title: Text(
+                'همان محل سکونتم است',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              value: p.workSameAsHome,
+              onChanged: p.setWorkSameAsHome,
+            ),
+            if (!p.workSameAsHome) ...<Widget>[
+              const SizedBox(height: 8),
+              _PickerField(
+                label: 'ولایت فعالیت',
+                icon: Icons.map_outlined,
+                value: p.workProvince,
+                onTap: () async {
+                  final String? picked =
+                      await ProvinceCityFields._showPicker(
+                    context,
+                    title: 'ولایت فعالیت',
+                    items: AfghanLocations.provinces,
+                    current: p.workProvince,
+                  );
+                  if (picked != null) p.setWorkProvince(picked);
+                },
+              ),
+              const SizedBox(height: 16),
+              _PickerField(
+                label: 'شهر / ولسوالی فعالیت',
+                icon: Icons.location_city_outlined,
+                value: p.workCity,
+                enabled: hasProvince,
+                hint: hasProvince ? null : 'اول ولایت فعالیت را انتخاب کنید',
+                onTap: () async {
+                  final String? picked =
+                      await ProvinceCityFields._showPicker(
+                    context,
+                    title: 'شهر فعالیت',
+                    items: AfghanLocations.cities(p.workProvince),
+                    current: p.workCity,
+                  );
+                  if (picked != null) p.setWorkCity(picked);
+                },
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _PickerField extends StatelessWidget {
   const _PickerField({
     required this.label,
