@@ -62,7 +62,7 @@ dev_dependencies:
   flutter_lints: ^3.0.0
   flutter_launcher_icons: ^0.14.1
 
-# ───── آیکن برنامه (راننده: سرمه‌ای) ─────
+# App launcher icon (driver: navy)
 flutter_launcher_icons:
   android: true
   ios: false
@@ -82,12 +82,12 @@ flutter:
           weight: 400
         - asset: assets/fonts/iranyekanwebbold.ttf
           weight: 700
-    # نوشتهٔ Safir در اسپلش
+    # Safir text on splash
     - family: Oswald
       fonts:
         - asset: assets/fonts/Oswald-VariableFont_wght.ttf
 
-    assets:
+  assets:
     - assets/translations/
     - assets/audio/fa/
     - assets/fonts/
