@@ -15,6 +15,9 @@ import 'package:safir_drivers/utils/theme_controller.dart';
 
 import '../../widgets/rating_stars.dart';
 
+// ضخامت یکسان همهٔ خطوط، کادرها و جداکننده‌ها در این فایل
+const double _kLine = 1.2;
+
 // اگر ترجمه نبود، .tr() خود کلید را برمی‌گرداند؛ در این حالت متن پیش‌فرض
 String _pt(String key, String fallback) {
   final String v = key.tr();
@@ -124,14 +127,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     [
                       _MenuItem(
                         icon: Icons.badge_outlined,
-                        iconColor: AppColors.accentPurple,
                         title: 'profile_menu_license'.tr(),
                         subtitle: 'profile_menu_license_subtitle'.tr(),
                         onTap: () => _open(const DrivingLicenseUpdateScreen()),
                       ),
                       _MenuItem(
                         icon: Icons.description_outlined,
-                        iconColor: AppColors.accentTeal,
                         title: 'profile_menu_vehicle_registration'.tr(),
                         subtitle:
                             'profile_menu_vehicle_registration_subtitle'.tr(),
@@ -169,7 +170,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       _MenuItem(
                         icon: Icons.privacy_tip_outlined,
-                        iconColor: AppColors.success,
                         title: 'profile_menu_privacy'.tr(),
                         subtitle: 'profile_menu_privacy_subtitle'.tr(),
                         onTap: () => _showPrivacyPage(context),
@@ -202,6 +202,7 @@ class _ProfilePageState extends State<ProfilePage> {
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
         color: AppColors.borderLight,
+        width: _kLine,
       ),
     );
   }
@@ -289,7 +290,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: AppColors.borderLight,
-                                    width: 1.5,
+                                    width: _kLine,
                                   ),
                                   image: DecorationImage(
                                     image: imageProvider,
@@ -350,7 +351,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 14),
                 Divider(
                   height: 1,
-                  thickness: 1,
+                  thickness: _kLine,
                   color: AppColors.borderLight,
                 ),
                 const SizedBox(height: 12),
@@ -381,6 +382,7 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.borderLight,
+          width: _kLine,
         ),
       ),
       child: Row(
@@ -403,7 +405,7 @@ class _ProfilePageState extends State<ProfilePage> {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.background,
-        border: Border.all(color: AppColors.borderLight, width: 1.5),
+        border: Border.all(color: AppColors.borderLight, width: _kLine),
       ),
       child: Icon(
         Icons.person_rounded,
@@ -452,7 +454,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 if (i != items.length - 1)
                   Divider(
                     height: 1,
-                    thickness: 1,
+                    thickness: _kLine,
                     indent: 58,
                     endIndent: 16,
                     color: AppColors.borderLight,
@@ -470,7 +472,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _MenuItem item,
   ) {
     final bool isRtl = Directionality.of(context) == TextDirection.rtl;
-    final Color color = item.iconColor ?? AppColors.iconSecondary;
+    final Color color = item.iconColor ?? AppColors.originBlue;
 
     return InkWell(
       onTap: item.onTap,
@@ -635,6 +637,7 @@ class PrivacyPolicyPage extends StatelessWidget {
         shape: Border(
           bottom: BorderSide(
             color: AppColors.borderLight,
+            width: _kLine,
           ),
         ),
         centerTitle: true,
@@ -660,6 +663,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: AppColors.borderLight,
+              width: _kLine,
             ),
           ),
           child: Text(
@@ -705,7 +709,9 @@ class SettingsPage extends StatelessWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        shape: Border(bottom: BorderSide(color: AppColors.borderLight)),
+        shape: Border(
+          bottom: BorderSide(color: AppColors.borderLight, width: _kLine),
+        ),
         iconTheme: IconThemeData(color: AppColors.textPrimary),
       ),
       body: ListenableBuilder(
@@ -748,8 +754,8 @@ class SettingsPage extends StatelessWidget {
 
   BoxDecoration _card() => BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderLight),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.borderLight, width: _kLine),
         boxShadow: AppColors.isDark
             ? null
             : const [
@@ -769,15 +775,13 @@ class SettingsPage extends StatelessWidget {
     const double toggleWidth = 204.0;
     const double toggleHeight = 46.0;
 
-    // رنگ‌های استخراج‌شده دقیق برای تفکیک لایه‌ها
-    final Color pillBg = dark ? const Color(0xFF13131C) : const Color(0xFFECEEF2);
-    final Color pillBorder = dark ? const Color(0xFF484A5A) : const Color(0xFFD4D7E2);
-
-    final Color selectedBg = dark ? const Color(0xFF2E2E3A) : Colors.white;
-    final Color selectedBorder = dark ? const Color(0xFF65697C) : const Color(0xFFB5BAC8);
-
-    final Color activeText = dark ? const Color(0xFFFFFFFF) : const Color(0xFF11141A);
-    final Color inactiveText = dark ? const Color(0xFFA2A4B2) : const Color(0xFF6B7280);
+    // همهٔ رنگ‌ها از AppColors (با تم عوض می‌شوند)
+    final Color pillBg = AppColors.toggleTrack;
+    final Color pillBorder = AppColors.toggleTrackBorder;
+    final Color selectedBg = AppColors.cardBackground;
+    final Color selectedBorder = AppColors.toggleThumbBorder;
+    final Color activeText = AppColors.textPrimary;
+    final Color inactiveText = AppColors.textSecondary;
 
     return Directionality(
       textDirection: TextDirection.ltr,
@@ -820,7 +824,7 @@ class SettingsPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: pillBg,
                 borderRadius: BorderRadius.circular(8.5), // گوشه‌های ملایم و مدرن
-                border: Border.all(color: pillBorder, width: 1.3), // خط دور کپسول مشکی
+                border: Border.all(color: pillBorder, width: _kLine),
               ),
               child: Stack(
                 children: [
@@ -838,23 +842,8 @@ class SettingsPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6.5),
                           border: Border.all(
                             color: selectedBorder,
-                            width: 1.3, // خط دور مستطیل داخلی
+                            width: _kLine,
                           ),
-                          boxShadow: dark
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.35),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1.5),
-                                  )
-                                ]
-                              : [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
-                                    blurRadius: 3,
-                                    offset: const Offset(0, 1),
-                                  )
-                                ],
                         ),
                       ),
                     ),
@@ -883,7 +872,7 @@ class SettingsPage extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  _pt('theme_dark', 'Dark'),
+                                  _pt('theme_dark', 'تاریک'),
                                   style: TextStyle(
                                     fontSize: 13.5,
                                     fontWeight: dark ? FontWeight.w700 : FontWeight.w500,
@@ -916,7 +905,7 @@ class SettingsPage extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  _pt('theme_light', 'Light'),
+                                  _pt('theme_light', 'روشن'),
                                   style: TextStyle(
                                     fontSize: 13.5,
                                     fontWeight: !dark ? FontWeight.w700 : FontWeight.w500,
@@ -978,7 +967,7 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
-          Divider(height: 1, color: AppColors.borderLight),
+          Divider(height: _kLine, thickness: _kLine, color: AppColors.borderLight),
           ClipRRect(
             borderRadius:
                 const BorderRadius.vertical(bottom: Radius.circular(18)),
@@ -995,7 +984,7 @@ class SettingsPage extends StatelessWidget {
                   child: Row(
                     children: [
                       Icon(Icons.logout_rounded,
-                          color: AppColors.accentOrange, size: 23),
+                          color: AppColors.error, size: 23),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
@@ -1003,7 +992,7 @@ class SettingsPage extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.accentOrange,
+                            color: AppColors.error,
                           ),
                         ),
                       ),
@@ -1129,6 +1118,7 @@ class _LanguagePageState extends State<LanguagePage> {
         shape: Border(
           bottom: BorderSide(
             color: AppColors.borderLight,
+            width: _kLine,
           ),
         ),
         iconTheme: IconThemeData(
@@ -1216,7 +1206,7 @@ class _LanguagePageState extends State<LanguagePage> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSelected ? AppColors.primaryBrand : AppColors.borderLight,
-          width: 2,
+          width: _kLine,
         ),
       ),
       child: ListTile(
