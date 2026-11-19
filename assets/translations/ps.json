@@ -534,5 +534,19 @@
   "vehicle_image_tip": "موټر له مخې او څو ګامه لیرې عکس واخلئ؛ ټول موټر او پلیټ باید ښکاره وي.",
   "license_number_hint2": "د جواز شمېره دقیقاً هغسې ولیکئ لکه په جواز کې چې ده",
   "vehicle_year_invalid": "د جوړېدو کال په میلادي او سم ولیکئ (مثلاً 2015)",
-  "app_name": "د سفیر چلوونکي"
+  "app_name": "د سفیر چلوونکي",
+  "loc_province": "ولایت",
+  "loc_select_province": "ولایت وټاکئ",
+  "loc_city": "ښار / ولسوالي",
+  "loc_select_province_first": "لومړی ولایت وټاکئ",
+  "loc_select_city": "ښار وټاکئ",
+  "work_area_title": "د فعالیت ځای",
+  "work_area_subtitle": "هغه ولایت او ښار چې په کې مسافر اخلئ",
+  "work_same_as_home": "زما د استوګنې ځای دی",
+  "work_province": "د فعالیت ولایت",
+  "work_city": "د فعالیت ښار / ولسوالي",
+  "work_select_province_first": "لومړی د فعالیت ولایت وټاکئ",
+  "work_select_city": "د فعالیت ښار",
+  "loc_search": "لټون",
+  "loc_no_results": "څه ونه موندل شول"
 }
