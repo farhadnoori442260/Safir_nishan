@@ -15,6 +15,9 @@ import 'package:safir_drivers/utils/theme_controller.dart';
 
 import '../../widgets/rating_stars.dart';
 
+// ضخامت یکسان همهٔ خطوط، کادرها و جداکننده‌ها در این فایل
+const double _kLine = 1.0;
+
 // اگر ترجمه نبود، .tr() خود کلید را برمی‌گرداند؛ در این حالت متن پیش‌فرض
 String _pt(String key, String fallback) {
   final String v = key.tr();
@@ -202,6 +205,7 @@ class _ProfilePageState extends State<ProfilePage> {
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
         color: AppColors.borderLight,
+        width: _kLine,
       ),
     );
   }
@@ -289,7 +293,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: AppColors.borderLight,
-                                    width: 1.5,
+                                    width: _kLine,
                                   ),
                                   image: DecorationImage(
                                     image: imageProvider,
@@ -350,7 +354,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 14),
                 Divider(
                   height: 1,
-                  thickness: 1,
+                  thickness: _kLine,
                   color: AppColors.borderLight,
                 ),
                 const SizedBox(height: 12),
@@ -381,6 +385,7 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.borderLight,
+          width: _kLine,
         ),
       ),
       child: Row(
@@ -403,7 +408,7 @@ class _ProfilePageState extends State<ProfilePage> {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.background,
-        border: Border.all(color: AppColors.borderLight, width: 1.5),
+        border: Border.all(color: AppColors.borderLight, width: _kLine),
       ),
       child: Icon(
         Icons.person_rounded,
@@ -452,7 +457,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 if (i != items.length - 1)
                   Divider(
                     height: 1,
-                    thickness: 1,
+                    thickness: _kLine,
                     indent: 58,
                     endIndent: 16,
                     color: AppColors.borderLight,
@@ -635,6 +640,7 @@ class PrivacyPolicyPage extends StatelessWidget {
         shape: Border(
           bottom: BorderSide(
             color: AppColors.borderLight,
+            width: _kLine,
           ),
         ),
         centerTitle: true,
@@ -660,6 +666,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: AppColors.borderLight,
+              width: _kLine,
             ),
           ),
           child: Text(
@@ -705,7 +712,9 @@ class SettingsPage extends StatelessWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        shape: Border(bottom: BorderSide(color: AppColors.borderLight)),
+        shape: Border(
+          bottom: BorderSide(color: AppColors.borderLight, width: _kLine),
+        ),
         iconTheme: IconThemeData(color: AppColors.textPrimary),
       ),
       body: ListenableBuilder(
@@ -728,7 +737,7 @@ class SettingsPage extends StatelessWidget {
               isRtl: isRtl,
             ),
             const SizedBox(height: 12),
-            _buildThemeCard(),
+            _buildThemeCard(context),
             const SizedBox(height: 12),
             _buildSettingsTile(
               context,
@@ -748,8 +757,8 @@ class SettingsPage extends StatelessWidget {
 
   BoxDecoration _card() => BoxDecoration(
         color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderLight),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.borderLight, width: _kLine),
         boxShadow: AppColors.isDark
             ? null
             : const [
@@ -761,227 +770,135 @@ class SettingsPage extends StatelessWidget {
               ],
       );
 
-      Widget _buildThemeCard() {
-    // در حالت دستی، آیکون مطابق انتخاب کاربر تغییر می‌کند.
-    // در حالت خودکار، آیکون مطابق تم گوشی است.
-    final bool effectiveIsDark;
+  /// انتخاب ظاهر: «خودکار» (مطابق گوشی) + «تاریک | روشن».
+  /// خودکار قفل نیست؛ با لمس تاریک یا روشن همان لحظه دستی می‌شود.
+  Widget _buildThemeCard(BuildContext context) {
+    final ThemeMode mode = ThemeController.instance.mode;
 
-    switch (widget.themeMode) {
-      case ThemeMode.dark:
-        effectiveIsDark = true;
-        break;
-      case ThemeMode.light:
-        effectiveIsDark = false;
-        break;
-      case ThemeMode.system:
-        effectiveIsDark =
-            MediaQuery.platformBrightnessOf(context) ==
-                Brightness.dark;
-        break;
-    }
+    // آیکن «خودکار» مطابق تم فعلی گوشی
+    final bool phoneIsDark =
+        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
 
-    // رنگ‌های ثابت UI حالت تاریک.
-    const cardBackground = Color(0xFF2E2E3A);
-    const cardBorder = Color(0xFF424454);
-    const baseBackground = Color(0xFF12121A);
-    const baseBorder = Color(0xFF444758);
+    Widget option({
+      required String title,
+      required IconData icon,
+      required ThemeMode value,
+    }) {
+      final bool selected = mode == value;
+      final Color fg =
+          selected ? AppColors.textPrimary : AppColors.textSecondary;
 
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: cardBorder,
-          width: 1,
-        ),
-      ),
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            const double gap = 8;
-            const double inset = 3;
-            const double shellBorderWidth = 1;
-            const double buttonHeight = 42;
-
-            const double shellExtra =
-                2 * (inset + shellBorderWidth);
-
-            final double buttonWidth =
-                (constraints.maxWidth -
-                    gap -
-                    shellExtra * 2) /
-                3;
-
-            Widget shell({
-              required double width,
-              required Widget child,
-            }) {
-              return Container(
-                width: width,
-                padding: const EdgeInsets.all(inset),
-                decoration: BoxDecoration(
-                  color: baseBackground,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: baseBorder,
-                    width: shellBorderWidth,
-                  ),
-                ),
-                child: child,
-              );
-            }
-
-            Widget option({
-              required String title,
-              required IconData icon,
-              required ThemeMode mode,
-            }) {
-              return _buildDarkThemeOption(
-                title: title,
-                icon: icon,
-                mode: mode,
-                width: buttonWidth,
-                height: buttonHeight,
-              );
-            }
-
-            return Row(
-              children: [
-                // خودکار: محفظه مستقل سمت چپ.
-                shell(
-                  width: buttonWidth + shellExtra,
-                  child: option(
-                    title: 'خودکار',
-                    icon: effectiveIsDark
-                        ? Icons.nightlight_round
-                        : Icons.wb_sunny_rounded,
-                    mode: ThemeMode.system,
-                  ),
-                ),
-
-                const SizedBox(width: gap),
-
-                // Dark و Light: محفظه مشترک سمت راست.
-                Expanded(
-                  child: shell(
-                    width: buttonWidth * 2 + shellExtra,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: option(
-                            title: 'Dark',
-                            icon: Icons.nightlight_round,
-                            mode: ThemeMode.dark,
-                          ),
-                        ),
-                        Expanded(
-                          child: option(
-                            title: 'Light',
-                            icon: Icons.wb_sunny_rounded,
-                            mode: ThemeMode.light,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDarkThemeOption({
-    required String title,
-    required IconData icon,
-    required ThemeMode mode,
-    required double width,
-    required double height,
-  }) {
-    final bool selected = widget.themeMode == mode;
-
-    const selectedBackground = Color(0xFF2E2E3A);
-    const selectedBorder = Color(0xFF65697C);
-    const activeForeground = Color(0xFFEDEDF2);
-    const inactiveForeground = Color(0xFFA2A4B2);
-
-    final foreground =
-        selected ? activeForeground : inactiveForeground;
-
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: title,
-      child: SizedBox(
-        width: width,
-        height: height,
+      return Semantics(
+        button: true,
+        selected: selected,
+        label: title,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeInOut,
+          height: 42,
           decoration: BoxDecoration(
-            color: selected
-                ? selectedBackground
-                : Colors.transparent,
+            color: selected ? AppColors.cardBackground : Colors.transparent,
             borderRadius: BorderRadius.circular(7),
             border: Border.all(
               color: selected
-                  ? selectedBorder
+                  ? AppColors.toggleThumbBorder
                   : Colors.transparent,
-              width: 1.2,
+              width: _kLine,
             ),
           ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(7),
-              onTap: () {
-                widget.onThemeChanged(mode);
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 4,
-                ),
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedSwitcher(
-                          duration:
-                              const Duration(milliseconds: 180),
-                          child: Icon(
-                            icon,
-                            key: ValueKey<IconData>(icon),
-                            size: 17,
-                            color: foreground,
-                          ),
+              onTap: () => ThemeController.instance.setMode(value),
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 17, color: fg),
+                      const SizedBox(width: 6),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: fg,
+                          fontSize: 13.5,
+                          fontWeight:
+                              selected ? FontWeight.w700 : FontWeight.w500,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          title,
-                          textDirection: title == 'خودکار'
-                              ? TextDirection.rtl
-                              : TextDirection.ltr,
-                          style: TextStyle(
-                            color: foreground,
-                            fontSize: 13.5,
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
+        ),
+      );
+    }
+
+    Widget shell(Widget child) {
+      return Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: AppColors.toggleTrack,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: AppColors.toggleTrackBorder,
+            width: _kLine,
+          ),
+        ),
+        child: child,
+      );
+    }
+
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: _card(),
+        child: Row(
+          children: [
+            // خودکار: محفظهٔ مستقل
+            Expanded(
+              flex: 1,
+              child: shell(
+                option(
+                  title: _pt('theme_auto', 'خودکار'),
+                  icon: phoneIsDark
+                      ? Icons.nightlight_round
+                      : Icons.wb_sunny_rounded,
+                  value: ThemeMode.system,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // تاریک و روشن: محفظهٔ مشترک
+            Expanded(
+              flex: 2,
+              child: shell(
+                Row(
+                  children: [
+                    Expanded(
+                      child: option(
+                        title: _pt('theme_dark', 'تاریک'),
+                        icon: Icons.nightlight_round,
+                        value: ThemeMode.dark,
+                      ),
+                    ),
+                    Expanded(
+                      child: option(
+                        title: _pt('theme_light', 'روشن'),
+                        icon: Icons.wb_sunny_rounded,
+                        value: ThemeMode.light,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1026,7 +943,7 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
-          Divider(height: 1, color: AppColors.borderLight),
+          Divider(height: _kLine, thickness: _kLine, color: AppColors.borderLight),
           ClipRRect(
             borderRadius:
                 const BorderRadius.vertical(bottom: Radius.circular(18)),
@@ -1177,6 +1094,7 @@ class _LanguagePageState extends State<LanguagePage> {
         shape: Border(
           bottom: BorderSide(
             color: AppColors.borderLight,
+            width: _kLine,
           ),
         ),
         iconTheme: IconThemeData(
@@ -1264,7 +1182,7 @@ class _LanguagePageState extends State<LanguagePage> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSelected ? AppColors.primaryBrand : AppColors.borderLight,
-          width: 2,
+          width: _kLine,
         ),
       ),
       child: ListTile(
