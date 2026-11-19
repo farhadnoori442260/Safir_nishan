@@ -528,5 +528,11 @@
   "auth_network_error": "Check your internet connection",
   "auth_wrong_code": "The code you entered is incorrect",
   "auth_code_expired": "The code has expired. Request a new one",
-  "auth_user_disabled": "This account has been disabled"
+  "auth_user_disabled": "This account has been disabled",
+  "theme_auto": "Auto",
+  "doc_photo_tip": "Place the document on a flat surface; all four corners and the text must be visible, with no glare.",
+  "vehicle_image_tip": "Take the photo from the front, a few steps away; the whole vehicle and the plate must be visible.",
+  "license_number_hint2": "Enter the license number exactly as printed on the license",
+  "vehicle_year_invalid": "Enter a valid manufacture year in the Gregorian calendar (e.g. 2015)",
+  "app_name": "Safir Drivers"
 }
