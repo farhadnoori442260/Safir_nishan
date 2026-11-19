@@ -534,5 +534,19 @@
   "vehicle_image_tip": "Take the photo from the front, a few steps away; the whole vehicle and the plate must be visible.",
   "license_number_hint2": "Enter the license number exactly as printed on the license",
   "vehicle_year_invalid": "Enter a valid manufacture year in the Gregorian calendar (e.g. 2015)",
-  "app_name": "Safir Drivers"
+  "app_name": "Safir Drivers",
+  "loc_province": "Province",
+  "loc_select_province": "Select province",
+  "loc_city": "City / District",
+  "loc_select_province_first": "Select a province first",
+  "loc_select_city": "Select city",
+  "work_area_title": "Work area",
+  "work_area_subtitle": "The province and city where you pick up passengers",
+  "work_same_as_home": "Same as my home location",
+  "work_province": "Work province",
+  "work_city": "Work city / district",
+  "work_select_province_first": "Select the work province first",
+  "work_select_city": "Select work city",
+  "loc_search": "Search",
+  "loc_no_results": "No results found"
 }
