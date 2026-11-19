@@ -534,5 +534,19 @@
   "vehicle_image_tip": "موتر را از روبرو و از فاصلهٔ چند قدمی عکس بگیرید؛ کل موتر و پلاک پیدا باشد.",
   "license_number_hint2": "شمارهٔ جواز را دقیقاً مثل روی جواز بنویسید",
   "vehicle_year_invalid": "سال ساخت را میلادی و درست بنویسید (مثلاً 2015)",
-  "app_name": "سفیر رانندگان"
+  "app_name": "سفیر رانندگان",
+  "loc_province": "ولایت",
+  "loc_select_province": "انتخاب ولایت",
+  "loc_city": "شهر / ولسوالی",
+  "loc_select_province_first": "اول ولایت را انتخاب کنید",
+  "loc_select_city": "انتخاب شهر",
+  "work_area_title": "محل فعالیت",
+  "work_area_subtitle": "همان ولایت و شهری که در آن مسافر سوار می‌کنید",
+  "work_same_as_home": "همان محل سکونتم است",
+  "work_province": "ولایت فعالیت",
+  "work_city": "شهر / ولسوالی فعالیت",
+  "work_select_province_first": "اول ولایت فعالیت را انتخاب کنید",
+  "work_select_city": "شهر فعالیت",
+  "loc_search": "جستجو",
+  "loc_no_results": "موردی پیدا نشد"
 }
