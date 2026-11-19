@@ -15,21 +15,21 @@ class AppColors {
   static Color _p(int light, int dark) => Color(isDark ? dark : light);
 
   // 🟢 رنگ برند: فقط تأکید (دکمه، فوکوس، انتخاب‌شده، مسیر نقشه)
-  static Color get primaryBrand => _p(0xFF1B7A57, 0xFF34B27F);
+  static Color get primaryBrand => _p(0xFF1B7A57, 0xFF3DBE8B);
   static Color get primaryDark => _p(0xFF0E5F44, 0xFF0B4A36);
 
   // 📦 پس‌زمینه‌ها و کارت‌ها
-  static Color get background => _p(0xFFF6F7F9, 0xFF0E0F11);
-  static Color get backgroundLight => _p(0xFFF6F7F9, 0xFF0E0F11);
-  static Color get cardBackground => _p(0xFFFFFFFF, 0xFF1A1C1F);
-  static Color get cardLightBg => _p(0xFFFFFFFF, 0xFF1A1C1F);
-  static Color get cardBgLight => _p(0xFFFFFFFF, 0xFF1A1C1F);
-  static Color get borderLight => _p(0xFFE5E7EB, 0xFF2C2F34);
-  static Color get fieldBorder => _p(0xFFE2E8F0, 0xFF2C2F34);
-  static Color get handle => _p(0xFFD1D5DB, 0xFF3D4147);
-  static Color get appBarDivider => _p(0xFFD6DADF, 0xFF2C2F34);
-  static Color get sectionDivider => _p(0xFFF1F5F9, 0xFF16181B);
-  static Color get cardBorder => _p(0xFFE8ECEF, 0xFF2A2D32);
+  static Color get background => _p(0xFFF6F7FB, 0xFF2E2E3A);
+  static Color get backgroundLight => _p(0xFFF6F7FB, 0xFF2E2E3A);
+  static Color get cardBackground => _p(0xFFFFFFFF, 0xFF2E2E3A);
+  static Color get cardLightBg => _p(0xFFFFFFFF, 0xFF2E2E3A);
+  static Color get cardBgLight => _p(0xFFFFFFFF, 0xFF2E2E3A);
+  static Color get borderLight => _p(0xFFE5E7EB, 0xFF424454);
+  static Color get fieldBorder => _p(0xFFE2E8F0, 0xFF424454);
+  static Color get handle => _p(0xFFD1D5DB, 0xFF65697C);
+  static Color get appBarDivider => _p(0xFFE5E7EB, 0xFF424454);
+  static Color get sectionDivider => _p(0xFFE5E7EB, 0xFF424454);
+  static Color get cardBorder => _p(0xFFE5E7EB, 0xFF424454);
 
   // 🟩 دکمه اصلی و حالت لمس
   static Color get primaryButton => _p(0xFF169365, 0xFF169365);
@@ -41,8 +41,8 @@ class AppColors {
   // ✅ وضعیت‌ها
   static Color get success => _p(0xFF22C55E, 0xFF2FCB6C);
   static Color get successDark => _p(0xFF16A34A, 0xFF22A858);
-  static Color get error => _p(0xFFEF4444, 0xFFFF5A55);
-  static Color get danger => _p(0xFFE53935, 0xFFFF5A55);
+  static Color get error => _p(0xFFEF4444, 0xFFFE6A6A);
+  static Color get danger => _p(0xFFE53935, 0xFFFE6A6A);
   static Color get dangerSoft => _p(0xFFFFEBEE, 0xFF3A1B1D);
   static Color get warningBg => _p(0xFFFFF7ED, 0xFF33260F);
   static Color get warning => _p(0xFFF59E0B, 0xFFF5B33C);
@@ -50,21 +50,25 @@ class AppColors {
   static Color get warningText => _p(0xFF92400E, 0xFFFCD38A);
 
   // 📝 متن‌ها و آیکون‌ها
-  static Color get textPrimary => _p(0xFF1A1D29, 0xFFECEEF1);
-  static Color get textSecondary => _p(0xFF6B7280, 0xFF9BA1AA);
-  static Color get iconPrimary => _p(0xFF1A1D29, 0xFFECEEF1);
-  static Color get iconSecondary => _p(0xFF6B7280, 0xFF9BA1AA);
+  static Color get textPrimary => _p(0xFF1F2937, 0xFFEDEDF2);
+  static Color get textSecondary => _p(0xFF6B7280, 0xFFA2A4B2);
+  static Color get iconPrimary => _p(0xFF1F2937, 0xFFEDEDF2);
+  static Color get iconSecondary => _p(0xFF6B7280, 0xFFA2A4B2);
 
   // 🧩 سطح‌های نرم برای هشدار/اطلاع/چیپ و رنگ دکمه پایان سفر
   static Color get endTrip => _p(0xFFC2570C, 0xFFE0701F);
-  static Color get neutralSoft => _p(0xFFF1F5F9, 0xFF24272B);
+  // کلید تم (تاریک/روشن): زیر کلید مشکی، مستطیل انتخاب‌شده هم‌رنگ کارت
+  static Color get toggleTrack => _p(0xFFECEEF2, 0xFF12121A);
+  static Color get toggleTrackBorder => _p(0xFFD4D7E2, 0xFF444758);
+  static Color get toggleThumbBorder => _p(0xFFB5BAC8, 0xFF65697C);
+  static Color get neutralSoft => _p(0xFFF1F5F9, 0xFF22222D);
   static Color get successSoft => _p(0xFFDCFCE7, 0xFF11301E);
   static Color get infoSoft => _p(0xFFEFF6FF, 0xFF16243A);
   static Color get infoBorder => _p(0xFFBFDBFE, 0xFF254468);
   static Color get infoText => _p(0xFF1E3A8A, 0xFF9DC2FF);
 
   // 📍 نقشه
-  static Color get originBlue => _p(0xFF2563EB, 0xFF5B8DEF);
+  static Color get originBlue => _p(0xFF2563EB, 0xFF388AF6);
 
   // 🎨 رنگ‌های موضوعی آیکن‌ها (هر بخش رنگ خودش؛ سبز فقط برند/دکمه)
   static Color get accentPurple => _p(0xFF8158CF, 0xFFB49AFF);
