@@ -761,38 +761,23 @@ class SettingsPage extends StatelessWidget {
               ],
       );
 
-  /// ردیف «تم»: آیکن و عنوان سمت چپ، کلید دوحالته (تاریک | روشن) سمت راست.
-  /// مستطیل انتخاب‌شده مثل کلید برق سُر می‌خورد: روشن ← راست، تاریک ← چپ.
+    /// ردیف «تم» اختصاصی: با دو خط تفکیک‌کننده، ابعاد کشیده و گوشه‌های مستطیلی شیک
   Widget _buildThemeCard() {
     final bool dark = AppColors.isDark;
-    const double segW = 88;
-    const double segH = 38;
 
-    Widget label(IconData icon, String text, bool on) {
-      return SizedBox(
-        width: segW,
-        height: segH,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 17,
-              color: on ? AppColors.textPrimary : AppColors.iconSecondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: on ? FontWeight.w700 : FontWeight.w500,
-                color: on ? AppColors.textPrimary : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    // ابعاد مستطیل کپسولی
+    const double toggleWidth = 204.0;
+    const double toggleHeight = 46.0;
+
+    // رنگ‌های استخراج‌شده دقیق برای تفکیک لایه‌ها
+    final Color pillBg = dark ? const Color(0xFF13131C) : const Color(0xFFECEEF2);
+    final Color pillBorder = dark ? const Color(0xFF484A5A) : const Color(0xFFD4D7E2);
+
+    final Color selectedBg = dark ? const Color(0xFF2E2E3A) : Colors.white;
+    final Color selectedBorder = dark ? const Color(0xFF65697C) : const Color(0xFFB5BAC8);
+
+    final Color activeText = dark ? const Color(0xFFFFFFFF) : const Color(0xFF11141A);
+    final Color inactiveText = dark ? const Color(0xFFA2A4B2) : const Color(0xFF6B7280);
 
     return Directionality(
       textDirection: TextDirection.ltr,
@@ -801,10 +786,19 @@ class SettingsPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Icon(
-              dark ? Icons.nightlight_round : Icons.wb_sunny_outlined,
-              color: AppColors.originBlue,
-              size: 24,
+            // آیکون هوشمند آفتاب/مهتاب با انیمیشن چرخش و محو شدن
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (child, anim) => RotationTransition(
+                turns: Tween<double>(begin: 0.8, end: 1.0).animate(anim),
+                child: FadeTransition(opacity: anim, child: child),
+              ),
+              child: Icon(
+                dark ? Icons.nightlight_round : Icons.wb_sunny_outlined,
+                key: ValueKey<bool>(dark),
+                color: AppColors.originBlue,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -817,55 +811,126 @@ class SettingsPage extends StatelessWidget {
                 ),
               ),
             ),
+
+            // کپسول دوتایی کشیده با دو لایه خط تفکیک‌کننده
             Container(
-              padding: const EdgeInsets.all(3),
+              width: toggleWidth,
+              height: toggleHeight,
+              padding: const EdgeInsets.all(2.5),
               decoration: BoxDecoration(
-                color: AppColors.neutralSoft,
-                borderRadius: BorderRadius.circular(13),
-                border: Border.all(color: AppColors.borderLight),
+                color: pillBg,
+                borderRadius: BorderRadius.circular(8.5), // گوشه‌های ملایم و مدرن
+                border: Border.all(color: pillBorder, width: 1.3), // خط دور کپسول مشکی
               ),
-              child: SizedBox(
-                width: segW * 2,
-                height: segH,
-                child: Stack(
-                  children: [
-                    AnimatedAlign(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      alignment:
-                          dark ? Alignment.centerLeft : Alignment.centerRight,
+              child: Stack(
+                children: [
+                  // مستطیل متحرک انتخاب‌شده با خط خاکستری تفکیک‌کننده
+                  AnimatedAlign(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeInOutCubic,
+                    alignment: dark ? Alignment.centerLeft : Alignment.centerRight,
+                    child: FractionallySizedBox(
+                      widthFactor: 0.5,
+                      heightFactor: 1.0,
                       child: Container(
-                        width: segW,
-                        height: segH,
                         decoration: BoxDecoration(
-                          color: AppColors.cardBackground,
-                          borderRadius: BorderRadius.circular(10),
+                          color: selectedBg,
+                          borderRadius: BorderRadius.circular(6.5),
                           border: Border.all(
-                            color: AppColors.textSecondary.withOpacity(0.55),
+                            color: selectedBorder,
+                            width: 1.3, // خط دور مستطیل داخلی
                           ),
+                          boxShadow: dark
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.35),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1.5),
+                                  )
+                                ]
+                              : [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 3,
+                                    offset: const Offset(0, 1),
+                                  )
+                                ],
                         ),
                       ),
                     ),
-                    Row(
-                      children: [
-                        GestureDetector(
+                  ),
+
+                  // تب‌های تاریک و روشن
+                  Row(
+                    children: [
+                      // دکمه حالت تاریک (Dark)
+                      Expanded(
+                        child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
-                          onTap: () =>
-                              ThemeController.instance.setMode(ThemeMode.dark),
-                          child: label(Icons.nightlight_round,
-                              _pt('theme_dark', 'تاریک'), dark),
+                          onTap: () {
+                            if (!dark) {
+                              ThemeController.instance.setMode(ThemeMode.dark);
+                            }
+                          },
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.nightlight_round,
+                                  size: 15,
+                                  color: dark ? activeText : inactiveText,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _pt('theme_dark', 'Dark'),
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: dark ? FontWeight.w700 : FontWeight.w500,
+                                    color: dark ? activeText : inactiveText,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        GestureDetector(
+                      ),
+
+                      // دکمه حالت روشن (Light)
+                      Expanded(
+                        child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
-                          onTap: () => ThemeController.instance
-                              .setMode(ThemeMode.light),
-                          child: label(Icons.wb_sunny,
-                              _pt('theme_light', 'روشن'), !dark),
+                          onTap: () {
+                            if (dark) {
+                              ThemeController.instance.setMode(ThemeMode.light);
+                            }
+                          },
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.wb_sunny_outlined,
+                                  size: 15,
+                                  color: !dark ? activeText : inactiveText,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _pt('theme_light', 'Light'),
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: !dark ? FontWeight.w700 : FontWeight.w500,
+                                    color: !dark ? activeText : inactiveText,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
