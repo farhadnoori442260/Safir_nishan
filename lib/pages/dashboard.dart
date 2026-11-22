@@ -5,11 +5,14 @@ import 'package:provider/provider.dart';
 import 'package:safir_drivers/controllers/driver_online_controller.dart';
 import 'package:safir_drivers/pages/earnings/earnings_page.dart';
 import 'package:safir_drivers/pages/home/home_page.dart';
-import 'package:safir_drivers/pages/profile/profile_page.dart';
+import 'package:safir_drivers/pages/messages/messages_page.dart';
 import 'package:safir_drivers/pages/trips/trips_page.dart';
 import 'package:safir_drivers/providers/dashboard_provider.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
+import 'package:safir_drivers/utils/driver_prefs.dart';
+import 'package:safir_drivers/widgets/driver_drawer.dart';
+import 'package:safir_drivers/widgets/driver_text_scale.dart';
 
 String _t(String key, String fallback) {
   final String value = key.tr();
@@ -25,16 +28,21 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   late final List<Widget> _pages;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
 
+    DriverPrefs.instance.ensureLoaded();
+    DriverOnlineController.instance.openDrawer =
+        () => _scaffoldKey.currentState?.openEndDrawer();
+
     _pages = const [
       HomePage(),
       EarningsPage(),
       TripsPage(),
-      ProfilePage(),
+      MessagesPage(),
     ];
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -76,8 +84,6 @@ class _DashboardState extends State<Dashboard> {
     try {
       if (index == 1) {
         await registrationProvider.fetchDriverEarnings();
-      } else if (index == 3) {
-        await registrationProvider.retrieveCurrentDriverInfo();
       }
     } catch (e) {
       debugPrint('Dashboard tab refresh error: $e');
@@ -129,91 +135,6 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  /// دکمهٔ مرکزی آنلاین/آفلاین (مثل اسنپ). منطق اصلی در HomePage است.
-  Widget _buildPowerButton(int selectedIndex) {
-    final DriverOnlineController c = DriverOnlineController.instance;
-
-    return SizedBox(
-      width: 86,
-      child: ValueListenableBuilder<bool>(
-        valueListenable: c.online,
-        builder: (BuildContext context, bool online, Widget? _) {
-          return ValueListenableBuilder<bool>(
-            valueListenable: c.busy,
-            builder: (BuildContext context, bool busy, Widget? __) {
-              final String label =
-                  online ? _t('driver_power_online', 'آنلاین') : _t('driver_power_offline', 'آفلاین');
-
-              return InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: busy
-                    ? null
-                    : () {
-                        // از تب‌های دیگر: اول به نقشه برمی‌گردد
-                        if (selectedIndex != 0) {
-                          context.read<DashboardProvider>().setIndex(0);
-                        }
-                        c.toggle();
-                      },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: online
-                            ? AppColors.primaryButton
-                            : AppColors.neutralSoft,
-                        border: Border.all(
-                          color: online
-                              ? AppColors.primaryButton
-                              : AppColors.borderLight,
-                        ),
-                      ),
-                      child: busy
-                          ? Padding(
-                              padding: const EdgeInsets.all(13),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                color: online
-                                    ? AppColors.buttonText
-                                    : AppColors.textSecondary,
-                              ),
-                            )
-                          : Icon(
-                              Icons.power_settings_new_rounded,
-                              size: 26,
-                              color: online
-                                  ? AppColors.buttonText
-                                  : AppColors.textSecondary,
-                            ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: online
-                            ? AppColors.primaryBrand
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final int selectedIndex = context.select<DashboardProvider, int>(
@@ -229,7 +150,11 @@ class _DashboardState extends State<Dashboard> {
           context.read<DashboardProvider>().setIndex(0);
         }
       },
-      child: Scaffold(
+      child: DriverTextScale(
+        child: Scaffold(
+        key: _scaffoldKey,
+        endDrawer: const DriverDrawer(),
+        endDrawerEnableOpenDragGesture: false,
         backgroundColor: AppColors.background,
         extendBody: true,
         body: IndexedStack(
@@ -262,7 +187,6 @@ class _DashboardState extends State<Dashboard> {
                   Icons.account_balance_wallet_rounded,
                   'nav_earnings'.tr(),
                 ),
-                _buildPowerButton(selectedIndex),
                 _navItem(
                   2,
                   selectedIndex,
@@ -273,13 +197,14 @@ class _DashboardState extends State<Dashboard> {
                 _navItem(
                   3,
                   selectedIndex,
-                  Icons.person_outline_rounded,
-                  Icons.person_rounded,
-                  'nav_profile'.tr(),
+                  Icons.mail_outline_rounded,
+                  Icons.mail_rounded,
+                  _t('nav_messages', 'پیام‌ها'),
                 ),
               ],
             ),
           ),
+        ),
         ),
       ),
     );
