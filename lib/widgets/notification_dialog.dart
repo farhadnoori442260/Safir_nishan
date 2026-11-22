@@ -4,11 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'package:safir_drivers/constants/trip_status.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
+import 'package:safir_drivers/utils/driver_prefs.dart';
 import 'package:safir_drivers/utils/trip_extras.dart';
 import '../global/global.dart';
 import '../methods/common_method.dart';
@@ -61,7 +61,7 @@ class _NotificationDialogState extends State<NotificationDialog>
   void initState() {
     super.initState();
     driverTripRequestTimeout = 40;
-    HapticFeedback.heavyImpact();
+    DriverPrefs.instance.buzz();
 
     _countdown = AnimationController(
       vsync: this,
