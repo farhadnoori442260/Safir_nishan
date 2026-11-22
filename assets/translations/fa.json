@@ -548,5 +548,19 @@
   "work_select_province_first": "اول ولایت فعالیت را انتخاب کنید",
   "work_select_city": "شهر فعالیت",
   "loc_search": "جستجو",
-  "loc_no_results": "موردی پیدا نشد"
+  "loc_no_results": "موردی پیدا نشد",
+  "driver_power_online": "آنلاین",
+  "driver_power_offline": "آفلاین",
+  "driver_status_online": "آنلاین؛ منتظر درخواست",
+  "driver_status_offline": "آفلاین",
+  "driver_status_on_trip": "در سفر",
+  "nav_pill": "مسیریابی",
+  "trip_step_pickup": "رفتن به مبدأ",
+  "trip_step_boarded": "سوار شد",
+  "trip_step_finish": "پایان سفر",
+  "slide_start_trip": "مسافر سوار شد؛ برای شروع بکشید",
+  "slide_end_trip": "برای پایان سفر بکشید",
+  "request_to_pickup": "تا مبدأ",
+  "request_trip_distance": "مسافت سفر"
+
 }
