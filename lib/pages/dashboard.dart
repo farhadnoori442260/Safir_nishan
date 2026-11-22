@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:safir_drivers/controllers/driver_online_controller.dart';
 import 'package:safir_drivers/pages/earnings/earnings_page.dart';
 import 'package:safir_drivers/pages/home/home_page.dart';
 import 'package:safir_drivers/pages/profile/profile_page.dart';
@@ -9,6 +10,11 @@ import 'package:safir_drivers/pages/trips/trips_page.dart';
 import 'package:safir_drivers/providers/dashboard_provider.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
+
+String _t(String key, String fallback) {
+  final String value = key.tr();
+  return value.trim().isEmpty || value == key ? fallback : value;
+}
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -78,6 +84,136 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
+  Widget _navItem(
+    int index,
+    int selectedIndex,
+    IconData icon,
+    IconData selectedIcon,
+    String label,
+  ) {
+    final bool on = selectedIndex == index;
+    final Color color = on ? AppColors.primaryBrand : AppColors.iconSecondary;
+
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => _onDestinationSelected(index),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+              decoration: BoxDecoration(
+                color: on
+                    ? AppColors.primaryBrand.withOpacity(0.14)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(on ? selectedIcon : icon, size: 24, color: color),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: on ? FontWeight.bold : FontWeight.w500,
+                color: on ? AppColors.primaryBrand : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// دکمهٔ مرکزی آنلاین/آفلاین (مثل اسنپ). منطق اصلی در HomePage است.
+  Widget _buildPowerButton(int selectedIndex) {
+    final DriverOnlineController c = DriverOnlineController.instance;
+
+    return SizedBox(
+      width: 86,
+      child: ValueListenableBuilder<bool>(
+        valueListenable: c.online,
+        builder: (BuildContext context, bool online, Widget? _) {
+          return ValueListenableBuilder<bool>(
+            valueListenable: c.busy,
+            builder: (BuildContext context, bool busy, Widget? __) {
+              final String label =
+                  online ? _t('driver_power_online', 'آنلاین') : _t('driver_power_offline', 'آفلاین');
+
+              return InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: busy
+                    ? null
+                    : () {
+                        // از تب‌های دیگر: اول به نقشه برمی‌گردد
+                        if (selectedIndex != 0) {
+                          context.read<DashboardProvider>().setIndex(0);
+                        }
+                        c.toggle();
+                      },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: online
+                            ? AppColors.primaryButton
+                            : AppColors.neutralSoft,
+                        border: Border.all(
+                          color: online
+                              ? AppColors.primaryButton
+                              : AppColors.borderLight,
+                        ),
+                      ),
+                      child: busy
+                          ? Padding(
+                              padding: const EdgeInsets.all(13),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: online
+                                    ? AppColors.buttonText
+                                    : AppColors.textSecondary,
+                              ),
+                            )
+                          : Icon(
+                              Icons.power_settings_new_rounded,
+                              size: 26,
+                              color: online
+                                  ? AppColors.buttonText
+                                  : AppColors.textSecondary,
+                            ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: online
+                            ? AppColors.primaryBrand
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final int selectedIndex = context.select<DashboardProvider, int>(
@@ -104,72 +240,44 @@ class _DashboardState extends State<Dashboard> {
           top: false,
           minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           child: Container(
-            clipBehavior: Clip.antiAlias,
+            height: 70,
             decoration: BoxDecoration(
               color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(24),
-              // بدون سایه: در حالت تاریک کثیف دیده می‌شود؛ یک خط نازک کافی است
               border: Border.all(color: AppColors.borderLight),
             ),
-            child: NavigationBarTheme(
-              data: NavigationBarThemeData(
-                iconTheme: WidgetStateProperty.resolveWith((states) {
-                  return IconThemeData(
-                    size: 24,
-                    color: states.contains(WidgetState.selected)
-                        ? AppColors.primaryBrand
-                        : AppColors.iconSecondary,
-                  );
-                }),
-                labelTextStyle: WidgetStateProperty.resolveWith((states) {
-                  final bool on = states.contains(WidgetState.selected);
-                  return TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: on ? FontWeight.bold : FontWeight.w500,
-                    color: on
-                        ? AppColors.primaryBrand
-                        : AppColors.textSecondary,
-                  );
-                }),
-              ),
-              child: NavigationBar(
-                selectedIndex: selectedIndex,
-                onDestinationSelected: _onDestinationSelected,
-                height: 68,
-                backgroundColor: Colors.transparent,
-                surfaceTintColor: Colors.transparent,
-                elevation: 0,
-                indicatorColor: AppColors.primaryBrand.withOpacity(0.14),
-                labelBehavior:
-                    NavigationDestinationLabelBehavior.alwaysShow,
-                animationDuration: const Duration(milliseconds: 280),
-                destinations: [
-                  NavigationDestination(
-                    icon: const Icon(Icons.map_outlined),
-                    selectedIcon: const Icon(Icons.map_rounded),
-                    label: 'nav_home'.tr(),
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(
-                      Icons.account_balance_wallet_outlined,
-                    ),
-                    selectedIcon: const Icon(
-                      Icons.account_balance_wallet_rounded,
-                    ),
-                    label: 'nav_earnings'.tr(),
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.route_outlined),
-                    selectedIcon: const Icon(Icons.route_rounded),
-                    label: 'nav_trips'.tr(),
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.person_outline_rounded),
-                    selectedIcon: const Icon(Icons.person_rounded),
-                    label: 'nav_profile'.tr(),
-                  ),
-                ],
-              ),
+            child: Row(
+              children: <Widget>[
+                _navItem(
+                  0,
+                  selectedIndex,
+                  Icons.map_outlined,
+                  Icons.map_rounded,
+                  'nav_home'.tr(),
+                ),
+                _navItem(
+                  1,
+                  selectedIndex,
+                  Icons.account_balance_wallet_outlined,
+                  Icons.account_balance_wallet_rounded,
+                  'nav_earnings'.tr(),
+                ),
+                _buildPowerButton(selectedIndex),
+                _navItem(
+                  2,
+                  selectedIndex,
+                  Icons.route_outlined,
+                  Icons.route_rounded,
+                  'nav_trips'.tr(),
+                ),
+                _navItem(
+                  3,
+                  selectedIndex,
+                  Icons.person_outline_rounded,
+                  Icons.person_rounded,
+                  'nav_profile'.tr(),
+                ),
+              ],
             ),
           ),
         ),
