@@ -548,5 +548,19 @@
   "work_select_province_first": "Select the work province first",
   "work_select_city": "Select work city",
   "loc_search": "Search",
-  "loc_no_results": "No results found"
+  "loc_no_results": "No results found",
+  "driver_power_online": "Online",
+  "driver_power_offline": "Offline",
+  "driver_status_online": "Online · waiting for requests",
+  "driver_status_offline": "Offline",
+  "driver_status_on_trip": "On a trip",
+  "nav_pill": "Navigate",
+  "trip_step_pickup": "Heading to pickup",
+  "trip_step_boarded": "Boarded",
+  "trip_step_finish": "Finish trip",
+  "slide_start_trip": "Passenger boarded — slide to start",
+  "slide_end_trip": "Slide to end trip",
+  "request_to_pickup": "To pickup",
+  "request_trip_distance": "Trip distance"
+
 }
