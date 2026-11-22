@@ -11,6 +11,9 @@ class DriverOnlineController {
   final ValueNotifier<bool> busy = ValueNotifier<bool>(false);
   final ValueNotifier<bool> onTrip = ValueNotifier<bool>(false);
 
+  /// کشوی کناری را باز می‌کند؛ Dashboard آن را ثبت می‌کند.
+  VoidCallback? openDrawer;
+
   VoidCallback? _toggle;
 
   void attach(VoidCallback toggle) => _toggle = toggle;
