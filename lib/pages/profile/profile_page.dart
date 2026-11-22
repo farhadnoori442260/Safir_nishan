@@ -1,9 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import 'package:safir_drivers/pages/auth/register_screen.dart';
+import 'package:safir_drivers/pages/settings/sound_vibration_page.dart';
+import 'package:safir_drivers/pages/trips/trips_history_page.dart';
 import 'package:safir_drivers/pages/profileUpdation/driver_main_info.dart';
 import 'package:safir_drivers/pages/profileUpdation/driving_license_update_screen.dart';
 import 'package:safir_drivers/pages/driverRegistration/vehicle_registration/vehicle_basic_info_screen.dart';
@@ -25,7 +28,10 @@ String _pt(String key, String fallback) {
 }
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({super.key, this.asRoute = false});
+
+  /// وقتی از کشو به‌صورت صفحهٔ جدا باز می‌شود: نوار بالا و دکمهٔ برگشت دارد
+  final bool asRoute;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -63,8 +69,30 @@ class _ProfilePageState extends State<ProfilePage> {
     final authProvider = context.watch<AuthenticationProvider>();
 
     return SafeArea(
+      top: !widget.asRoute,
       child: Scaffold(
         backgroundColor: AppColors.background,
+        appBar: widget.asRoute
+            ? AppBar(
+                backgroundColor: AppColors.cardBackground,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                surfaceTintColor: Colors.transparent,
+                centerTitle: true,
+                shape: Border(
+                  bottom: BorderSide(color: AppColors.borderLight, width: _kLine),
+                ),
+                iconTheme: IconThemeData(color: AppColors.textPrimary),
+                title: Text(
+                  _pt('drawer_profile', 'پروفایل'),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              )
+            : null,
         body: Consumer<RegistrationProvider>(
           builder: (context, regProvider, child) {
             final driver = regProvider.driverInformation;
@@ -88,7 +116,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 double.tryParse(driver['rating']?.toString() ?? '') ?? 0.0;
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 105),
+              padding: EdgeInsets.fromLTRB(16, 20, 16, widget.asRoute ? 24 : 105),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -105,6 +133,24 @@ class _ProfilePageState extends State<ProfilePage> {
 
                   // «مشخصات راننده» حالا از خود کارت بالا باز می‌شود؛
                   // اینجا فقط موتر می‌ماند تا تکراری نشود.
+                  _buildSectionTitle(_pt('profile_section_activity', 'فعالیت')),
+                  _buildMenuGroup(
+                    context,
+                    [
+                      _MenuItem(
+                        icon: Icons.history_rounded,
+                        title: _pt('profile_menu_trips_history', 'تاریخچه سفرها'),
+                        subtitle: _pt(
+                          'profile_menu_trips_history_subtitle',
+                          'سفرهای تمام‌شده و جزئیات هر سفر',
+                        ),
+                        onTap: () => _open(const TripsHistoryPage()),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
                   _buildSectionTitle('profile_section_account'.tr()),
                   _buildMenuGroup(
                     context,
@@ -733,6 +779,45 @@ class SettingsPage extends StatelessWidget {
                   context,
                   MaterialPageRoute(builder: (_) => const LanguagePage()),
                 );
+              },
+              isRtl: isRtl,
+            ),
+            const SizedBox(height: 12),
+            _buildSettingsTile(
+              context,
+              icon: Icons.volume_up_rounded,
+              iconColor: AppColors.iconSecondary,
+              title: _pt('settings_sound_vibration', 'صدا و لرزش'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SoundVibrationPage()),
+                );
+              },
+              isRtl: isRtl,
+            ),
+            const SizedBox(height: 12),
+            _buildSettingsTile(
+              context,
+              icon: Icons.text_fields_rounded,
+              iconColor: AppColors.iconSecondary,
+              title: _pt('settings_text_size', 'اندازهٔ متن'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TextSizePage()),
+                );
+              },
+              isRtl: isRtl,
+            ),
+            const SizedBox(height: 12),
+            _buildSettingsTile(
+              context,
+              icon: Icons.notifications_none_rounded,
+              iconColor: AppColors.iconSecondary,
+              title: _pt('settings_notifications', 'اعلان‌ها'),
+              onTap: () {
+                Geolocator.openAppSettings();
               },
               isRtl: isRtl,
             ),
