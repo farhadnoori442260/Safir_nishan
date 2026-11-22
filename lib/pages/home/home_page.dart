@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:safir_drivers/constants/trip_status.dart';
+import 'package:safir_drivers/controllers/driver_online_controller.dart';
 import 'package:safir_drivers/controllers/navigation_controller.dart';
 import 'package:safir_drivers/pages/chat_page.dart';
 import 'package:safir_drivers/providers/dashboard_provider.dart';
@@ -21,6 +22,11 @@ import 'package:safir_drivers/services/app_config_service.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
 import '../../push_notifications/push_notification_system.dart';
 import 'active_trip_sheet.dart';
+
+String _t(String key, String fallback) {
+  final String value = key.tr();
+  return value.trim().isEmpty || value == key ? fallback : value;
+}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -124,6 +130,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     AppConfigService.instance.start();
+    DriverOnlineController.instance.attach(_toggleOnline);
     _arrowAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
@@ -145,6 +152,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    DriverOnlineController.instance.detach(_toggleOnline);
     _isDisposing = true;
     positionStreamHomePage?.cancel();
     tripRequestStream?.cancel();
@@ -1966,6 +1974,92 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   //  رابط کاربری
   // ════════════════════════════════════════════════════════════
 
+  /// تغییر وضعیت آنلاین/آفلاین (منطق همان قبلی است؛ فقط از داخل برگهٔ
+  /// تأیید بیرون آمده تا هم دکمهٔ مرکزی نوار پایین و هم برگه از آن استفاده کنند)
+  Future<void> _applyStatus(bool goOnline) async {
+    if (isLoading) return;
+
+    if (!goOnline && activeTripId != null) {
+      await _showMessage('cannot_offline_active_trip_msg'.tr());
+      return;
+    }
+
+    if (mounted) {
+      setState(() => isLoading = true);
+    } else {
+      isLoading = true;
+    }
+
+    try {
+      if (goOnline) {
+        if (mounted) {
+          setState(() => isDriverAvailable = true);
+        } else {
+          isDriverAvailable = true;
+        }
+
+        _ensureActiveTripStream();
+        listenForTripRequests();
+        setAndGetLocationUpdates();
+        await _saveDriverStatus(true);
+        await goOnlineNow();
+      } else {
+        if (mounted) {
+          setState(() => isDriverAvailable = false);
+        } else {
+          isDriverAvailable = false;
+        }
+
+        await goOfflineNow();
+        await _saveDriverStatus(false);
+      }
+    } catch (e) {
+      debugPrint('Status update error: $e');
+      await _showMessage('driver_status_update_error_msg'.tr());
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      } else {
+        isLoading = false;
+      }
+    }
+  }
+
+  /// از دکمهٔ مرکزی نوار پایین: آنلاین شدن فوری؛ آفلاین شدن با تأیید.
+  void _toggleOnline() {
+    if (isLoading || !mounted) return;
+
+    if (!isDriverAvailable) {
+      HapticFeedback.mediumImpact();
+      unawaited(_applyStatus(true));
+      return;
+    }
+
+    if (activeTripId != null) {
+      unawaited(_showMessage('cannot_offline_active_trip_msg'.tr()));
+      return;
+    }
+
+    _showStatusChangeModal();
+  }
+
+  void _syncOnlineController() {
+    final DriverOnlineController c = DriverOnlineController.instance;
+    final bool trip = activeTripId != null;
+
+    if (c.online.value == isDriverAvailable &&
+        c.busy.value == isLoading &&
+        c.onTrip.value == trip) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      c.online.value = isDriverAvailable;
+      c.busy.value = isLoading;
+      c.onTrip.value = activeTripId != null;
+    });
+  }
+
   void _showStatusChangeModal() {
     if (_isTripActionLoading) return;
 
@@ -2019,63 +2113,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           onPressed: isLoading
                               ? null
                               : () async {
-                                  if (isDriverAvailable &&
-                                      activeTripId != null) {
-                                    await _showMessage(
-                                      'cannot_offline_active_trip_msg'.tr(),
-                                    );
-                                    return;
-                                  }
-
-                                  setModalState(() {
-                                    isLoading = true;
-                                  });
-
-                                  try {
-                                    if (!isDriverAvailable) {
-                                      if (mounted) {
-                                        setState(() {
-                                          isDriverAvailable = true;
-                                        });
-                                      } else {
-                                        isDriverAvailable = true;
-                                      }
-
-                                      _ensureActiveTripStream();
-                                      listenForTripRequests();
-                                      setAndGetLocationUpdates();
-                                      await _saveDriverStatus(true);
-                                      await goOnlineNow();
-                                    } else {
-                                      if (mounted) {
-                                        setState(() {
-                                          isDriverAvailable = false;
-                                        });
-                                      } else {
-                                        isDriverAvailable = false;
-                                      }
-
-                                      await goOfflineNow();
-                                      await _saveDriverStatus(false);
-                                    }
-                                  } catch (e) {
-                                    debugPrint('Status update error: $e');
-                                    await _showMessage(
-                                      'driver_status_update_error_msg'.tr(),
-                                    );
-                                  } finally {
-                                    // ✅ با setState تا دکمهٔ صفحه بلافاصله فعال شود
-                                    if (mounted) {
-                                      setState(() {
-                                        isLoading = false;
-                                      });
-                                    } else {
-                                      isLoading = false;
-                                    }
-
-                                    if (modalContext.mounted) {
-                                      Navigator.pop(modalContext);
-                                    }
+                                  await _applyStatus(!isDriverAvailable);
+                                  if (modalContext.mounted) {
+                                    Navigator.pop(modalContext);
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
@@ -2133,6 +2173,146 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  Widget _mapRoundButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: AppColors.cardBackground,
+      shape: CircleBorder(side: BorderSide(color: AppColors.borderLight)),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(icon, color: AppColors.iconPrimary, size: 22),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip() {
+    final bool trip = activeTripId != null;
+    final String text = trip
+        ? _t('driver_status_on_trip', 'در سفر')
+        : isDriverAvailable
+            ? _t('driver_status_online', 'آنلاین؛ منتظر درخواست')
+            : _t('driver_status_offline', 'آفلاین');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDriverAvailable
+                  ? AppColors.successDark
+                  : AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// درآمد کل (همان عددی که تب درآمد نشان می‌دهد)؛ با لمس به تب درآمد می‌رود.
+  Widget _buildEarningsPill() {
+    final double amount = context.select<RegistrationProvider, double>(
+      (RegistrationProvider p) => p.driverEarnings,
+    );
+    final String text = amount.isNaN || amount.isInfinite
+        ? '0'
+        : (amount == amount.roundToDouble()
+            ? amount.toInt().toString()
+            : amount.toStringAsFixed(2));
+
+    return Material(
+      color: AppColors.cardBackground,
+      shape: StadiumBorder(side: BorderSide(color: AppColors.borderLight)),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: () => context.read<DashboardProvider>().setIndex(1),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                Icons.account_balance_wallet_rounded,
+                size: 17,
+                color: AppColors.iconSecondary,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                '$text ${_t('currency_unit', 'افغانی')}',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavPill({
+    required bool pickupLeg,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: AppColors.cardBackground,
+      shape: StadiumBorder(side: BorderSide(color: AppColors.borderLight)),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                Icons.navigation_rounded,
+                size: 20,
+                color: AppColors.primaryBrand,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _t('nav_pill', 'مسیریابی'),
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isHomeTab = context.select<DashboardProvider, int>(
@@ -2147,6 +2327,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _onMapHidden();
     }
     _mapWasShown = showMap;
+    _syncOnlineController();
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -2203,72 +2384,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ),
             ),
             Positioned(
-              top: 20,
+              top: 16,
               right: 16,
-              child: FloatingActionButton.small(
-                heroTag: 'recenter_btn',
-                elevation: 1,
-                backgroundColor: AppColors.cardBackground,
-                onPressed: _centerMapOnDriver,
-                child: Icon(
-                  Icons.my_location_rounded,
-                  color: AppColors.iconPrimary,
-                ),
+              child: _mapRoundButton(
+                icon: Icons.my_location_rounded,
+                onTap: _centerMapOnDriver,
               ),
             ),
             Positioned(
-              top: 20,
+              top: 16,
               left: 16,
-              child: Material(
-                elevation: 4,
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(30),
-                child: InkWell(
-                  onTap: isLoading ? null : _showStatusChangeModal,
-                  borderRadius: BorderRadius.circular(30),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDriverAvailable
-                          ? AppColors.danger
-                          : AppColors.primaryButton,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // هنگام تغییر وضعیت، چرخان نشان می‌دهد که درخواست در جریان است
-                        isLoading
-                            ? SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.buttonText,
-                                ),
-                              )
-                            : Icon(
-                                Icons.circle,
-                                color: AppColors.buttonText,
-                                size: 10,
-                              ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isDriverAvailable
-                              ? 'go_offline'.tr()
-                              : 'go_online'.tr(),
-                          style: TextStyle(
-                            color: AppColors.buttonText,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  _buildStatusChip(),
+                  if (activeTripId == null) ...<Widget>[
+                    const SizedBox(height: 8),
+                    _buildEarningsPill(),
+                  ],
+                ],
               ),
             ),
             if (isDriverAvailable && _activeTripStream != null)
@@ -2345,7 +2479,34 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     });
                   }
 
-                  return ActiveTripSheet(
+                  final bool pickupLeg = status == TripStatus.accepted ||
+                      status == TripStatus.arrived;
+
+                  return Positioned.fill(
+                    child: Stack(
+                      children: <Widget>[
+                        PositionedDirectional(
+                          top: 70,
+                          end: 16,
+                          child: _buildNavPill(
+                            pickupLeg: pickupLeg,
+                            onTap: () {
+                              final LatLng? target =
+                                  _getNavigationTarget(status, tripData);
+                              if (target == null) {
+                                unawaited(_showMessage(
+                                  'active_trip_location_not_found'.tr(),
+                                ));
+                                return;
+                              }
+                              unawaited(_openExternalMap(
+                                target.latitude,
+                                target.longitude,
+                              ));
+                            },
+                          ),
+                        ),
+                        ActiveTripSheet(
                     tripId: tripId,
                     status: status,
                     tripData: tripData,
@@ -2358,6 +2519,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     onOpenExternalMap: (lat, lng) => _openExternalMap(lat, lng),
                     getNavigationTarget: () =>
                         _getNavigationTarget(status, tripData),
+                        ),
+                      ],
+                    ),
                   );
                 },
               ),
