@@ -548,5 +548,19 @@
   "work_select_province_first": "لومړی د فعالیت ولایت وټاکئ",
   "work_select_city": "د فعالیت ښار",
   "loc_search": "لټون",
-  "loc_no_results": "څه ونه موندل شول"
+  "loc_no_results": "څه ونه موندل شول",
+  "driver_power_online": "آنلاین",
+  "driver_power_offline": "آفلاین",
+  "driver_status_online": "آنلاین؛ د غوښتنې په تمه",
+  "driver_status_offline": "آفلاین",
+  "driver_status_on_trip": "په سفر کې",
+  "nav_pill": "لارښوونه",
+  "trip_step_pickup": "پیل ته تګ",
+  "trip_step_boarded": "مسافر سور شو",
+  "trip_step_finish": "د سفر پای",
+  "slide_start_trip": "مسافر سور شو؛ د پیل لپاره وکاږئ",
+  "slide_end_trip": "د سفر د پای لپاره وکاږئ",
+  "request_to_pickup": "تر پیل",
+  "request_trip_distance": "د سفر واټن"
+
 }
