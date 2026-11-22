@@ -16,6 +16,7 @@ import 'package:safir_drivers/global/global.dart';
 import 'package:safir_drivers/main.dart';
 import 'package:safir_drivers/models/trip_details.dart';
 import 'package:safir_drivers/services/app_config_service.dart';
+import 'package:safir_drivers/utils/driver_prefs.dart';
 import 'package:safir_drivers/widgets/notification_dialog.dart';
 
 class PushNotificationSystem {
@@ -305,6 +306,9 @@ class PushNotificationSystem {
   /// (به‌جای حلقهٔ بی‌پایان تا بسته‌شدن دیالوگ).
   Future<void> _startTripAlertSound() async {
     try {
+      await DriverPrefs.instance.ensureLoaded();
+      if (!DriverPrefs.instance.soundRequest.value) return;
+
       await _audioPlayer.stop();
       await _audioPlayer.setReleaseMode(ReleaseMode.stop);
 
