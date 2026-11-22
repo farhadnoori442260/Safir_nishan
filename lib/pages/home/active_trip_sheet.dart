@@ -12,6 +12,7 @@ import 'package:safir_drivers/constants/trip_status.dart';
 import 'package:safir_drivers/pages/chat_page.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
 import 'package:safir_drivers/utils/trip_extras.dart';
+import 'package:safir_drivers/widgets/slide_to_confirm.dart';
 
 String _t(String key, String fallback) {
   final String value = key.tr();
@@ -302,11 +303,11 @@ class ActiveTripSheet extends StatelessWidget {
     final TripExtras extras = TripExtras.fromRide(tripData);
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.64,
-      minChildSize: 0.25,
-      maxChildSize: 0.92,
+      initialChildSize: 0.5,
+      minChildSize: 0.2,
+      maxChildSize: 0.9,
       snap: true,
-      snapSizes: const <double>[0.25, 0.64, 0.92],
+      snapSizes: const <double>[0.2, 0.5, 0.9],
       builder: (
         BuildContext context,
         ScrollController scrollController,
@@ -337,33 +338,30 @@ class ActiveTripSheet extends StatelessWidget {
                     ),
                   ),
                   _buildStatusHeader(),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _buildPassengerCard(
                     passengerName,
                     passengerPhone,
                     passengerRating,
+                    openChat,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _buildAddressCard(originAddress, destinationAddress),
                   const SizedBox(height: 12),
+                  _buildMainActionButton(context),
+                  const SizedBox(height: 12),
+                  _buildTripInformation(duration, distance, price),
+                  const SizedBox(height: 10),
                   if (extras.hasContent) ...<Widget>[
                     _buildExtrasCard(extras),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                   ],
-                  _buildTripInformation(duration, distance, price),
-                  const SizedBox(height: 12),
                   _PaymentConfirmCard(
                     tripId: tripId,
                     fallbackPrice: price,
                   ),
-                  const SizedBox(height: 12),
-                  _buildNavigationNotice(),
-                  const SizedBox(height: 16),
-                  _buildMainActionButton(context),
                   const SizedBox(height: 10),
-                  _buildSecondaryActions(openChat),
-                  const SizedBox(height: 10),
-                  _buildNavigationButton(context),
+                  _buildSecondaryActions(),
                 ],
               ),
             ),
@@ -379,20 +377,30 @@ class ActiveTripSheet extends StatelessWidget {
     return AppColors.originBlue;
   }
 
-  // هدر وضعیت: کارت خنثی؛ رنگ فقط روی آیکن (آبی: در راه، نارنجی: رسیدم،
-  // سبز: در سفر) تا شیت سبز و شلوغ نشود.
+  // هدر وضعیت: سه مرحلهٔ سفر (به مبدأ ← سوار شد ← پایان) + زمان انتظار.
   Widget _buildStatusHeader() {
     final Color accent = _statusColor();
+    final int step = status == TripStatus.onTrip
+        ? 2
+        : status == TripStatus.arrived
+            ? 1
+            : 0;
+
+    final List<String> labels = <String>[
+      _t('trip_step_pickup', 'رفتن به مبدأ'),
+      _t('trip_step_boarded', 'سوار شد'),
+      _t('trip_step_finish', 'پایان سفر'),
+    ];
+
     return _cardContainer(
-      child: Row(
+      child: Column(
         children: <Widget>[
-          Icon(_getStatusIcon(), color: accent, size: 26),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
+          Row(
+            children: <Widget>[
+              Icon(_getStatusIcon(), color: accent, size: 24),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
                   _getStatusText(),
                   style: TextStyle(
                     color: AppColors.textPrimary,
@@ -400,21 +408,47 @@ class ActiveTripSheet extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'active_trip_header_subtitle'.tr(),
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
+              ),
+              if (status == TripStatus.arrived)
+                _WaitTimer(since: tripData['arrived_at']),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: List<Widget>.generate(3, (int i) {
+              final bool done = i <= step;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsetsDirectional.only(end: i == 2 ? 0 : 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Container(
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: done ? accent : AppColors.borderLight,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        labels[i],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight:
+                              i == step ? FontWeight.w800 : FontWeight.w500,
+                          color: i == step
+                              ? AppColors.textPrimary
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+              );
+            }),
           ),
         ],
       ),
@@ -425,6 +459,7 @@ class ActiveTripSheet extends StatelessWidget {
     String name,
     String phone,
     String rating,
+    VoidCallback openChat,
   ) {
     return _cardContainer(
       child: Row(
@@ -498,11 +533,37 @@ class ActiveTripSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
+          _buildChatButton(openChat),
+          const SizedBox(width: 8),
           _buildCallButton(
             phone: phone,
             label: 'active_trip_call_passenger'.tr(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChatButton(VoidCallback openChat) {
+    return Semantics(
+      label: 'btn_sms_chat'.tr(),
+      button: true,
+      child: Material(
+        color: AppColors.neutralSoft,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: isTripActionLoading ? null : openChat,
+          child: SizedBox(
+            width: 46,
+            height: 46,
+            child: Icon(
+              Icons.chat_bubble_outline_rounded,
+              color: AppColors.textPrimary,
+              size: 21,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -859,50 +920,27 @@ class ActiveTripSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildNavigationNotice() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-      decoration: BoxDecoration(
-        color: AppColors.infoSoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.infoBorder),
-      ),
-      child: Row(
-        children: <Widget>[
-          Icon(
-            Icons.info_outline_rounded,
-            color: AppColors.originBlue,
-            size: 19,
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              'msg_follow_navigation'.tr(),
-              style: TextStyle(
-                color: AppColors.infoText,
-                fontSize: 12,
-                height: 1.35,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMainActionButton(BuildContext context) {
-    final Color color =
-        status == TripStatus.onTrip ? AppColors.endTrip : AppColors.primaryButton;
+    // مراحل برگشت‌ناپذیر (شروع و پایان سفر) با کشیدن تأیید می‌شوند؛
+    // «به مبدأ رسیدم» با یک لمس.
+    if (status == TripStatus.arrived || status == TripStatus.onTrip) {
+      final bool ending = status == TripStatus.onTrip;
+      return SlideToConfirm(
+        label: ending
+            ? _t('slide_end_trip', 'برای پایان سفر بکشید')
+            : _t('slide_start_trip', 'مسافر سوار شد؛ برای شروع بکشید'),
+        color: ending ? AppColors.endTrip : AppColors.primaryButton,
+        loading: isTripActionLoading,
+        onConfirmed: () => _handleTripAction(context),
+      );
+    }
 
     return SizedBox(
       width: double.infinity,
-      height: 54,
+      height: 58,
       child: ElevatedButton.icon(
-        onPressed: isTripActionLoading
-            ? null
-            : () => _handleTripAction(context),
+        onPressed:
+            isTripActionLoading ? null : () => _handleTripAction(context),
         icon: isTripActionLoading
             ? SizedBox(
                 width: 20,
@@ -912,144 +950,52 @@ class ActiveTripSheet extends StatelessWidget {
                   color: AppColors.buttonText,
                 ),
               )
-            : Icon(
-                status == TripStatus.onTrip
-                    ? Icons.flag_rounded
-                    : Icons.arrow_forward_rounded,
-                color: AppColors.buttonText,
-              ),
+            : Icon(Icons.location_on_rounded, color: AppColors.buttonText),
         label: Text(
           _getActionButtonTitle(),
           style: TextStyle(
-            fontSize: 15,
+            fontSize: 15.5,
             fontWeight: FontWeight.bold,
             color: AppColors.buttonText,
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          disabledBackgroundColor: color.withOpacity(0.5),
+          backgroundColor: AppColors.primaryButton,
+          disabledBackgroundColor: AppColors.primaryButton.withOpacity(0.5),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSecondaryActions(VoidCallback openChat) {
+  // لغو سفر: دکمهٔ کم‌اهمیت پایین برگه (چت و تماس کنار مسافر آمده‌اند).
+  Widget _buildSecondaryActions() {
     final bool canCancel =
         status != TripStatus.onTrip && status != TripStatus.completed;
 
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: _buildOutlineActionButton(
-            icon: Icons.chat_bubble_outline_rounded,
-            label: 'btn_sms_chat'.tr(),
-            color: AppColors.originBlue,
-            backgroundColor: AppColors.infoSoft,
-            onPressed: isTripActionLoading ? null : openChat,
-          ),
-        ),
-        if (canCancel) ...<Widget>[
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildOutlineActionButton(
-              icon: Icons.close_rounded,
-              label: 'btn_cancel_trip'.tr(),
-              color: AppColors.danger,
-              backgroundColor: AppColors.dangerSoft,
-              onPressed: isTripActionLoading
-                  ? null
-                  : () => onCancelTrip(tripId),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildOutlineActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required Color backgroundColor,
-    required VoidCallback? onPressed,
-  }) {
-    return SizedBox(
-      height: 46,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 18, color: color),
-        label: Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          disabledBackgroundColor: backgroundColor.withOpacity(0.55),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavigationButton(BuildContext context) {
-    final bool pickup =
-        status == TripStatus.accepted || status == TripStatus.arrived;
+    if (!canCancel) return const SizedBox.shrink();
 
     return SizedBox(
       width: double.infinity,
-      height: 52,
-      child: ElevatedButton.icon(
-        onPressed: isTripActionLoading
-            ? null
-            : () {
-                final LatLng? target = getNavigationTarget();
-
-                if (target == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'active_trip_location_not_found'.tr(),
-                      ),
-                    ),
-                  );
-                  return;
-                }
-
-                onOpenExternalMap(target.latitude, target.longitude);
-              },
-        icon: Icon(
-          Icons.navigation_rounded,
-          color: AppColors.buttonText,
-          size: 20,
-        ),
+      height: 46,
+      child: TextButton.icon(
+        onPressed: isTripActionLoading ? null : () => onCancelTrip(tripId),
+        icon: Icon(Icons.close_rounded, size: 18, color: AppColors.danger),
         label: Text(
-          pickup
-              ? 'btn_external_navigation_origin'.tr()
-              : 'btn_external_navigation_destination'.tr(),
-          style: const TextStyle(
-            fontSize: 14,
+          'btn_cancel_trip'.tr(),
+          style: TextStyle(
+            color: AppColors.danger,
+            fontSize: 13.5,
             fontWeight: FontWeight.bold,
           ),
         ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.originBlue,
-          foregroundColor: AppColors.buttonText,
-          disabledBackgroundColor: AppColors.originBlue.withOpacity(0.5),
-          elevation: 0,
+        style: TextButton.styleFrom(
+          backgroundColor: AppColors.dangerSoft,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
       ),
@@ -1066,6 +1012,72 @@ class ActiveTripSheet extends StatelessWidget {
         border: Border.all(color: AppColors.borderLight),
       ),
       child: child,
+    );
+  }
+}
+
+// زمان انتظار مسافر در مبدأ (از لحظهٔ «رسیدم»).
+class _WaitTimer extends StatefulWidget {
+  const _WaitTimer({required this.since});
+
+  final dynamic since;
+
+  @override
+  State<_WaitTimer> createState() => _WaitTimerState();
+}
+
+class _WaitTimerState extends State<_WaitTimer> {
+  Timer? _timer;
+  final DateTime _fallbackStart = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final DateTime start = widget.since is Timestamp
+        ? (widget.since as Timestamp).toDate()
+        : _fallbackStart;
+
+    int sec = DateTime.now().difference(start).inSeconds;
+    if (sec < 0) sec = 0;
+
+    final String mm = (sec ~/ 60).toString().padLeft(2, '0');
+    final String ss = (sec % 60).toString().padLeft(2, '0');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.neutralSoft,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(Icons.timer_outlined, size: 15, color: AppColors.warningIcon),
+          const SizedBox(width: 5),
+          Text(
+            '$mm:$ss',
+            textDirection: ui.TextDirection.ltr,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
