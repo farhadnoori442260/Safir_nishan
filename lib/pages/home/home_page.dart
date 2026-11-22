@@ -102,6 +102,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   String? _listeningCellsKey;
   final Set<String> _handledTripIds = <String>{};
 
+  // موقعیت دکمه‌های GPS و مسیریابی بالای برگهٔ سفر؛ با کشیدن برگه جابه‌جا می‌شوند
+  final ValueNotifier<double> _sheetExtent = ValueNotifier<double>(0);
+  final ValueNotifier<VoidCallback?> _navAction =
+      ValueNotifier<VoidCallback?>(null);
+  String? _navKey;
+
   bool isDriverAvailable = false;
   bool isLoading = false;
 
@@ -153,6 +159,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void dispose() {
     DriverOnlineController.instance.detach(_toggleOnline);
+    _sheetExtent.dispose();
+    _navAction.dispose();
     _isDisposing = true;
     positionStreamHomePage?.cancel();
     tripRequestStream?.cancel();
@@ -1394,6 +1402,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _clearRouteAndNavigation() async {
+    _navKey = null;
+    _navAction.value = null;
+    _sheetExtent.value = 0;
+
     try {
       if (mounted) {
         context.read<NavigationController>().stopNavigation();
@@ -2176,6 +2188,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _mapRoundButton({
     required IconData icon,
     required VoidCallback onTap,
+    Color? color,
   }) {
     return Material(
       color: AppColors.cardBackground,
@@ -2184,52 +2197,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         customBorder: const CircleBorder(),
         onTap: onTap,
         child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Icon(icon, color: AppColors.iconPrimary, size: 22),
+          width: 48,
+          height: 48,
+          child: Icon(icon, color: color ?? AppColors.iconPrimary, size: 22),
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatusChip() {
-    final bool trip = activeTripId != null;
-    final String text = trip
-        ? _t('driver_status_on_trip', 'در سفر')
-        : isDriverAvailable
-            ? _t('driver_status_online', 'آنلاین؛ منتظر درخواست')
-            : _t('driver_status_offline', 'آفلاین');
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.borderLight),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDriverAvailable
-                  ? AppColors.successDark
-                  : AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -2251,62 +2222,75 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: InkWell(
         customBorder: const StadiumBorder(),
         onTap: () => context.read<DashboardProvider>().setIndex(1),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(
-                Icons.account_balance_wallet_rounded,
-                size: 17,
-                color: AppColors.iconSecondary,
-              ),
-              const SizedBox(width: 7),
-              Text(
-                '$text ${_t('currency_unit', 'افغانی')}',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
+        child: Container(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          alignment: Alignment.center,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: <Widget>[
+                Text(
+                  text,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Text(
+                  _t('currency_unit', 'افغانی'),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildNavPill({
-    required bool pickupLeg,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: AppColors.cardBackground,
-      shape: StadiumBorder(side: BorderSide(color: AppColors.borderLight)),
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(
-                Icons.navigation_rounded,
-                size: 20,
-                color: AppColors.primaryBrand,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                _t('nav_pill', 'مسیریابی'),
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
+  /// دکمهٔ آنلاین/آفلاین بالای نقشه (سبز = آنلاین).
+  Widget _buildOnlineButton() {
+    final bool on = isDriverAvailable;
+
+    return Semantics(
+      button: true,
+      label: on ? _t('go_offline', 'آفلاین') : _t('go_online', 'آنلاین'),
+      child: Material(
+        color: on ? AppColors.primaryButton : AppColors.cardBackground,
+        shape: CircleBorder(
+          side: BorderSide(
+            color: on ? AppColors.primaryButton : AppColors.borderLight,
+          ),
+        ),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: isLoading ? null : _toggleOnline,
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: isLoading
+                ? Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: on ? AppColors.buttonText : AppColors.textSecondary,
+                    ),
+                  )
+                : Icon(
+                    Icons.power_settings_new_rounded,
+                    size: 26,
+                    color: on ? AppColors.buttonText : AppColors.textSecondary,
+                  ),
           ),
         ),
       ),
@@ -2383,25 +2367,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       },
                     ),
             ),
+            // بالا: [آنلاین] [درآمد] [کشو]؛ در راست‌به‌چپ آنلاین راست و کشو چپ است
             Positioned(
-              top: 16,
-              right: 16,
-              child: _mapRoundButton(
-                icon: Icons.my_location_rounded,
-                onTap: _centerMapOnDriver,
-              ),
-            ),
-            Positioned(
-              top: 16,
+              top: 12,
               left: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              right: 16,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
-                  _buildStatusChip(),
-                  if (activeTripId == null) ...<Widget>[
-                    const SizedBox(height: 8),
-                    _buildEarningsPill(),
-                  ],
+                  _buildOnlineButton(),
+                  Expanded(
+                    child: Center(child: _buildEarningsPill()),
+                  ),
+                  _mapRoundButton(
+                    icon: Icons.menu_rounded,
+                    onTap: () =>
+                        DriverOnlineController.instance.openDrawer?.call(),
+                  ),
                 ],
               ),
             ),
@@ -2435,6 +2417,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         if (mounted && activeTripId != null) {
                           _handleRemoteTripEnd();
                         }
+                      });
+                    }
+
+                    if (!uncertain && _navAction.value != null) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
+                        _navKey = null;
+                        _navAction.value = null;
+                        _sheetExtent.value = 0;
                       });
                     }
 
@@ -2479,52 +2470,110 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     });
                   }
 
-                  final bool pickupLeg = status == TripStatus.accepted ||
-                      status == TripStatus.arrived;
+                  final String navKey = '$tripId|$status';
+                  if (_navKey != navKey) {
+                    _navKey = navKey;
+                    final bool firstOfTrip = _navAction.value == null;
+
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+                      if (firstOfTrip) _sheetExtent.value = 0.5;
+                      _navAction.value = () {
+                        final LatLng? target =
+                            _getNavigationTarget(status, tripData);
+                        if (target == null) {
+                          unawaited(_showMessage(
+                            'active_trip_location_not_found'.tr(),
+                          ));
+                          return;
+                        }
+                        unawaited(
+                          _openExternalMap(target.latitude, target.longitude),
+                        );
+                      };
+                    });
+                  }
 
                   return Positioned.fill(
-                    child: Stack(
-                      children: <Widget>[
-                        PositionedDirectional(
-                          top: 70,
-                          end: 16,
-                          child: _buildNavPill(
-                            pickupLeg: pickupLeg,
-                            onTap: () {
-                              final LatLng? target =
-                                  _getNavigationTarget(status, tripData);
-                              if (target == null) {
-                                unawaited(_showMessage(
-                                  'active_trip_location_not_found'.tr(),
-                                ));
-                                return;
-                              }
-                              unawaited(_openExternalMap(
-                                target.latitude,
-                                target.longitude,
-                              ));
-                            },
-                          ),
-                        ),
-                        ActiveTripSheet(
-                    tripId: tripId,
-                    status: status,
-                    tripData: tripData,
-                    isTripActionLoading: _isTripActionLoading,
-                    onUpdateTripStatus: (tId, newStatus) {
-                      _updateTripStatus(tId, newStatus, tripData);
-                    },
-                    onCancelTrip: _cancelTrip,
-                    onMakePhoneCall: _makePhoneCall,
-                    onOpenExternalMap: (lat, lng) => _openExternalMap(lat, lng),
-                    getNavigationTarget: () =>
-                        _getNavigationTarget(status, tripData),
-                        ),
-                      ],
+                    child: NotificationListener<DraggableScrollableNotification>(
+                      onNotification:
+                          (DraggableScrollableNotification notification) {
+                        final double extent = notification.extent;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) _sheetExtent.value = extent;
+                        });
+                        return false;
+                      },
+                      child: ActiveTripSheet(
+                        tripId: tripId,
+                        status: status,
+                        tripData: tripData,
+                        isTripActionLoading: _isTripActionLoading,
+                        onUpdateTripStatus: (tId, newStatus) {
+                          _updateTripStatus(tId, newStatus, tripData);
+                        },
+                        onCancelTrip: _cancelTrip,
+                        onMakePhoneCall: _makePhoneCall,
+                        onOpenExternalMap: (lat, lng) =>
+                            _openExternalMap(lat, lng),
+                        getNavigationTarget: () =>
+                            _getNavigationTarget(status, tripData),
+                      ),
                     ),
                   );
                 },
               ),
+            // پایین‌چپ (در راست‌به‌چپ): GPS و کنارش مسیریابی، همیشه بالای برگهٔ سفر
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints box) {
+                  return ValueListenableBuilder<double>(
+                    valueListenable: _sheetExtent,
+                    builder: (BuildContext context, double extent, Widget? _) {
+                      final double maxBottom =
+                          (box.maxHeight - 150).clamp(14.0, 4000.0).toDouble();
+                      final double bottom =
+                          (extent * box.maxHeight + 14).clamp(14.0, maxBottom);
+
+                      return Stack(
+                        children: <Widget>[
+                          PositionedDirectional(
+                            end: 16,
+                            bottom: bottom,
+                            child: ValueListenableBuilder<VoidCallback?>(
+                              valueListenable: _navAction,
+                              builder: (
+                                BuildContext context,
+                                VoidCallback? nav,
+                                Widget? __,
+                              ) {
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    if (nav != null) ...<Widget>[
+                                      _mapRoundButton(
+                                        icon: Icons.navigation_rounded,
+                                        color: AppColors.primaryBrand,
+                                        onTap: nav,
+                                      ),
+                                      const SizedBox(width: 10),
+                                    ],
+                                    _mapRoundButton(
+                                      icon: Icons.my_location_rounded,
+                                      onTap: _centerMapOnDriver,
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
