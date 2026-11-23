@@ -614,6 +614,7 @@
   "coach_done": "پیل",
   "settings_replay_guide": "لارښود بیا وګورئ",
   "request_waiting_counter": "په انتظار کې {n} له {total}",
-  "requests_waiting_badge": "{n} غوښتنې په انتظار کې"
+  "requests_waiting_badge": "{n} غوښتنې په انتظار کې",
+  "nav_navigate": "لارښوونه"
 
 }
