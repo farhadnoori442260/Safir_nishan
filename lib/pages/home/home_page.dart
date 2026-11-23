@@ -13,7 +13,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:safir_drivers/constants/trip_status.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:safir_drivers/controllers/driver_online_controller.dart';
+import 'package:safir_drivers/pages/profile/profile_page.dart';
 import 'package:safir_drivers/controllers/navigation_controller.dart';
 import 'package:safir_drivers/pages/chat_page.dart';
 import 'package:safir_drivers/providers/dashboard_provider.dart';
@@ -2205,7 +2207,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  /// درآمد کل (همان عددی که تب درآمد نشان می‌دهد)؛ با لمس به تب درآمد می‌رود.
+  /// کارت درآمد (عریض، مثل کارت «موجودی» اسنپ)؛ با لمس به تب درآمد می‌رود.
   Widget _buildEarningsPill() {
     final double amount = context.select<RegistrationProvider, double>(
       (RegistrationProvider p) => p.driverEarnings,
@@ -2218,82 +2220,148 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     return Material(
       color: AppColors.cardBackground,
-      shape: StadiumBorder(side: BorderSide(color: AppColors.borderLight)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide(color: AppColors.borderLight),
+      ),
       child: InkWell(
-        customBorder: const StadiumBorder(),
+        customBorder: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+        ),
         onTap: () => context.read<DashboardProvider>().setIndex(1),
         child: Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 22),
-          alignment: Alignment.center,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: <Widget>[
-                Text(
-                  text,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
+          height: 64,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          alignment: AlignmentDirectional.centerStart,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                _t('earnings_total_short', 'درآمد کل'),
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  _t('currency_unit', 'افغانی'),
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
+              ),
+              const SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: <Widget>[
+                    Text(
+                      text,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _t('currency_unit', 'افغانی'),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  /// دکمهٔ آنلاین/آفلاین بالای نقشه (سبز = آنلاین).
-  Widget _buildOnlineButton() {
-    final bool on = isDriverAvailable;
+  /// عکس راننده با امتیاز (مثل اسنپ)؛ با لمس پروفایل باز می‌شود.
+  Widget _buildDriverAvatar() {
+    return Consumer<RegistrationProvider>(
+      builder: (BuildContext context, RegistrationProvider reg, Widget? _) {
+        final dynamic info = reg.driverInformation;
+        final String photo = info['photo']?.toString().trim() ?? '';
+        final double rating =
+            double.tryParse(info['rating']?.toString() ?? '') ?? 0.0;
 
-    return Semantics(
-      button: true,
-      label: on ? _t('go_offline', 'آفلاین') : _t('go_online', 'آنلاین'),
-      child: Material(
-        color: on ? AppColors.primaryButton : AppColors.cardBackground,
-        shape: CircleBorder(
-          side: BorderSide(
-            color: on ? AppColors.primaryButton : AppColors.borderLight,
+        Widget placeholder() => Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.cardBackground,
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: Icon(
+                Icons.person_rounded,
+                color: AppColors.iconSecondary,
+                size: 30,
+              ),
+            );
+
+        return GestureDetector(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const ProfilePage(asRoute: true),
+            ),
           ),
-        ),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: isLoading ? null : _toggleOnline,
           child: SizedBox(
-            width: 48,
-            height: 48,
-            child: isLoading
-                ? Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: on ? AppColors.buttonText : AppColors.textSecondary,
+            width: 58,
+            height: rating > 0 ? 82 : 58,
+            child: Column(
+              children: <Widget>[
+                SizedBox(
+                  width: 58,
+                  height: 58,
+                  child: photo.isEmpty
+                      ? placeholder()
+                      : CachedNetworkImage(
+                          imageUrl: photo,
+                          imageBuilder: (_, ImageProvider img) => Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.borderLight),
+                              image: DecorationImage(
+                                image: img,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          placeholder: (_, __) => placeholder(),
+                          errorWidget: (_, __, ___) => placeholder(),
+                        ),
+                ),
+                if (rating > 0) ...<Widget>[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 3,
                     ),
-                  )
-                : Icon(
-                    Icons.power_settings_new_rounded,
-                    size: 26,
-                    color: on ? AppColors.buttonText : AppColors.textSecondary,
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBackground,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.borderLight),
+                    ),
+                    child: Text(
+                      rating.toStringAsFixed(1),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
                   ),
+                ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -2367,18 +2435,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       },
                     ),
             ),
-            // بالا: [آنلاین] [درآمد] [کشو]؛ در راست‌به‌چپ آنلاین راست و کشو چپ است
+            // بالا (راست‌به‌چپ): عکس راننده | کارت درآمد | کشو
             Positioned(
               top: 12,
               left: 16,
               right: 16,
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  _buildOnlineButton(),
-                  Expanded(
-                    child: Center(child: _buildEarningsPill()),
-                  ),
+                  _buildDriverAvatar(),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildEarningsPill()),
+                  const SizedBox(width: 12),
                   _mapRoundButton(
                     icon: Icons.menu_rounded,
                     onTap: () =>
@@ -2537,8 +2605,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                       return Stack(
                         children: <Widget>[
+                          // GPS: گوشهٔ چپ (در راست‌به‌چپ)
                           PositionedDirectional(
                             end: 16,
+                            bottom: bottom,
+                            child: _mapRoundButton(
+                              icon: Icons.my_location_rounded,
+                              onTap: _centerMapOnDriver,
+                            ),
+                          ),
+                          // مسیریاب: درست روبه‌روی GPS، سمت راست؛ فقط در سفر
+                          PositionedDirectional(
+                            start: 16,
                             bottom: bottom,
                             child: ValueListenableBuilder<VoidCallback?>(
                               valueListenable: _navAction,
@@ -2547,26 +2625,47 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 VoidCallback? nav,
                                 Widget? __,
                               ) {
-                                return Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    if (nav != null) ...<Widget>[
-                                      _mapRoundButton(
-                                        icon: Icons.navigation_rounded,
-                                        color: AppColors.primaryBrand,
-                                        onTap: nav,
-                                      ),
-                                      const SizedBox(width: 10),
-                                    ],
-                                    _mapRoundButton(
-                                      icon: Icons.my_location_rounded,
-                                      onTap: _centerMapOnDriver,
-                                    ),
-                                  ],
+                                if (nav == null) return const SizedBox.shrink();
+                                return _mapRoundButton(
+                                  icon: Icons.navigation_rounded,
+                                  color: AppColors.primaryBrand,
+                                  onTap: nav,
                                 );
                               },
                             ),
                           ),
+                          // پیام راهنما وقتی آفلاین است
+                          if (!isDriverAvailable && activeTripId == null)
+                            Positioned(
+                              left: 76,
+                              right: 76,
+                              bottom: 14,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.cardBackground,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: AppColors.borderLight,
+                                  ),
+                                ),
+                                child: Text(
+                                  _t(
+                                    'go_online_hint',
+                                    'برای دریافت سفر آنلاین شوید',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
                         ],
                       );
                     },
