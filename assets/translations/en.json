@@ -614,6 +614,7 @@
   "coach_done": "Start",
   "settings_replay_guide": "Replay the guide",
   "request_waiting_counter": "Waiting {n} of {total}",
-  "requests_waiting_badge": "{n} requests waiting"
+  "requests_waiting_badge": "{n} requests waiting",
+  "nav_navigate": "Navigate"
 
 }
