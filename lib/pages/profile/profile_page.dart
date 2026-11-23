@@ -197,19 +197,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     context,
                     [
                       _MenuItem(
-                        icon: Icons.settings_outlined,
-                        title: 'profile_menu_settings'.tr(),
-                        subtitle: 'profile_menu_settings_subtitle'.tr(),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SettingsPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      _MenuItem(
                         icon: Icons.help_outline_rounded,
                         iconColor: AppColors.originBlue,
                         title: 'profile_menu_support'.tr(),
