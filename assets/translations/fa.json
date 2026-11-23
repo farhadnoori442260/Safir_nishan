@@ -614,6 +614,7 @@
   "coach_done": "شروع",
   "settings_replay_guide": "دیدن دوبارهٔ راهنما",
   "request_waiting_counter": "در انتظار {n} از {total}",
-  "requests_waiting_badge": "{n} درخواست در انتظار"
+  "requests_waiting_badge": "{n} درخواست در انتظار",
+  "nav_navigate": "مسیریابی"
 
 }
