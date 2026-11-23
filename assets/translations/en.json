@@ -598,6 +598,20 @@
   "text_size_xxlarge": "Huge",
   "text_size_preview": "Use the slider below to set the text size.",
   "settings_notifications": "Notifications",
-  "messages_empty": "No messages yet"
+  "messages_empty": "No messages yet",
+  "earnings_total_short": "Total earnings",
+  "go_online_hint": "Go online to receive trips",
+  "coach_power_title": "Online and offline",
+  "coach_power_text": "Go online here to receive trip requests. When you finish for the day, go offline here.",
+  "coach_earnings_title": "Your earnings",
+  "coach_earnings_text": "Your total earnings show here. Tap it to open the earnings page.",
+  "coach_drawer_title": "Menu",
+  "coach_drawer_text": "Profile, settings, trip history and support open from here.",
+  "coach_messages_title": "Messages",
+  "coach_messages_text": "See Safir announcements for drivers here.",
+  "coach_skip": "Skip",
+  "coach_next": "Next",
+  "coach_done": "Start",
+  "settings_replay_guide": "Replay the guide"
 
 }
