@@ -598,6 +598,20 @@
   "text_size_xxlarge": "بسیار بزرگ",
   "text_size_preview": "با نوار زیر اندازهٔ نوشته‌ها را تنظیم کنید.",
   "settings_notifications": "اعلان‌ها",
-  "messages_empty": "هنوز پیامی ندارید"
+  "messages_empty": "هنوز پیامی ندارید",
+  "earnings_total_short": "درآمد کل",
+  "go_online_hint": "برای دریافت سفر آنلاین شوید",
+  "coach_power_title": "آنلاین و آفلاین",
+  "coach_power_text": "برای دریافت درخواست سفر از اینجا آنلاین شوید. وقتی کارتان تمام شد، همین‌جا آفلاین شوید.",
+  "coach_earnings_title": "درآمد شما",
+  "coach_earnings_text": "مجموع درآمدتان اینجا دیده می‌شود. با لمس آن به صفحهٔ درآمد می‌روید.",
+  "coach_drawer_title": "منو",
+  "coach_drawer_text": "پروفایل، تنظیمات، تاریخچهٔ سفرها و پشتیبانی از اینجا باز می‌شوند.",
+  "coach_messages_title": "پیام‌ها",
+  "coach_messages_text": "اطلاعیه‌های سفیر برای رانندگان را اینجا ببینید.",
+  "coach_skip": "رد کردن",
+  "coach_next": "بعدی",
+  "coach_done": "شروع",
+  "settings_replay_guide": "دیدن دوبارهٔ راهنما"
 
 }
