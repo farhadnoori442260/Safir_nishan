@@ -47,11 +47,6 @@ class DriverDrawer extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: <Widget>[
                   _item(
-                    Icons.person_outline_rounded,
-                    _t('drawer_profile', 'پروفایل'),
-                    () => go(const ProfilePage(asRoute: true)),
-                  ),
-                  _item(
                     Icons.settings_outlined,
                     _t('profile_menu_settings', 'تنظیمات'),
                     () => go(const SettingsPage()),
@@ -239,6 +234,13 @@ class DriverDrawer extends StatelessWidget {
                       ],
                     ],
                   ),
+                ),
+                Icon(
+                  Directionality.of(context) == TextDirection.rtl
+                      ? Icons.chevron_left_rounded
+                      : Icons.chevron_right_rounded,
+                  color: AppColors.textSecondary,
+                  size: 26,
                 ),
               ],
             ),
