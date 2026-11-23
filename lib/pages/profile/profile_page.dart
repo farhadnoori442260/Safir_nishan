@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'package:safir_drivers/pages/auth/register_screen.dart';
 import 'package:safir_drivers/pages/settings/sound_vibration_page.dart';
+import 'package:safir_drivers/widgets/coach_marks.dart';
 import 'package:safir_drivers/pages/trips/trips_history_page.dart';
 import 'package:safir_drivers/pages/profileUpdation/driver_main_info.dart';
 import 'package:safir_drivers/pages/profileUpdation/driving_license_update_screen.dart';
@@ -805,6 +806,18 @@ class SettingsPage extends StatelessWidget {
               title: _pt('settings_notifications', 'اعلان‌ها'),
               onTap: () {
                 Geolocator.openAppSettings();
+              },
+              isRtl: isRtl,
+            ),
+            const SizedBox(height: 12),
+            _buildSettingsTile(
+              context,
+              icon: Icons.lightbulb_outline_rounded,
+              iconColor: AppColors.iconSecondary,
+              title: _pt('settings_replay_guide', 'دیدن دوبارهٔ راهنما'),
+              onTap: () {
+                Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
+                CoachMarks.requestReplay();
               },
               isRtl: isRtl,
             ),
