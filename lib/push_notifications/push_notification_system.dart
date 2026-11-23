@@ -29,7 +29,7 @@ class PushNotificationSystem {
     // وقتی یک بار پخش زنگ تمام شد، اگر هنوز نوبت پخش مانده و دیالوگ باز است
     // دوباره پخش می‌شود. (فقط یک بار برای کل برنامه ثبت می‌شود.)
     _alertCompleteSubscription = _audioPlayer.onPlayerComplete.listen((_) {
-      if (_alertPlaysLeft > 0 && _isTripDialogOpen) {
+      if (_alertPlaysLeft > 0 && TripRequestQueue.instance.isOpen) {
         _alertPlaysLeft--;
         unawaited(_playAlertOnce());
       }
@@ -53,11 +53,10 @@ class PushNotificationSystem {
   StreamSubscription<RemoteMessage>? _onMessageSubscription;
   StreamSubscription<RemoteMessage>? _onMessageOpenedSubscription;
 
-  /// فقط یک دیالوگ درخواست سفر هم‌زمان باز می‌ماند؛
-  /// درخواست‌های بعدی در صف می‌روند و بعد از بسته‌شدن نشان داده می‌شوند.
-  bool _isTripDialogOpen = false;
-  String? _shownTripId;
-  final List<String> _queuedTripIds = <String>[];
+  /// درخواست‌هایی که همین الان اطلاعاتشان از Firestore خوانده می‌شود
+  /// (برای جلوگیری از خواندن دوبارهٔ هم‌زمان). نمایش در TripRequestQueue است:
+  /// همهٔ درخواست‌ها در یک پنجره جمع می‌شوند و با فلش جابه‌جا می‌شوند.
+  final Set<String> _fetchingTripIds = <String>{};
 
   /// سفرهایی که یک بار برای راننده نمایش داده شده‌اند؛ با رسیدن دوبارهٔ همان
   /// سفر (از Firestore یا push) دیگر زنگ و دیالوگ تکراری ساخته نمی‌شود.
@@ -378,39 +377,18 @@ class PushNotificationSystem {
       return;
     }
 
-    // ✅ فقط یک دیالوگ هم‌زمان؛ بقیه در صف می‌مانند
-    if (_isTripDialogOpen) {
-      if (_shownTripId != tripID && !_queuedTripIds.contains(tripID)) {
-        _queuedTripIds.add(tripID);
-        log('Trip $tripID queued (dialog already open)');
-      }
+    if (TripRequestQueue.instance.contains(tripID) ||
+        !_fetchingTripIds.add(tripID)) {
       return;
     }
-
-    // جایگاه را همین الان رزرو کن تا دو درخواست هم‌زمان از هم عبور نکنند
-    _isTripDialogOpen = true;
-    _shownTripId = tripID;
 
     try {
       await _prepareAndShowTrip(tripID, context, fromPush: fromPush);
     } catch (e, stackTrace) {
       log('Error showing trip request: $e', stackTrace: stackTrace);
     } finally {
-      await _stopTripAlertSound();
-      _isTripDialogOpen = false;
-      _shownTripId = null;
-
-      _showNextQueuedTrip(context);
+      _fetchingTripIds.remove(tripID);
     }
-  }
-
-  void _showNextQueuedTrip(BuildContext context) {
-    if (_queuedTripIds.isEmpty) return;
-
-    final String nextTripId = _queuedTripIds.removeAt(0);
-
-    // وضعیت و انقضای سفر دوباره بررسی می‌شود
-    unawaited(retrieveTripRequestInfo(nextTripId, context));
   }
 
   Future<void> _prepareAndShowTrip(
@@ -484,6 +462,8 @@ class PushNotificationSystem {
 
     // فقط درخواست‌های داخل «شعاع جستجوی راننده» (از پنل ادمین)
 
+    double? pickupKm;
+
     if (pickup != null) {
       try {
         final Position? lastKnown = await Geolocator.getLastKnownPosition();
@@ -496,6 +476,8 @@ class PushNotificationSystem {
                 pickup.longitude,
               ) /
               1000;
+
+          pickupKm = distanceKm;
 
           if (distanceKm > config.searchRadiusKm) {
             log(
@@ -584,17 +566,21 @@ class PushNotificationSystem {
 
     await _startTripAlertSound();
 
-    await showDialog(
-      context: currentContext,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return NotificationDialog(
-          tripDetailsInfo: tripDetailsInfo,
+    // پنجره را منتظر نمی‌مانیم؛ درخواست به فهرست اضافه می‌شود و اگر پنجره
+    // از قبل باز باشد، همان‌جا یک صفحهٔ تازه می‌شود. با بسته‌شدن پنجره زنگ قطع می‌شود.
+    unawaited(
+      TripRequestQueue.instance.add(
+        currentContext,
+        PendingTripRequest(
+          tripId: tripID,
+          details: tripDetailsInfo,
           bidAmount: bidText,
           fareAmount: fareText,
           rideData: Map<String, dynamic>.from(data),
-        );
-      },
+          pickupKm: pickupKm,
+        ),
+        onClosed: () => unawaited(_stopTripAlertSound()),
+      ),
     );
   }
 }
