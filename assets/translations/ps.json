@@ -598,6 +598,20 @@
   "text_size_xxlarge": "خورا لوی",
   "text_size_preview": "د لیکنې کچه د لاندې پټې په مرسته برابره کړئ.",
   "settings_notifications": "خبرتیاوې",
-  "messages_empty": "تر اوسه هیڅ پیغام نشته"
+  "messages_empty": "تر اوسه هیڅ پیغام نشته",
+  "earnings_total_short": "ټوله عاید",
+  "go_online_hint": "د سفر ترلاسه کولو لپاره آنلاین شئ",
+  "coach_power_title": "آنلاین او آفلاین",
+  "coach_power_text": "د سفر د غوښتنو د ترلاسه کولو لپاره له دې ځایه آنلاین شئ. کله چې کار مو پای ته ورسېد، همدلته آفلاین شئ.",
+  "coach_earnings_title": "ستاسو عاید",
+  "coach_earnings_text": "ستاسو ټوله عاید دلته ښکاري. پر هغې کېکاږئ چې د عاید پاڼې ته لاړ شئ.",
+  "coach_drawer_title": "مېنو",
+  "coach_drawer_text": "پروفایل، تنظیمات، د سفرونو تاریخچه او ملاتړ له دې ځایه خلاصېږي.",
+  "coach_messages_title": "پیغامونه",
+  "coach_messages_text": "د سفیر خبرتیاوې دلته وګورئ.",
+  "coach_skip": "پرېښودل",
+  "coach_next": "بل",
+  "coach_done": "پیل",
+  "settings_replay_guide": "لارښود بیا وګورئ"
 
 }
