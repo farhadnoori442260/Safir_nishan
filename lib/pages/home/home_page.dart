@@ -24,6 +24,8 @@ import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/services/app_config_service.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
 import '../../push_notifications/push_notification_system.dart';
+import 'package:safir_drivers/widgets/notification_dialog.dart'
+    show TripRequestQueue, PendingTripRequest;
 import 'active_trip_sheet.dart';
 
 String _t(String key, String fallback) {
@@ -1571,6 +1573,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       activeTripId = tripId;
       activeTripStatus = TripStatus.accepted;
+      TripRequestQueue.instance.clear();
 
       await startTripNavigation(
         LatLng(
@@ -2025,6 +2028,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           isDriverAvailable = false;
         }
 
+        TripRequestQueue.instance.clear();
         await goOfflineNow();
         await _saveDriverStatus(false);
       }
@@ -2211,6 +2215,70 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   /// کارت درآمد (عریض، مثل کارت «موجودی» اسنپ)؛ با لمس به تب درآمد می‌رود.
+  /// نشان «n درخواست در انتظار»؛ با لمس آن صف انتظار باز می‌شود.
+  Widget _buildWaitingBadge() {
+    final TripRequestQueue queue = TripRequestQueue.instance;
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: queue.open,
+      builder: (BuildContext context, bool isOpen, Widget? _) {
+        return ValueListenableBuilder<List<PendingTripRequest>>(
+          valueListenable: queue.items,
+          builder: (
+            BuildContext context,
+            List<PendingTripRequest> items,
+            Widget? _,
+          ) {
+            if (isOpen || items.isEmpty) return const SizedBox.shrink();
+
+            final String text = (() {
+              final String v = 'requests_waiting_badge'.tr();
+              return v.trim().isEmpty || v == 'requests_waiting_badge'
+                  ? '{n} درخواست در انتظار'
+                  : v;
+            })()
+                .replaceAll('{n}', '${items.length}');
+
+            return Material(
+              color: AppColors.primaryButton,
+              borderRadius: BorderRadius.circular(22),
+              elevation: 2,
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => queue.openWaiting(context),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(
+                        Icons.hourglass_bottom_rounded,
+                        size: 18,
+                        color: AppColors.buttonText,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        text,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.buttonText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildEarningsPill() {
     final double amount = context.select<RegistrationProvider, double>(
       (RegistrationProvider p) => p.driverEarnings,
@@ -2460,6 +2528,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ],
               ),
             ),
+            if (isDriverAvailable && activeTripId == null)
+              Positioned(
+                top: 88,
+                left: 16,
+                right: 16,
+                child: Center(child: _buildWaitingBadge()),
+              ),
             if (isDriverAvailable && _activeTripStream != null)
               StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: _activeTripStream,
