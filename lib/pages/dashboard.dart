@@ -29,17 +29,25 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   late final List<Widget> _pages;
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  final GlobalKey<ScaffoldState> _scaffoldKey =
+      GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
 
     DriverPrefs.instance.ensureLoaded();
+
     CoachMarks.replayTick.addListener(_onReplay);
-    Future<void>.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) CoachMarks.maybeStart(context);
-    });
+
+    Future<void>.delayed(
+      const Duration(milliseconds: 1500),
+      () {
+        if (mounted) CoachMarks.maybeStart(context);
+      },
+    );
+
     DriverOnlineController.instance.openDrawer =
         () => _scaffoldKey.currentState?.openEndDrawer();
 
@@ -57,10 +65,17 @@ class _DashboardState extends State<Dashboard> {
 
   void _onReplay() {
     if (!mounted) return;
+
     context.read<DashboardProvider>().setIndex(0);
-    Future<void>.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) CoachMarks.maybeStart(context, force: true);
-    });
+
+    Future<void>.delayed(
+      const Duration(milliseconds: 600),
+      () {
+        if (mounted) {
+          CoachMarks.maybeStart(context, force: true);
+        }
+      },
+    );
   }
 
   @override
@@ -118,7 +133,9 @@ class _DashboardState extends State<Dashboard> {
     GlobalKey? tourKey,
   }) {
     final bool on = selectedIndex == index;
-    final Color color = on ? AppColors.primaryBrand : AppColors.iconSecondary;
+
+    final Color color =
+        on ? AppColors.primaryBrand : AppColors.iconSecondary;
 
     return Expanded(
       child: InkWell(
@@ -130,14 +147,21 @@ class _DashboardState extends State<Dashboard> {
           children: <Widget>[
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 3,
+              ),
               decoration: BoxDecoration(
                 color: on
                     ? AppColors.primaryBrand.withOpacity(0.14)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(on ? selectedIcon : icon, size: 24, color: color),
+              child: Icon(
+                on ? selectedIcon : icon,
+                size: 24,
+                color: color,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
@@ -147,7 +171,9 @@ class _DashboardState extends State<Dashboard> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: on ? FontWeight.bold : FontWeight.w500,
-                color: on ? AppColors.primaryBrand : AppColors.textSecondary,
+                color: on
+                    ? AppColors.primaryBrand
+                    : AppColors.textSecondary,
               ),
             ),
           ],
@@ -158,81 +184,135 @@ class _DashboardState extends State<Dashboard> {
 
   /// دکمهٔ مرکزی آنلاین/آفلاین؛ منطق اصلی در HomePage است.
   Widget _buildPowerButton(int selectedIndex) {
-    final DriverOnlineController c = DriverOnlineController.instance;
+    final DriverOnlineController c =
+        DriverOnlineController.instance;
 
     return SizedBox(
-      width: 86,
+      width: 88,
       child: ValueListenableBuilder<bool>(
         valueListenable: c.online,
-        builder: (BuildContext context, bool online, Widget? _) {
+        builder: (
+          BuildContext context,
+          bool online,
+          Widget? _,
+        ) {
           return ValueListenableBuilder<bool>(
             valueListenable: c.busy,
-            builder: (BuildContext context, bool busy, Widget? __) {
+            builder: (
+              BuildContext context,
+              bool busy,
+              Widget? __,
+            ) {
               final String label = online
                   ? _t('driver_power_online', 'آنلاین')
                   : _t('driver_power_offline', 'آفلاین');
 
-              return InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: busy
-                    ? null
-                    : () {
-                        if (selectedIndex != 0) {
-                          context.read<DashboardProvider>().setIndex(0);
-                        }
-                        c.toggle();
-                      },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    AnimatedContainer(
-                      key: CoachKeys.power,
-                      duration: const Duration(milliseconds: 250),
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: online
-                            ? AppColors.primaryButton
-                            : AppColors.neutralSoft,
-                        border: Border.all(
+              final Color accent = AppColors.primaryBrand;
+
+              return Semantics(
+                button: true,
+                enabled: !busy,
+                label: label,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(22),
+                  onTap: busy
+                      ? null
+                      : () {
+                          if (selectedIndex != 0) {
+                            context
+                                .read<DashboardProvider>()
+                                .setIndex(0);
+                          }
+
+                          c.toggle();
+                        },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      AnimatedContainer(
+                        key: CoachKeys.power,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        width: 60,
+                        height: 60,
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
                           color: online
-                              ? AppColors.primaryButton
-                              : AppColors.borderLight,
+                              ? accent.withOpacity(0.12)
+                              : AppColors.neutralSoft,
+                          border: Border.all(
+                            color: online
+                                ? accent.withOpacity(0.45)
+                                : AppColors.borderLight,
+                            width: 1.3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accent.withOpacity(
+                                online ? 0.22 : 0.08,
+                              ),
+                              blurRadius: online ? 14 : 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: AnimatedContainer(
+                          duration: const Duration(
+                            milliseconds: 250,
+                          ),
+                          curve: Curves.easeInOut,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: online
+                                ? AppColors.primaryButton
+                                : AppColors.cardBackground,
+                            border: Border.all(
+                              color: online
+                                  ? Colors.transparent
+                                  : accent.withOpacity(0.30),
+                            ),
+                          ),
+                          child: Center(
+                            child: busy
+                                ? SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child:
+                                        CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: online
+                                          ? AppColors.buttonText
+                                          : accent,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.power_settings_new_rounded,
+                                    size: 30,
+                                    color: online
+                                        ? AppColors.buttonText
+                                        : accent,
+                                  ),
+                          ),
                         ),
                       ),
-                      child: busy
-                          ? Padding(
-                              padding: const EdgeInsets.all(13),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                color: online
-                                    ? AppColors.buttonText
-                                    : AppColors.textSecondary,
-                              ),
-                            )
-                          : Icon(
-                              Icons.power_settings_new_rounded,
-                              size: 26,
-                              color: online
-                                  ? AppColors.buttonText
-                                  : AppColors.textSecondary,
-                            ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: online
-                            ? AppColors.primaryBrand
-                            : AppColors.textSecondary,
+                      const SizedBox(height: 4),
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: online
+                                ? accent
+                                : AppColors.textSecondary,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },
@@ -259,61 +339,63 @@ class _DashboardState extends State<Dashboard> {
       },
       child: DriverTextScale(
         child: Scaffold(
-        key: _scaffoldKey,
-        endDrawer: const DriverDrawer(),
-        endDrawerEnableOpenDragGesture: false,
-        backgroundColor: AppColors.background,
-        extendBody: true,
-        body: IndexedStack(
-          index: selectedIndex,
-          children: _pages,
-        ),
-        bottomNavigationBar: SafeArea(
-          top: false,
-          minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: Container(
-            height: 70,
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.borderLight),
-            ),
-            child: Row(
-              children: <Widget>[
-                _navItem(
-                  0,
-                  selectedIndex,
-                  Icons.map_outlined,
-                  Icons.map_rounded,
-                  'nav_home'.tr(),
+          key: _scaffoldKey,
+          endDrawer: const DriverDrawer(),
+          endDrawerEnableOpenDragGesture: false,
+          backgroundColor: AppColors.background,
+          extendBody: true,
+          body: IndexedStack(
+            index: selectedIndex,
+            children: _pages,
+          ),
+          bottomNavigationBar: SafeArea(
+            top: false,
+            minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: Container(
+              height: 88,
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppColors.borderLight,
                 ),
-                _navItem(
-                  1,
-                  selectedIndex,
-                  Icons.account_balance_wallet_outlined,
-                  Icons.account_balance_wallet_rounded,
-                  'nav_earnings'.tr(),
-                ),
-                _buildPowerButton(selectedIndex),
-                _navItem(
-                  2,
-                  selectedIndex,
-                  Icons.route_outlined,
-                  Icons.route_rounded,
-                  'nav_trips'.tr(),
-                ),
-                _navItem(
-                  3,
-                  selectedIndex,
-                  Icons.mail_outline_rounded,
-                  Icons.mail_rounded,
-                  _t('nav_messages', 'پیام‌ها'),
-                  tourKey: CoachKeys.messages,
-                ),
-              ],
+              ),
+              child: Row(
+                children: <Widget>[
+                  _navItem(
+                    0,
+                    selectedIndex,
+                    Icons.map_outlined,
+                    Icons.map_rounded,
+                    'nav_home'.tr(),
+                  ),
+                  _navItem(
+                    1,
+                    selectedIndex,
+                    Icons.account_balance_wallet_outlined,
+                    Icons.account_balance_wallet_rounded,
+                    'nav_earnings'.tr(),
+                  ),
+                  _buildPowerButton(selectedIndex),
+                  _navItem(
+                    2,
+                    selectedIndex,
+                    Icons.route_outlined,
+                    Icons.route_rounded,
+                    'nav_trips'.tr(),
+                  ),
+                  _navItem(
+                    3,
+                    selectedIndex,
+                    Icons.mail_outline_rounded,
+                    Icons.mail_rounded,
+                    _t('nav_messages', 'پیام‌ها'),
+                    tourKey: CoachKeys.messages,
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         ),
       ),
     );
