@@ -18,7 +18,7 @@ import 'loading_dialog.dart';
 /// مهلت نمایش تازهٔ هر درخواست (ثانیه)؛ بعد از آن به «صف انتظار» می‌رود.
 const int kTripRequestSeconds = 15;
 
-/// حداکثر ماندن در صف انتظار، از لحظهٔ ساخته‌شدن سفر.
+/// حداکثر ماندن در صف انتظار، از لحظهٔ رسیدن درخواست به گوشی راننده.
 const Duration kTripWaitingLife = Duration(minutes: 5);
 
 /// یک درخواست سفر در انتظار تصمیم راننده.
@@ -33,20 +33,9 @@ class PendingTripRequest {
   })  : expiresAt = DateTime.now().add(
           const Duration(seconds: kTripRequestSeconds),
         ),
-        goneAt = _createdAtOf(rideData).add(kTripWaitingLife);
-
-  static DateTime _createdAtOf(Map<String, dynamic> data) {
-    final dynamic raw =
-        data['created_at'] ?? data['createdAt'] ?? data['timestamp'];
-    if (raw is Timestamp) {
-      final DateTime t = raw.toDate();
-      // ساعت‌های خیلی غیرعادی را نادیده می‌گیریم
-      if (!t.isAfter(DateTime.now().add(const Duration(minutes: 1)))) {
-        return t;
-      }
-    }
-    return DateTime.now();
-  }
+        // از لحظهٔ رسیدن به گوشی؛ ساعت سرور استفاده نمی‌شود چون ساعت بعضی
+        // گوشی‌ها غلط است و درخواست بلافاصله «کهنه» حساب می‌شد.
+        goneAt = DateTime.now().add(kTripWaitingLife);
 
   final String tripId;
   final TripDetails details;
@@ -276,11 +265,12 @@ class _NotificationDialogState extends State<NotificationDialog> {
     if (_closing) return;
     _closing = true;
     _stopAudio();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final NavigatorState nav = Navigator.of(context);
-      if (nav.canPop()) nav.pop();
-    });
+    // مستقیم بسته می‌شود. (قبلاً postFrameCallback بود و وقتی هیچ فریمی
+    // ساخته نمی‌شد اجرا نمی‌شد؛ پنجره با «۰» ثانیه می‌ماند و گوشی هنگ‌کرده
+    // به نظر می‌رسید.)
+    if (!mounted) return;
+    final NavigatorState nav = Navigator.of(context);
+    if (nav.canPop()) nav.pop();
   }
 
   void _stopAudio() {
