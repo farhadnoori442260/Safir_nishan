@@ -966,8 +966,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    // رنگ‌ها از AppColors؛ پیش‌فرض SnackBar در تم تاریک سفید می‌شد
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.cardBackground,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: AppColors.borderLight),
+        ),
+        content: Text(
+          message,
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 
@@ -2214,6 +2230,43 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  /// دکمهٔ افقی مسیریابی: آیکن + نوشته (همه سواد خواندن ندارند، آیکن هم هست)
+  Widget _navPillButton(VoidCallback onTap) {
+    return Material(
+      color: AppColors.cardBackground,
+      shape: StadiumBorder(side: BorderSide(color: AppColors.borderLight)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 48,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(start: 14, end: 18),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.navigation_rounded,
+                  color: AppColors.primaryBrand,
+                  size: 22,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _t('nav_navigate', 'مسیریابی'),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// کارت درآمد (عریض، مثل کارت «موجودی» اسنپ)؛ با لمس به تب درآمد می‌رود.
   /// نشان «n درخواست در انتظار»؛ با لمس آن صف انتظار باز می‌شود.
   Widget _buildWaitingBadge() {
@@ -2706,11 +2759,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 Widget? __,
                               ) {
                                 if (nav == null) return const SizedBox.shrink();
-                                return _mapRoundButton(
-                                  icon: Icons.navigation_rounded,
-                                  color: AppColors.primaryBrand,
-                                  onTap: nav,
-                                );
+                                return _navPillButton(nav);
                               },
                             ),
                           ),
