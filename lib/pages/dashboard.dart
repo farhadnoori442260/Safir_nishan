@@ -11,6 +11,7 @@ import 'package:safir_drivers/providers/dashboard_provider.dart';
 import 'package:safir_drivers/providers/registration_provider.dart';
 import 'package:safir_drivers/utils/app_colors.dart';
 import 'package:safir_drivers/utils/driver_prefs.dart';
+import 'package:safir_drivers/widgets/coach_marks.dart';
 import 'package:safir_drivers/widgets/driver_drawer.dart';
 import 'package:safir_drivers/widgets/driver_text_scale.dart';
 
@@ -35,6 +36,10 @@ class _DashboardState extends State<Dashboard> {
     super.initState();
 
     DriverPrefs.instance.ensureLoaded();
+    CoachMarks.replayTick.addListener(_onReplay);
+    Future<void>.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) CoachMarks.maybeStart(context);
+    });
     DriverOnlineController.instance.openDrawer =
         () => _scaffoldKey.currentState?.openEndDrawer();
 
@@ -48,6 +53,20 @@ class _DashboardState extends State<Dashboard> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshInitialData();
     });
+  }
+
+  void _onReplay() {
+    if (!mounted) return;
+    context.read<DashboardProvider>().setIndex(0);
+    Future<void>.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) CoachMarks.maybeStart(context, force: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    CoachMarks.replayTick.removeListener(_onReplay);
+    super.dispose();
   }
 
   Future<void> _refreshInitialData() async {
@@ -95,8 +114,9 @@ class _DashboardState extends State<Dashboard> {
     int selectedIndex,
     IconData icon,
     IconData selectedIcon,
-    String label,
-  ) {
+    String label, {
+    GlobalKey? tourKey,
+  }) {
     final bool on = selectedIndex == index;
     final Color color = on ? AppColors.primaryBrand : AppColors.iconSecondary;
 
@@ -105,6 +125,7 @@ class _DashboardState extends State<Dashboard> {
         borderRadius: BorderRadius.circular(18),
         onTap: () => _onDestinationSelected(index),
         child: Column(
+          key: tourKey,
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             AnimatedContainer(
@@ -165,6 +186,7 @@ class _DashboardState extends State<Dashboard> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                     AnimatedContainer(
+                      key: CoachKeys.power,
                       duration: const Duration(milliseconds: 250),
                       width: 46,
                       height: 46,
@@ -286,6 +308,7 @@ class _DashboardState extends State<Dashboard> {
                   Icons.mail_outline_rounded,
                   Icons.mail_rounded,
                   _t('nav_messages', 'پیام‌ها'),
+                  tourKey: CoachKeys.messages,
                 ),
               ],
             ),
