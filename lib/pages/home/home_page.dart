@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:safir_drivers/constants/trip_status.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:safir_drivers/controllers/driver_online_controller.dart';
+import 'package:safir_drivers/widgets/coach_marks.dart';
 import 'package:safir_drivers/pages/profile/profile_page.dart';
 import 'package:safir_drivers/controllers/navigation_controller.dart';
 import 'package:safir_drivers/pages/chat_page.dart';
@@ -2191,8 +2192,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     required IconData icon,
     required VoidCallback onTap,
     Color? color,
+    Key? tourKey,
   }) {
     return Material(
+      key: tourKey,
       color: AppColors.cardBackground,
       shape: CircleBorder(side: BorderSide(color: AppColors.borderLight)),
       child: InkWell(
@@ -2219,6 +2222,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             : amount.toStringAsFixed(2));
 
     return Material(
+      key: CoachKeys.earnings,
       color: AppColors.cardBackground,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(22),
@@ -2449,6 +2453,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   const SizedBox(width: 12),
                   _mapRoundButton(
                     icon: Icons.menu_rounded,
+                    tourKey: CoachKeys.drawer,
                     onTap: () =>
                         DriverOnlineController.instance.openDrawer?.call(),
                   ),
